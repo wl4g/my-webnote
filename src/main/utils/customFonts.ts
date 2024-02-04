@@ -61,7 +61,7 @@ export const loadCustomFont = async (mainWindow) => {
 
   console.log('--- openfile ---', filePaths);
 
-  const promises = filePaths.map(async (filePath) => {
+  const promises = filePaths.map( async (filePath) => {
     try {
       const filenameWithSuffix = getFilenameFromPath(filePath);
       const destPath = join(CUSTOM_FONTS_DIR, `${filenameWithSuffix}`);
@@ -74,6 +74,7 @@ export const loadCustomFont = async (mainWindow) => {
       };
     } catch (err) {
       console.error('copy file error:', err);
+      throw err;
     }
   });
 

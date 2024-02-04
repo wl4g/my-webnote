@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { Button, Form, Input, Modal, message } from 'antd';
-import { addCustomFontToLocal } from '@renderer/store/localstorage';
+//import { addCustomFontToLocal } from '@renderer/store/localstorage';
+import { addBoardCustomFontToLocal } from '@renderer/store/localstorage';
 import { useTranslation } from 'react-i18next';
 
 import './index.css';
@@ -48,7 +49,7 @@ const CustomFontModal = (props: Props) => {
 
     window.api.registerCustomFont(fontFamilyName, fontPath);
 
-    addCustomFontToLocal(fontFamilyName);
+    addBoardCustomFontToLocal(fontFamilyName);
 
     const prevFile = currentFile;
 
