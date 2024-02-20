@@ -4,6 +4,7 @@ import { menuIndexeddbStorage } from '@renderer/store/menuIndexeddb';
 import type { RevezoneFile, RevezoneFolder, OnFolderOrFileAddProps } from '@renderer/types/file';
 import {
   getOpenKeysFromLocal,
+  getCurrentFileIdFromLocal,
   setCurrentFileIdToLocal,
   setOpenKeysToLocal
 } from '@renderer/store/localstorage';
@@ -22,7 +23,6 @@ import { Folder, HardDrive, UploadCloud } from 'lucide-react';
 import useAddFile from '@renderer/hooks/useAddFile';
 import useFileContextMenu from '@renderer/hooks/useFileContextMenu';
 import useFolderContextMenu from '@renderer/hooks/useFolderContextMenu';
-import { getCurrentFileIdFromLocal } from '@renderer/store/localstorage';
 import useFileTree from '@renderer/hooks/useFileTree';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher/index';
