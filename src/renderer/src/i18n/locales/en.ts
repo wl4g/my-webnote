@@ -54,7 +54,7 @@ export default {
     alpha: 'alpha'
   },
   storage: {
-    cloud: 'Cloud(Comming soon)',
+    cloud: 'Cloud',
     local: 'Local'
   },
   help: {

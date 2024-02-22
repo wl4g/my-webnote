@@ -2,12 +2,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { Menu, Dropdown } from 'antd';
 import { menuIndexeddbStorage } from '@renderer/store/menuIndexeddb';
 import type { RevezoneFile, RevezoneFolder, OnFolderOrFileAddProps } from '@renderer/types/file';
-import {
-  getOpenKeysFromLocal,
-  getCurrentFileIdFromLocal,
-  setCurrentFileIdToLocal,
-  setOpenKeysToLocal
-} from '@renderer/store/localstorage';
+import { storageAdapter } from '../../store/storage';
 import { useAtom } from 'jotai';
 import { currentFileAtom, currentFolderIdAtom } from '@renderer/store/jotai';
 import EditableText from '../EditableText';
@@ -34,14 +29,52 @@ interface Props {
 }
 
 export default function CustomMenu({ collapsed }: Props) {
-  const [openKeys, setOpenKeys] = useState<string[]>(getOpenKeysFromLocal());
+  const { t } = useTranslation();
+
+  // --- Storage type switch. ---
+  const handleStorageTypeChange = (type: string) => {
+    console.debug('Using storage type :', type);
+    storageAdapter.setupStorageType(type);
+    setCurStorageType(type);
+  };
+  const storageTypeItems = [
+    {
+      key: 'LOCAL',
+      icon: <HardDrive className="w-4 mr-1"></HardDrive>,
+      label: t('storage.local'),
+      onClick: () => handleStorageTypeChange('LOCAL')
+    },
+    {
+      key: 'CLOUD',
+      icon: <UploadCloud className="w-4 mr-1"></UploadCloud>,
+      disabled: false,
+      label: t('storage.cloud'),
+      onClick: () => handleStorageTypeChange('CLOUD')
+    }
+  ];
+  const storageTextMap = {
+    LOCAL: t('storage.local'),
+    CLOUD: t('storage.cloud')
+  };
+  const lastStorageType = localStorage.getItem('revezone.storageType');
+  // Setup current storage type state.
+  const [curStorageType, setCurStorageType] = useState(lastStorageType || 'LOCAL'); // Default
+
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+  useEffect(() => {
+    const fetchKeys = async () => {
+      const keys = await storageAdapter.loadOpenKeys();
+      setOpenKeys(keys);
+    };
+    fetchKeys();
+  }, []);
+
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [currentFile, setCurrentFile] = useAtom(currentFileAtom);
   const [currentFolderId, setCurrentFolderId] = useAtom(currentFolderIdAtom);
   const [editableTextState, setEditableTextState] = useState<{ [key: string]: boolean }>({});
   const firstRenderRef = useRef(false);
   const { fileTree, getFileTree } = useFileTree();
-  const { t } = useTranslation();
 
   const onFolderOrFileAdd = useCallback(
     ({ fileId, folderId, type }: OnFolderOrFileAddProps) => {
@@ -70,7 +103,7 @@ export default function CustomMenu({ collapsed }: Props) {
     if (firstRenderRef.current === true || !fileTree?.length) return;
     firstRenderRef.current = true;
 
-    const currentFileIdFromLocal = getCurrentFileIdFromLocal();
+    const currentFileIdFromLocal = storageAdapter.loadCurrentFileId();
     const file = currentFileIdFromLocal ? getFileById(currentFileIdFromLocal, fileTree) : undefined;
 
     setCurrentFile(file);
@@ -78,7 +111,7 @@ export default function CustomMenu({ collapsed }: Props) {
 
   useEffect(() => {
     if (firstRenderRef.current === false) return;
-    setCurrentFileIdToLocal(currentFile?.id);
+    storageAdapter.saveCurrentFileId(currentFile?.id);
     setSelectedKeys(currentFile?.id ? [currentFile.id] : []);
   }, [currentFile?.id]);
 
@@ -189,7 +222,7 @@ export default function CustomMenu({ collapsed }: Props) {
       console.log('onOpenChange', changeType, folderKeys, openFolderKeys);
 
       setOpenKeys(keys);
-      setOpenKeysToLocal(keys);
+      storageAdapter.saveOpenKeys(keys);
 
       // only while openKeys increase
       if (changeType === 'increase') {
@@ -256,20 +289,6 @@ export default function CustomMenu({ collapsed }: Props) {
     [editableTextState]
   );
 
-  const storageTypeItems = [
-    {
-      key: 'local',
-      icon: <HardDrive className="w-4 mr-1"></HardDrive>,
-      label: t('storage.local')
-    },
-    {
-      key: 'cloud',
-      icon: <UploadCloud className="w-4 mr-1"></UploadCloud>,
-      disabled: true,
-      label: t('storage.cloud')
-    }
-  ];
-
   return (
     <div className="revezone-menu-container">
       <div className="flex flex-col mb-1 pl-5 pr-8 pt-0 justify-between">
@@ -283,7 +302,7 @@ export default function CustomMenu({ collapsed }: Props) {
             <Dropdown menu={{ items: storageTypeItems }}>
               <span className="text-slate-500 flex items-center cursor-pointer">
                 <HardDrive className="w-4 mr-1"></HardDrive>
-                {t('storage.local')}
+                {storageTextMap[curStorageType]}
               </span>
             </Dropdown>
           </div>

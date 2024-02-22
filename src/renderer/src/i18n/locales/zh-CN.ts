@@ -53,7 +53,7 @@ export default {
     alpha: '公测版'
   },
   storage: {
-    cloud: '云存储(敬请期待)',
+    cloud: '云存储',
     local: '本地存储'
   },
   help: {

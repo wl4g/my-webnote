@@ -53,7 +53,7 @@ export default {
     alpha: '公測版'
   },
   storage: {
-    cloud: '雲存儲(敬請期待)',
+    cloud: '雲存儲',
     local: '本地存儲'
   },
   help: {

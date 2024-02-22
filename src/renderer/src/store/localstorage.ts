@@ -1,58 +1,65 @@
-const LOCALSTORAGE_MENU_OPEN_KEYS = 'menu_open_keys';
-// const LOCALSTORAGE_MENU_ACTIVE_KEYS = 'menu_active_keys';
-const LOCALSTORAGE_CURRENT_FILE_ID = 'current_file_id';
-const LOCALSTORAGE_BOARD_CUSTOM_FONTS = 'custom_fonts';
-const LOCALSTORAGE_LANG_CODE = 'lang_code';
-const LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH = 'board_custom_font_switch';
+import { IStorageService } from './storage';
 
-export const getOpenKeysFromLocal = () => {
-  const localStr = localStorage.getItem(LOCALSTORAGE_MENU_OPEN_KEYS);
-  return localStr ? JSON.parse(localStr) : [];
-};
+export const LOCALSTORAGE_MENU_OPEN_KEYS = 'menu_open_keys';
+export const LOCALSTORAGE_CURRENT_FILE_ID = 'current_file_id';
+export const LOCALSTORAGE_BOARD_CUSTOM_FONTS = 'custom_fonts';
+export const LOCALSTORAGE_LANG_CODE = 'lang_code';
+export const LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH = 'board_custom_font_switch';
 
-export const setOpenKeysToLocal = (openKeys) => {
-  const localStr = JSON.stringify(openKeys);
-  localStorage.setItem(LOCALSTORAGE_MENU_OPEN_KEYS, localStr);
-};
+export class LocalStorageService implements IStorageService {
+  loadOpenKeys(): Promise<string[]> {
+    return new Promise(() => {
+      const localStr = localStorage.getItem(LOCALSTORAGE_MENU_OPEN_KEYS);
+      return localStr ? JSON.parse(localStr) : [];
+    });
+  }
 
-export const setCurrentFileIdToLocal = (fileId: string | undefined | null) => {
-  localStorage.setItem(LOCALSTORAGE_CURRENT_FILE_ID, fileId || '');
-};
+  saveOpenKeys(openKeys: string[]): void {
+    const localStr = JSON.stringify(openKeys);
+    localStorage.setItem(LOCALSTORAGE_MENU_OPEN_KEYS, localStr);
+  }
 
-export const getCurrentFileIdFromLocal = () => {
-  return localStorage.getItem(LOCALSTORAGE_CURRENT_FILE_ID);
-};
+  saveCurrentFileId(fileId: string | undefined | null): void {
+    localStorage.setItem(LOCALSTORAGE_CURRENT_FILE_ID, fileId || '');
+  }
 
-export const getBoardCustomFontFromLocal = () => {
-  return localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS);
-};
+  loadCurrentFileId(): string | null {
+    return localStorage.getItem(LOCALSTORAGE_CURRENT_FILE_ID);
+  }
 
-export const setBoardCustomFontToLocal = (fontName) => {
-  fontName && localStorage.setItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS, fontName);
-};
+  loadBoardCustomFont(): string | null {
+    return localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS);
+  }
 
-export const addBoardCustomFontToLocal = (fontFamilyName: string) => {
-  const customFonts = localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS);
-  const arr = customFonts?.split(',');
+  saveBoardCustomFont(fontName: string | null): void {
+    fontName && localStorage.setItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS, fontName);
+  }
 
-  if (arr?.includes(fontFamilyName)) return;
+  addBoardCustomFont(fontFamilyName: string): void {
+    const customFonts = localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS);
+    const arr = customFonts?.split(',');
 
-  const newCustomFonts = arr ? arr.concat(fontFamilyName).join(',') : fontFamilyName;
-  localStorage.setItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS, newCustomFonts);
-};
+    if (arr?.includes(fontFamilyName)) return;
 
-export const setLangCodeToLocal = (langCode: string) => {
-  localStorage.setItem(LOCALSTORAGE_LANG_CODE, langCode);
-};
+    const newCustomFonts = arr ? arr.concat(fontFamilyName).join(',') : fontFamilyName;
+    localStorage.setItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS, newCustomFonts);
+  }
 
-export const getLangCodeFromLocal = () => {
-  return localStorage.getItem(LOCALSTORAGE_LANG_CODE);
-};
+  saveLangCode(langCode: string): void {
+    localStorage.setItem(LOCALSTORAGE_LANG_CODE, langCode);
+  }
 
-export const getBoardCustomFontSwitchFromLocal = () => {
-  return localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH);
-};
+  loadLangCode(): string | null {
+    return localStorage.getItem(LOCALSTORAGE_LANG_CODE);
+  }
 
-export const setBoardCustomFontSwitchToLocal = (value) => {
-  localStorage.setItem(LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH, value);
-};
+  loadBoardCustomFontSwitch(): string | null {
+    return localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH);
+  }
+
+  saveBoardCustomFontSwitch(value: boolean): void {
+    localStorage.setItem(LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH, value + '');
+  }
+}
+
+export const localStorageService: LocalStorageService = new LocalStorageService();

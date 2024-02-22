@@ -2,12 +2,7 @@ import { useEffect, useCallback, useState } from 'react';
 import { Button, Select, Switch, Popconfirm } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useUpdate } from 'ahooks';
-import {
-  setBoardCustomFontSwitchToLocal,
-  getBoardCustomFontSwitchFromLocal,
-  getBoardCustomFontFromLocal,
-  setBoardCustomFontToLocal
-} from '@renderer/store/localstorage';
+import { storageAdapter } from '../../store/storage';
 import { isInRevezoneApp } from '@renderer/utils/navigator';
 import DownloadApp from '../DownloadApp/index';
 import { Font } from '@renderer/types/file';
@@ -22,9 +17,9 @@ const CustomFonts = () => {
 
   const [fonts, setFonts] = useState<Font[]>(registeredFonts);
   const [boardCustomFontSwitch, setBoardCustomFontSwitch] = useState(
-    getBoardCustomFontSwitchFromLocal() === 'true'
+    storageAdapter.loadBoardCustomFontSwitch() === 'true'
   );
-  const [boardCustomFont, setBoardCustomFont] = useState(getBoardCustomFontFromLocal());
+  const [boardCustomFont, setBoardCustomFont] = useState(storageAdapter.loadBoardCustomFont());
 
   console.log('--- registeredFonts ---', registeredFonts);
 
@@ -33,11 +28,11 @@ const CustomFonts = () => {
   }, []);
 
   useEffect(() => {
-    setBoardCustomFontSwitchToLocal(boardCustomFontSwitch);
+    storageAdapter.saveBoardCustomFontSwitch(boardCustomFontSwitch);
   }, [boardCustomFontSwitch]);
 
   useEffect(() => {
-    setBoardCustomFontToLocal(boardCustomFont);
+    storageAdapter.saveBoardCustomFont(boardCustomFont);
   }, [boardCustomFont]);
 
   const customFontsChanged = useCallback(async (event, newFonts) => {
@@ -123,7 +118,7 @@ const CustomFonts = () => {
               checked={boardCustomFontSwitch}
               onChange={(value) => {
                 setBoardCustomFontSwitch(value);
-                setBoardCustomFontToLocal('');
+                storageAdapter.saveBoardCustomFont('');
               }}
             ></Switch>
           </p>
