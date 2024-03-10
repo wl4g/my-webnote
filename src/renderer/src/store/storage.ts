@@ -5,13 +5,13 @@ export interface IStorageService {
   loadOpenKeys(): Promise<string[]>;
   saveOpenKeys(openKeys: string[]): void;
   saveCurrentFileId(fileId: string | undefined | null): void;
-  loadCurrentFileId(): string | null;
-  loadBoardCustomFont(): string | null;
+  loadCurrentFileId(): Promise<string | null>;
+  loadBoardCustomFont(): Promise<string | null>;
   saveBoardCustomFont(fontName: string | null): void;
   addBoardCustomFont(fontFamilyName: string): void;
   saveLangCode(langCode: string): void;
-  loadLangCode(): string | null;
-  loadBoardCustomFontSwitch(): string | null;
+  loadLangCode(): Promise<string | null>;
+  loadBoardCustomFontSwitch(): Promise<string | null>;
   saveBoardCustomFontSwitch(value: boolean): void;
 }
 
@@ -42,11 +42,11 @@ export class StorageAdapter implements IStorageService {
     this.delegate.saveCurrentFileId(fileId);
   }
 
-  loadCurrentFileId(): string | null {
+  loadCurrentFileId(): Promise<string | null> {
     return this.delegate.loadCurrentFileId();
   }
 
-  loadBoardCustomFont(): string | null {
+  loadBoardCustomFont(): Promise<string | null> {
     return this.delegate.loadBoardCustomFont();
   }
 
@@ -62,11 +62,11 @@ export class StorageAdapter implements IStorageService {
     this.delegate.saveLangCode(langCode);
   }
 
-  loadLangCode(): string | null {
+  loadLangCode(): Promise<string | null> {
     return this.delegate.loadLangCode();
   }
 
-  loadBoardCustomFontSwitch(): string | null {
+  loadBoardCustomFontSwitch(): Promise<string | null> {
     return this.delegate.loadBoardCustomFontSwitch();
   }
 

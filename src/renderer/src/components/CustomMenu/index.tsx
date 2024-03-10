@@ -62,11 +62,11 @@ export default function CustomMenu({ collapsed }: Props) {
 
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   useEffect(() => {
-    const fetchKeys = async () => {
+    const asyncSetOpenKeys = async () => {
       const keys = await storageAdapter.loadOpenKeys();
       setOpenKeys(keys);
     };
-    fetchKeys();
+    asyncSetOpenKeys();
   }, []);
 
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -103,10 +103,13 @@ export default function CustomMenu({ collapsed }: Props) {
     if (firstRenderRef.current === true || !fileTree?.length) return;
     firstRenderRef.current = true;
 
-    const currentFileIdFromLocal = storageAdapter.loadCurrentFileId();
-    const file = currentFileIdFromLocal ? getFileById(currentFileIdFromLocal, fileTree) : undefined;
-
-    setCurrentFile(file);
+    // const file = currentFileId ? getFileById(currentFileId, fileTree) : undefined;
+    // setCurrentFile(file);
+    const currentFileId = storageAdapter.loadCurrentFileId();
+    currentFileId.then((res) => {
+      if (!res) return;
+      setCurrentFile(getFileById(res, fileTree));
+    });
   }, [fileTree]);
 
   useEffect(() => {

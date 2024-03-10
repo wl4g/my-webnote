@@ -12,9 +12,18 @@ export default function LanguageSwitcher() {
   const { i18n } = useTranslation();
 
   useEffect(() => {
-    const code = storageAdapter.loadLangCode() || DEFAULT_LANG_CODE;
-    i18n.changeLanguage(code);
-    setLangCode(code);
+    const code = storageAdapter.loadLangCode();
+    // i18n.changeLanguage(code);
+    // setLangCode(code);
+    code.then((res) => {
+      if (res) {
+        i18n.changeLanguage(res);
+        setLangCode(res);
+      } else {
+        i18n.changeLanguage(DEFAULT_LANG_CODE);
+        setLangCode(DEFAULT_LANG_CODE);
+      }
+    });
   }, []);
 
   const onChange = useCallback((code: string) => {

@@ -23,12 +23,12 @@ export class LocalStorageService implements IStorageService {
     localStorage.setItem(LOCALSTORAGE_CURRENT_FILE_ID, fileId || '');
   }
 
-  loadCurrentFileId(): string | null {
-    return localStorage.getItem(LOCALSTORAGE_CURRENT_FILE_ID);
+  loadCurrentFileId(): Promise<string | null> {
+    return new Promise(() => localStorage.getItem(LOCALSTORAGE_CURRENT_FILE_ID));
   }
 
-  loadBoardCustomFont(): string | null {
-    return localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS);
+  loadBoardCustomFont(): Promise<string | null> {
+    return new Promise(() => localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONTS));
   }
 
   saveBoardCustomFont(fontName: string | null): void {
@@ -49,12 +49,12 @@ export class LocalStorageService implements IStorageService {
     localStorage.setItem(LOCALSTORAGE_LANG_CODE, langCode);
   }
 
-  loadLangCode(): string | null {
-    return localStorage.getItem(LOCALSTORAGE_LANG_CODE);
+  loadLangCode(): Promise<string | null> {
+    return new Promise(() => localStorage.getItem(LOCALSTORAGE_LANG_CODE));
   }
 
-  loadBoardCustomFontSwitch(): string | null {
-    return localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH);
+  loadBoardCustomFontSwitch(): Promise<string | null> {
+    return new Promise(() => localStorage.getItem(LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH));
   }
 
   saveBoardCustomFontSwitch(value: boolean): void {

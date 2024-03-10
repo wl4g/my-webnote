@@ -17,7 +17,9 @@ const CustomFonts = () => {
 
   const [fonts, setFonts] = useState<Font[]>(registeredFonts);
   const [boardCustomFontSwitch, setBoardCustomFontSwitch] = useState(
-    storageAdapter.loadBoardCustomFontSwitch() === 'true'
+    // storageAdapter.loadBoardCustomFontSwitch() === 'true'
+    //storageAdapter.loadBoardCustomFontSwitch().then((res) => res === 'true')
+    false
   );
   const [boardCustomFont, setBoardCustomFont] = useState(storageAdapter.loadBoardCustomFont());
 
@@ -28,11 +30,23 @@ const CustomFonts = () => {
   }, []);
 
   useEffect(() => {
-    storageAdapter.saveBoardCustomFontSwitch(boardCustomFontSwitch);
+    // storageAdapter.saveBoardCustomFontSwitch(boardCustomFontSwitch);
+    // boardCustomFontSwitch.then((res) => {
+    //   if (res) {
+    //     storageAdapter.saveBoardCustomFontSwitch(true);
+    //   } else {
+    //     storageAdapter.saveBoardCustomFontSwitch(false);
+    //   }
+    // });
   }, [boardCustomFontSwitch]);
 
   useEffect(() => {
-    storageAdapter.saveBoardCustomFont(boardCustomFont);
+    // storageAdapter.saveBoardCustomFont(boardCustomFont);
+    boardCustomFont.then((res) => {
+      if (res) {
+        // setBoardCustomFont(res);
+      }
+    });
   }, [boardCustomFont]);
 
   const customFontsChanged = useCallback(async (event, newFonts) => {
@@ -40,7 +54,7 @@ const CustomFonts = () => {
 
     // clear board custom font if font was removed
     if (!newFonts.find((font) => font.name === boardCustomFont)) {
-      setBoardCustomFont(null);
+      //setBoardCustomFont(null);
     }
 
     setTimeout(() => {

@@ -6,7 +6,7 @@ export class CloudStorageService implements IStorageService {
     this.apiUrl = apiUrl;
   }
 
-  loadOpenKeys(): Promise<string[]> {
+  async loadOpenKeys(): Promise<string[]> {
     const data = {};
     return this.doRequest('GET', '/openKeys', data).then((res) => {
       return [res];
@@ -27,12 +27,12 @@ export class CloudStorageService implements IStorageService {
     this.doRequest('POST', '/currentFileId', data);
   }
 
-  loadCurrentFileId(): string | null {
+  loadCurrentFileId(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/currentFileId', data);
   }
 
-  loadBoardCustomFont(): string | null {
+  loadBoardCustomFont(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/boardCustomFont', data);
   }
@@ -58,12 +58,12 @@ export class CloudStorageService implements IStorageService {
     this.doRequest('POST', '/langCode', data);
   }
 
-  loadLangCode(): string | null {
+  loadLangCode(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/langCode', data);
   }
 
-  loadBoardCustomFontSwitch(): string | null {
+  loadBoardCustomFontSwitch(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/boardCustomFont', data);
   }
