@@ -288,9 +288,7 @@ class MenuIndexeddbStorage {
 
   async updateFolderName(folder: RevezoneFolder, name: string) {
     await this.initDB();
-
     if (name === folder?.name) return;
-
     folder && this.db?.put(INDEXEDDB_FOLDER_KEY, { ...folder, name }, folder.id);
   }
 

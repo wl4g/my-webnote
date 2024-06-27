@@ -31,42 +31,48 @@ interface Props {
 export default function CustomMenu({ collapsed }: Props) {
   const { t } = useTranslation();
 
-  // --- Storage type switch. ---
-  const handleStorageTypeChange = (type: string) => {
-    console.debug('Using storage type :', type);
+  // --- Storage class switch. ---
+  const handleChangeStorageProvider = (type: string) => {
+    console.debug('Using storage provider :', type);
     storageAdapter.setupStorageType(type);
-    setCurStorageType(type);
+    setCurrentStorageProvider(type);
   };
-  const storageTypeItems = [
+
+  const storageProviderItems = [
+    {
+      key: 'CLOUD',
+      icon: <UploadCloud className="w-4 mr-1"></UploadCloud>,
+      label: t('storage.cloud'),
+      disabled: false,
+      onClick: () => handleChangeStorageProvider('CLOUD')
+    },
     {
       key: 'LOCAL',
       icon: <HardDrive className="w-4 mr-1"></HardDrive>,
       label: t('storage.local'),
-      onClick: () => handleStorageTypeChange('LOCAL')
-    },
-    {
-      key: 'CLOUD',
-      icon: <UploadCloud className="w-4 mr-1"></UploadCloud>,
       disabled: false,
-      label: t('storage.cloud'),
-      onClick: () => handleStorageTypeChange('CLOUD')
+      onClick: () => handleChangeStorageProvider('LOCAL')
     }
   ];
-  const storageTextMap = {
-    LOCAL: t('storage.local'),
-    CLOUD: t('storage.cloud')
-  };
-  const lastStorageType = localStorage.getItem('revezone.storageType');
-  // Setup current storage type state.
-  const [curStorageType, setCurStorageType] = useState(lastStorageType || 'LOCAL'); // Default
 
-  const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const storageProviderTextMap = {
+    CLOUD: t('storage.cloud'),
+    LOCAL: t('storage.local')
+  };
+
+  // Set up current storage provider state.
+  const lastStorageProvider = localStorage.getItem('revezone.storageType');
+  const [currentStorageProvider, setCurrentStorageProvider] = useState(
+    lastStorageProvider || 'CLOUD'
+  ); // Default
+
+  const [openFileNames, setOpenFileNames] = useState<string[]>([]);
   useEffect(() => {
-    const asyncSetOpenKeys = async () => {
-      const keys = await storageAdapter.loadOpenKeys();
-      setOpenKeys(keys);
+    const asyncSetOpenFileNames = async () => {
+      const docs = await storageAdapter.searchFileNames();
+      setOpenFileNames(docs);
     };
-    asyncSetOpenKeys();
+    asyncSetOpenFileNames();
   }, []);
 
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -78,7 +84,9 @@ export default function CustomMenu({ collapsed }: Props) {
 
   const onFolderOrFileAdd = useCallback(
     ({ fileId, folderId, type }: OnFolderOrFileAddProps) => {
-      setOpenKeys([...openKeys, folderId]);
+      console.log('onFolderOrFileAdd :: fileId:', fileId, ', folderId:', folderId, ', type:', type);
+
+      setOpenFileNames([...openFileNames, folderId]);
       updateEditableTextState(fileId || folderId, false, editableTextState);
       if (type === 'file') {
         addSelectedKeys(fileId ? [fileId] : []);
@@ -88,11 +96,10 @@ export default function CustomMenu({ collapsed }: Props) {
         setSelectedKeys([folderId]);
       }
     },
-    [openKeys, editableTextState]
+    [openFileNames, editableTextState]
   );
 
   const [addFile] = useAddFile({ onAdd: onFolderOrFileAdd });
-
   // const [pageTitle] = useBlocksuitePageTitle({ getFileTree });
 
   useEffect(() => {
@@ -105,7 +112,7 @@ export default function CustomMenu({ collapsed }: Props) {
 
     // const file = currentFileId ? getFileById(currentFileId, fileTree) : undefined;
     // setCurrentFile(file);
-    const currentFileId = storageAdapter.loadCurrentFileId();
+    const currentFileId = storageAdapter.loadCurrentFile();
     currentFileId.then((res) => {
       if (!res) return;
       setCurrentFile(getFileById(res, fileTree));
@@ -114,7 +121,7 @@ export default function CustomMenu({ collapsed }: Props) {
 
   useEffect(() => {
     if (firstRenderRef.current === false) return;
-    storageAdapter.saveCurrentFileId(currentFile?.id);
+    storageAdapter.saveCurrentFile(currentFile?.id);
     setSelectedKeys(currentFile?.id ? [currentFile.id] : []);
   }, [currentFile?.id]);
 
@@ -131,10 +138,8 @@ export default function CustomMenu({ collapsed }: Props) {
       if (!keys) return;
 
       let newKeys = selectedKeys;
-
       keys.forEach((key: string) => {
         const type = key?.startsWith('folder_') ? 'folder' : 'file';
-
         newKeys = type ? newKeys.filter((_key) => !_key?.startsWith(type)) : newKeys;
       });
 
@@ -148,8 +153,7 @@ export default function CustomMenu({ collapsed }: Props) {
   const deleteFile = useCallback(
     async (file: RevezoneFile) => {
       await menuIndexeddbStorage.deleteFile(file);
-
-      console.log('--- delete file ---', file);
+      console.log('onDeletedFile :: file:', file);
 
       switch (file.type) {
         case 'board':
@@ -159,9 +163,7 @@ export default function CustomMenu({ collapsed }: Props) {
           await blocksuiteStorage.deletePage(file.id);
           break;
       }
-
       setCurrentFile(undefined);
-
       await getFileTree();
     },
     [menuIndexeddbStorage, currentFile]
@@ -177,6 +179,7 @@ export default function CustomMenu({ collapsed }: Props) {
     async (folderId: string) => {
       await menuIndexeddbStorage.deleteFolder(folderId);
       await getFileTree();
+      console.log('onDeletedFolder :: folderId:', folderId);
     },
     [menuIndexeddbStorage]
   );
@@ -201,61 +204,59 @@ export default function CustomMenu({ collapsed }: Props) {
     setSelectedKeys([]);
   }, []);
 
-  const onOpenChange = useCallback(
+  const onOpenFolderChanged = useCallback(
     (keys) => {
       const folderKeys = keys.filter((key) => key.startsWith('folder_'));
-      const openFolderKeys = openKeys.filter((key) => key.startsWith('folder_'));
-
+      const openFolderKeys = openFileNames.filter((key) => key.startsWith('folder_'));
       const diffNum = folderKeys?.length - openFolderKeys.length;
 
       let changeType;
-
       switch (true) {
         case diffNum === 0:
           changeType = 'unchanged';
           break;
         case diffNum > 0:
-          changeType = 'increase';
+          changeType = 'expand';
           break;
         default:
-          changeType = 'decrease';
+          changeType = 'collapse';
           break;
       }
+      console.log(
+        'onOpenFolderChanged :: changeType:',
+        changeType,
+        ', folderKeys:',
+        folderKeys,
+        ', openFolderKeys:',
+        openFolderKeys
+      );
 
-      console.log('onOpenChange', changeType, folderKeys, openFolderKeys);
+      setOpenFileNames(keys);
+      storageAdapter.saveOpenFileNames(keys);
 
-      setOpenKeys(keys);
-      storageAdapter.saveOpenKeys(keys);
-
-      // only while openKeys increase
-      if (changeType === 'increase') {
+      // only while openFileNames increase
+      if (changeType === 'expand') {
         const folderId = keys?.length ? keys[keys.length - 1] : undefined;
-
         if (currentFolderId !== folderId) {
           resetMenu();
-
           setCurrentFolderId(folderId);
           setSelectedKeys([folderId]);
         }
       }
     },
-    [openKeys, currentFolderId]
+    [openFileNames, currentFolderId]
   );
 
-  const onSelect = useCallback(
+  const onSelectedFile = useCallback(
     ({ key }) => {
       const fileId = key?.startsWith('file_') ? key : undefined;
-
-      console.log('onSelect', fileId, key);
+      console.log('onSelectedFile :: fileId:', fileId, ', key:', key);
 
       if (!fileId) return;
-
       const folderId = getFolderIdByFileId(fileId, fileTree);
-
       resetMenu();
 
       const file = getFileById(fileId, fileTree);
-
       setCurrentFile(file);
       setCurrentFolderId(folderId);
       addSelectedKeys([key, folderId]);
@@ -263,8 +264,10 @@ export default function CustomMenu({ collapsed }: Props) {
     [fileTree]
   );
 
-  const onFileNameChange = useCallback(
+  const onFileNameChanged = useCallback(
     async (text: string, file: RevezoneFile) => {
+      console.log('onFileNameChanged :: text:', text, ', file:', file);
+
       await menuIndexeddbStorage.updateFileName(file, text);
       updateEditableTextState(file.id, true, editableTextState);
 
@@ -277,8 +280,10 @@ export default function CustomMenu({ collapsed }: Props) {
     [editableTextState]
   );
 
-  const onFolderNameChange = useCallback(
+  const onFolderNameChanged = useCallback(
     (folder: RevezoneFolder, text: string) => {
+      console.log('onFolderNameChanged :: text:', text, ', folder:', folder);
+
       menuIndexeddbStorage.updateFolderName(folder, text);
       updateEditableTextState(folder.id, true, editableTextState);
     },
@@ -302,10 +307,10 @@ export default function CustomMenu({ collapsed }: Props) {
         </div>
         <div className="flex justify-start">
           <div className="mr-2 whitespace-nowrap">
-            <Dropdown menu={{ items: storageTypeItems }}>
+            <Dropdown menu={{ items: storageProviderItems }}>
               <span className="text-slate-500 flex items-center cursor-pointer">
+                {storageProviderTextMap[currentStorageProvider]}
                 <HardDrive className="w-4 mr-1"></HardDrive>
-                {storageTextMap[curStorageType]}
               </span>
             </Dropdown>
           </div>
@@ -318,9 +323,9 @@ export default function CustomMenu({ collapsed }: Props) {
           theme="light"
           mode="inline"
           selectedKeys={selectedKeys}
-          openKeys={openKeys}
-          onOpenChange={onOpenChange}
-          onSelect={onSelect}
+          openKeys={openFileNames}
+          onOpenChange={onOpenFolderChanged}
+          onSelect={onSelectedFile}
           style={{ border: 'none' }}
           items={fileTree?.map((folder) => ({
             key: folder.id,
@@ -335,7 +340,7 @@ export default function CustomMenu({ collapsed }: Props) {
                     isPreview={editableTextState[folder.id]}
                     text={folder.name}
                     defaultText="Untitled"
-                    onSave={(text) => onFolderNameChange(folder, text)}
+                    onSave={(text) => onFolderNameChanged(folder, text)}
                     onEdit={() => onEditableTextEdit(folder.id)}
                   />
                 </div>
@@ -359,7 +364,7 @@ export default function CustomMenu({ collapsed }: Props) {
                         text={file.name}
                         extraText={moment(file.gmtModified).format('YYYY-MM-DD HH:mm:ss')}
                         defaultText="Untitled"
-                        onSave={(text) => onFileNameChange(text, file)}
+                        onSave={(text) => onFileNameChanged(text, file)}
                         onEdit={() => onEditableTextEdit(file.id)}
                       />
                     </div>

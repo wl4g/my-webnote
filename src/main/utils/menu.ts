@@ -24,7 +24,7 @@ export const registerAppMenu = () => {
       label: 'Github',
       click: () => {
         const { shell } = require('electron');
-        shell.openExternal('https://github.com/revezone/revezone');
+        shell.openExternal('https://github.com/wl4g-collect/revezone');
       }
     })
   ];

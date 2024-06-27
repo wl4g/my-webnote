@@ -1,7 +1,7 @@
 # Revezone - A lightweight graphic-centric productivity tool
 [中文 Readme](README_zh.md)
 
-Revezone is currently in a public beta. Please report a [issue](https://github.com/revezone/revezone/issues/new), if you have any suggestions or questions.
+Revezone is currently in a public beta. Please report a [issue](https://github.com/wl4g-collect/revezone/issues/new), if you have any suggestions or questions.
 
 ---
 A lightweight local-first graphic-centric productivity tool to build your second brain.
@@ -16,10 +16,10 @@ Please give it a star ⭐ ☝️ if Revezone is helpful to you.
 
 ## Using Revezone
 * Online Try Version (Data stored in browser): https://revezone.com
-* Desktop App Version (Data store in local): https://github.com/revezone/revezone/releases
+* Desktop App Version (Data store in local): https://github.com/wl4g-collect/revezone/releases
 
 ## Reporting a Issue
-Revezone is currently in a public beta. Please report a [issue](https://github.com/revezone/revezone/issues/new), if you have any suggestions or questions.
+Revezone is currently in a public beta. Please report a [issue](https://github.com/wl4g-collect/revezone/issues/new), if you have any suggestions or questions.
 
 ## Features
 * Excalidraw Board: A whiteboard function based on Excalidraw.

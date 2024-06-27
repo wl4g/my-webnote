@@ -11,7 +11,7 @@
 
 ## 1.0.0-alpha.15
 ### Bugfix
-* [Fix deep linking of revezone protocol](https://github.com/revezone/revezone/issues/17)
+* [Fix deep linking of revezone protocol](https://github.com/wl4g-collect/revezone/issues/17)
 * Add debounce saving to Tldraw whiteboard
 
 ## 1.0.0-alpha.14

@@ -5,6 +5,9 @@
 - Build Static Assets
 
 ```bash
+node -v            
+#v18.17.1
+
 sudo npm install -g typescript yarn
 yarn install --registry=https://registry.npmmirror.com
 yarn electron-vite build

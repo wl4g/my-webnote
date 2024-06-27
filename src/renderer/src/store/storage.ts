@@ -2,10 +2,10 @@ import { localStorageService } from './localstorage';
 import { cloudStorageService } from './cloudstorage';
 
 export interface IStorageService {
-  loadOpenKeys(): Promise<string[]>;
-  saveOpenKeys(openKeys: string[]): void;
-  saveCurrentFileId(fileId: string | undefined | null): void;
-  loadCurrentFileId(): Promise<string | null>;
+  searchFileNames(): Promise<string[]>;
+  saveOpenFileNames(docNames: string[]): void;
+  saveCurrentFile(fileId: string | undefined | null): void;
+  loadCurrentFile(): Promise<string | null>;
   loadBoardCustomFont(): Promise<string | null>;
   saveBoardCustomFont(fontName: string | null): void;
   addBoardCustomFont(fontFamilyName: string): void;
@@ -23,27 +23,27 @@ export class StorageAdapter implements IStorageService {
   }
 
   setupStorageType(storageType: string) {
-    if (storageType == 'CLOUD') {
-      this.delegate = cloudStorageService;
-    } else {
+    if (storageType == 'LOCAL') {
       this.delegate = localStorageService;
+    } else {
+      this.delegate = cloudStorageService;
     }
   }
 
-  loadOpenKeys(): Promise<string[]> {
-    return this.delegate.loadOpenKeys();
+  searchFileNames(): Promise<string[]> {
+    return this.delegate.searchFileNames();
   }
 
-  saveOpenKeys(openKeys: string[]): void {
-    this.delegate.saveOpenKeys(openKeys);
+  saveOpenFileNames(docNames: string[]): void {
+    this.delegate.saveOpenFileNames(docNames);
   }
 
-  saveCurrentFileId(fileId: string | undefined | null): void {
-    this.delegate.saveCurrentFileId(fileId);
+  saveCurrentFile(fileId: string | undefined | null): void {
+    this.delegate.saveCurrentFile(fileId);
   }
 
-  loadCurrentFileId(): Promise<string | null> {
-    return this.delegate.loadCurrentFileId();
+  loadCurrentFile(): Promise<string | null> {
+    return this.delegate.loadCurrentFile();
   }
 
   loadBoardCustomFont(): Promise<string | null> {

@@ -18,9 +18,7 @@ class BoardIndexeddbStorage {
     if (BoardIndexeddbStorage.instance) {
       return BoardIndexeddbStorage.instance;
     }
-
     BoardIndexeddbStorage.instance = this;
-
     (async () => {
       this.db = await this.initDB();
     })();
@@ -33,15 +31,12 @@ class BoardIndexeddbStorage {
     if (this.db) {
       return this.db;
     }
-
     const db = await openDB<RevezoneBoardDBSchema>(INDEXEDDB_REVEZONE_BOARD, 1, {
       upgrade: async (db) => {
         await this.initBoardFileStore(db);
       }
     });
-
     this.db = db;
-
     return db;
   }
 
@@ -70,9 +65,7 @@ class BoardIndexeddbStorage {
 
   async deleteBoard(id) {
     await this.initDB();
-
-    console.log('--- this.db ---', id, this.db);
-
+    console.debug('Deleting Board to the indexedDB id: ', id, ', current DB: ', this.db);
     await this.db?.delete(INDEXEDDB_BOARD_FILE_KEY, id);
   }
 }

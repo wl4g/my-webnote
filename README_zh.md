@@ -1,7 +1,7 @@
 # Revezone - 一款以图形为中心的思维管理工具
 [English](README.md)
 
-Revezone 正处于公测阶段，功能还有不少不足或者缺陷。如果你有任何问题或者建议，欢迎提交 [issue](https://github.com/revezone/revezone/issues/new) 进行反馈。
+Revezone 正处于公测阶段，功能还有不少不足或者缺陷。如果你有任何问题或者建议，欢迎提交 [issue](https://github.com/wl4g-collect/revezone/issues/new) 进行反馈。
 
 ---
 
@@ -17,10 +17,10 @@ Revezone 正处于公测阶段，功能还有不少不足或者缺陷。如果�
 
 ## 使用 Revezone
 * 线上体验版本（数据存储在浏览器）: https://revezone.com
-* 桌面应用版本（数据存储在电脑端）: https://github.com/revezone/revezone/releases
+* 桌面应用版本（数据存储在电脑端）: https://github.com/wl4g-collect/revezone/releases
 
 ## 反馈问题
-Revezone 正处于公测阶段，功能还有不少不足或者缺陷。如果你有任何问题或者建议，欢迎提交 [issue](https://github.com/revezone/revezone/issues/new) 进行反馈。
+Revezone 正处于公测阶段，功能还有不少不足或者缺陷。如果你有任何问题或者建议，欢迎提交 [issue](https://github.com/wl4g-collect/revezone/issues/new) 进行反馈。
 
 ## 参与公测
 目前 Revezone 已正式开放公测。如果大家在产品使用过程中有任何问题或者产品上的想法，欢迎参与公测反馈问题或建议，您的建议将直接影响未来产品迭代的方向和节奏。让我们一起打造一个用起来爽的思维管理工具。

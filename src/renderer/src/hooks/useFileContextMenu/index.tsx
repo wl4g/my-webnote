@@ -26,7 +26,7 @@ export default function useFileContextMenu(props: Props) {
         icon: <FileEdit className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          console.log('rename');
+          console.debug('onRenameFileBefore :: file.id:', file.id, ', folder.id:', folder.id);
           updateEditableTextState(file.id, false, editableTextState);
         }
       },
@@ -35,7 +35,7 @@ export default function useFileContextMenu(props: Props) {
         label: t('operation.delete'),
         icon: <Trash2 className="w-4"></Trash2>,
         onClick: () => {
-          console.log('delete', file.id, folder.id);
+          console.debug('onDeletedFileBefore :: file.id:', file.id, ', folder.id:', folder.id);
           deleteFile(file, folder.id);
         }
       },
@@ -45,7 +45,9 @@ export default function useFileContextMenu(props: Props) {
         icon: <ClipboardCopy className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          navigator.clipboard.writeText(`revezone://${file.id}`);
+          // for test: When use electron client.
+          //navigator.clipboard.writeText(`revezone://${file.id}`);
+          // TODO: copy link
         }
       }
     ],

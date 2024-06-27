@@ -7,23 +7,23 @@ export const LOCALSTORAGE_LANG_CODE = 'lang_code';
 export const LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH = 'board_custom_font_switch';
 
 export class LocalStorageService implements IStorageService {
-  loadOpenKeys(): Promise<string[]> {
+  searchFileNames(): Promise<string[]> {
     return new Promise(() => {
       const localStr = localStorage.getItem(LOCALSTORAGE_MENU_OPEN_KEYS);
       return localStr ? JSON.parse(localStr) : [];
     });
   }
 
-  saveOpenKeys(openKeys: string[]): void {
-    const localStr = JSON.stringify(openKeys);
+  saveOpenFileNames(docNames: string[]): void {
+    const localStr = JSON.stringify(docNames);
     localStorage.setItem(LOCALSTORAGE_MENU_OPEN_KEYS, localStr);
   }
 
-  saveCurrentFileId(fileId: string | undefined | null): void {
+  saveCurrentFile(fileId: string | undefined | null): void {
     localStorage.setItem(LOCALSTORAGE_CURRENT_FILE_ID, fileId || '');
   }
 
-  loadCurrentFileId(): Promise<string | null> {
+  loadCurrentFile(): Promise<string | null> {
     return new Promise(() => localStorage.getItem(LOCALSTORAGE_CURRENT_FILE_ID));
   }
 

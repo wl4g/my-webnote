@@ -6,73 +6,73 @@ export class CloudStorageService implements IStorageService {
     this.apiUrl = apiUrl;
   }
 
-  async loadOpenKeys(): Promise<string[]> {
+  async searchFileNames(): Promise<string[]> {
     const data = {};
-    return this.doRequest('GET', '/openKeys', data).then((res) => {
+    return this.doRequest('GET', '/document/list', data).then((res) => {
       return [res];
     });
   }
 
-  saveOpenKeys(openKeys: string[]): void {
+  saveOpenFileNames(docNames: string[]): void {
     const data = {
-      openKeys: openKeys
+      docNames: docNames
     };
-    this.doRequest('POST', '/openKeys', data);
+    this.doRequest('POST', '/document/save', data);
   }
 
-  saveCurrentFileId(fileId: string | undefined | null): void {
+  saveCurrentFile(fileId: string | undefined | null): void {
     const data = {
       fileId: fileId
     };
-    this.doRequest('POST', '/currentFileId', data);
+    this.doRequest('POST', '/document/current-save', data);
   }
 
-  loadCurrentFileId(): Promise<string | null> {
+  loadCurrentFile(): Promise<string | null> {
     const data = {};
-    return this.doRequest('GET', '/currentFileId', data);
+    return this.doRequest('GET', '/document/current-get', data);
   }
 
   loadBoardCustomFont(): Promise<string | null> {
     const data = {};
-    return this.doRequest('GET', '/boardCustomFont', data);
+    return this.doRequest('GET', '/board/custom-font/get', data);
   }
 
   saveBoardCustomFont(fontName: string | null): void {
     const data = {
       fontName: fontName
     };
-    this.doRequest('POST', '/boardCustomFont', data);
+    this.doRequest('POST', '/board/custom-font/save', data);
   }
 
   addBoardCustomFont(fontFamilyName: string): void {
     const data = {
       fontFamilyName: fontFamilyName
     };
-    this.doRequest('POST', '/addBoardCustomFont', data);
-  }
-
-  saveLangCode(langCode: string): void {
-    const data = {
-      langCode: langCode
-    };
-    this.doRequest('POST', '/langCode', data);
-  }
-
-  loadLangCode(): Promise<string | null> {
-    const data = {};
-    return this.doRequest('GET', '/langCode', data);
+    this.doRequest('POST', '/board/custom-font/add', data);
   }
 
   loadBoardCustomFontSwitch(): Promise<string | null> {
     const data = {};
-    return this.doRequest('GET', '/boardCustomFont', data);
+    return this.doRequest('GET', '/board/custom-font-switch/get', data);
   }
 
   saveBoardCustomFontSwitch(boardCustomFont: boolean): void {
     const data = {
       boardCustomFont: boardCustomFont
     };
-    this.doRequest('POST', '/boardCustomFont', data);
+    this.doRequest('POST', '/board/custom-font-switch/save', data);
+  }
+
+  saveLangCode(langCode: string): void {
+    const data = {
+      langCode: langCode
+    };
+    this.doRequest('POST', '/setting/lang/save', data);
+  }
+
+  loadLangCode(): Promise<string | null> {
+    const data = {};
+    return this.doRequest('GET', '/settings/lang/get', data);
   }
 
   private async doRequest(method: string, path: string, data: object): Promise<string> {
@@ -105,6 +105,5 @@ export class CloudStorageService implements IStorageService {
 }
 
 // If in electron env the location.origin is 'file://'
-export const DEFAULT_API_URL =
-  location.origin == 'file://' ? 'http://localhost:8888' : location.origin;
-export const cloudStorageService: CloudStorageService = new CloudStorageService(DEFAULT_API_URL);
+export const API_URI = location.origin != 'file://' ? 'http://localhost:4523' : location.origin;
+export const cloudStorageService: CloudStorageService = new CloudStorageService(API_URI + '/m1/4058706-0-default/api/v1');

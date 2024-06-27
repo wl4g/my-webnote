@@ -13,7 +13,7 @@ export default function DownloadApp({ className = '', from }: Props) {
   return (
     <a
       className={`mr-2 flex items-center ${className}`}
-      href="https://github.com/revezone/revezone/releases"
+      href="https://github.com/wl4g-collect/revezone/releases"
       target="_blank"
       rel="noreferrer"
       title={t('welcome.downloadApp')}

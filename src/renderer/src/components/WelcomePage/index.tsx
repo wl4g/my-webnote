@@ -44,7 +44,7 @@ function WelcomeContent() {
         <div>
           <h2 className="mb-2 text-base">{t('links.title')}</h2>
           <p className="mb-2">
-            <a href="https://github.com/revezone/revezone" target="_blank" rel="noreferrer">
+            <a href="https://github.com/wl4g-collect/revezone" target="_blank" rel="noreferrer">
               <Github className="w-4 h-4" /> {t('links.github')}
             </a>
           </p>
