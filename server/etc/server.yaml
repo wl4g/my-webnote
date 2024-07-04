@@ -1,0 +1,29 @@
+server:
+  bind: "0.0.0.0:8887"
+  mgmt-bind: "0.0.0.0:11700"
+  thread-max-pool: 32
+  cors:
+    hosts: ["*"]
+    headers: ["*"]
+    methods: ["*"]
+  auths:
+    oidc:
+      endpoint: "https://keycloak.example.com/realms/master/.well-known/openid-configuration"
+      app-id: ""
+      app-secret: ""
+    github:
+      endpoint: ""
+      app-id: ""
+      app-secret: ""
+
+logging:
+  file: /tmp/excalidraw-revezone/server.log
+  pattern: "xxx" # e.g: "[yyyy-MM-dd T HH:mm:ss.SSS] [INFO] - users.rs:34 : Add to user jack01 ..."
+
+revezone:
+  db:
+    type: sqlite # mongo|sqlite
+    sqlite:
+      dir: /tmp/excalidraw-revezone/
+    mongo:
+      url: xxxx
