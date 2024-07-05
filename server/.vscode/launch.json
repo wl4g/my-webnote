@@ -1,0 +1,33 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug for Revezone API Server",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=revezone_api",
+                    "--package=revezone-api"
+                ],
+                "filter": {
+                    "name": "revezone_api",
+                    "kind": "bin"
+                }
+            },
+            "env": {
+                "RUST_BACKTRACE": "1",
+            },
+            "args": [
+                "start",
+                "--config",
+                "${workspaceFolder}/etc/server.yaml"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

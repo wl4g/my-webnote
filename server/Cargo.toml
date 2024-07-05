@@ -14,6 +14,7 @@ chrono = { version = "0.4.38", features = ["serde"] }
 uuid = { version = "1.9.1", default-features = false, features = ["v4"] }
 thiserror = "1.0.61"
 anyhow = "1.0.86"
+once_cell = "1.19.0"
 #
 # Config libs.
 config = "0.14.0"
@@ -63,10 +64,9 @@ name = "revezone_api"
 # path = "src/cmd/api.rs"
 path = "src/main.rs"
 
-[[bin]]
-name = "revezone_cli"
-path = "src/cmd/cli.rs"
-
+# [[bin]]
+# name = "revezone_cli"
+# path = "src/cmd/cli.rs"
 [build]
 # Enable experimental, but invalid?
 # valid command-line: RUSTFLAGS="--cfg tokio_unstable" && cargo build
