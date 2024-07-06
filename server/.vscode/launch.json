@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug for Revezone API Server",
+            "name": "Debug [start] default configuration",
             "cargo": {
                 "args": [
                     "build",
@@ -17,6 +17,11 @@
                 "filter": {
                     "name": "revezone_api",
                     "kind": "bin"
+                },
+                "env": {
+                    // valid command-line: RUSTFLAGS="--cfg tokio_unstable" && cargo build
+                    // see:https://github.com/wl4g-collect/tokio-rs-console/tree/main/console-subscriber#enabling-tokio-instrumentation
+                    "RUSTFLAGS": "--cfg tokio_unstable"
                 }
             },
             "env": {
@@ -26,6 +31,34 @@
                 "start",
                 "--config",
                 "${workspaceFolder}/etc/server.yaml"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug [start] no configuration",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=revezone_api",
+                    "--package=revezone-api"
+                ],
+                "filter": {
+                    "name": "revezone_api",
+                    "kind": "bin"
+                },
+                "env": {
+                    // valid command-line: RUSTFLAGS="--cfg tokio_unstable" && cargo build
+                    // see:https://github.com/wl4g-collect/tokio-rs-console/tree/main/console-subscriber#enabling-tokio-instrumentation
+                    "RUSTFLAGS": "--cfg tokio_unstable"
+                }
+            },
+            "env": {
+                "RUST_BACKTRACE": "1",
+            },
+            "args": [
+                "start"
             ],
             "cwd": "${workspaceFolder}"
         }

@@ -88,76 +88,15 @@ pub struct MongoConfig {
   pub url: String,
 }
 
-impl Default for ServerConfig {
-  fn default() -> Self {
-    ServerConfig {
-      bind: "0.0.0.0:8888".to_string(),
-      mgmt_bind: "0.0.0.0:11700".to_string(),
-      thread_max_pool: 4,
-      cors: CorsConfig::default(),
-      auths: AuthConfig::default(),
-    }
-  }
-}
-
-impl Default for CorsConfig {
-  fn default() -> Self {
-    CorsConfig {
-      hosts: vec!["*".to_string()],
-      headers: vec!["*".to_string()],
-      methods: vec!["*".to_string()],
-    }
-  }
-}
-
-impl Default for AuthConfig {
-  fn default() -> Self {
-    AuthConfig {
-      oidc: OidcConfig::default(),
-      github: GithubConfig::default(),
-    }
-  }
-}
-
-impl Default for OidcConfig {
-  fn default() -> Self {
-    OidcConfig {
-      endpoint: None,
-      app_id: None,
-      app_secret: None,
-    }
-  }
-}
-
-impl Default for GithubConfig {
-  fn default() -> Self {
-    GithubConfig {
-      endpoint: None,
-      app_id: None,
-      app_secret: None,
-    }
-  }
-}
-
-// macro_rules! generate_getters {
-//   ($struct_name:ident, $($field:ident: $type:ty),+) => {
-//         impl $struct_name {
-//             $(
-//                 pub fn $field(&self) -> $type {
-//                     self.$field.clone().unwrap_or_else(|| $struct_name::default().$field.unwrap())
-//                 }
-//             )+
-//         }
-//   };
-// }
-
-// generate_getters!(ServerConfig,
-//     bind: String,
-//     mgmt_bind: String,
-//     thread_max_pool: u32
-// );
-
 impl ApiConfig {
+  pub fn default() -> ApiConfig {
+    ApiConfig {
+      server: ServerConfig::default(),
+      logging: LoggingConfig::default(),
+      service: ServiceConfig::default(),
+    }
+  }
+
   // see:https://github.com/mehcode/config-rs/blob/master/examples/simple/main.rs
   pub fn parse(path: &String) -> ApiConfig {
     let config = Config::builder()
@@ -218,3 +157,115 @@ impl ApiConfig {
     Ok(self)
   }
 }
+
+impl Default for ServerConfig {
+  fn default() -> Self {
+    ServerConfig {
+      bind: "0.0.0.0:8888".to_string(),
+      mgmt_bind: "0.0.0.0:11700".to_string(),
+      thread_max_pool: 4,
+      cors: CorsConfig::default(),
+      auths: AuthConfig::default(),
+    }
+  }
+}
+
+impl Default for CorsConfig {
+  fn default() -> Self {
+    CorsConfig {
+      hosts: vec!["*".to_string()],
+      headers: vec!["*".to_string()],
+      methods: vec!["*".to_string()],
+    }
+  }
+}
+
+impl Default for AuthConfig {
+  fn default() -> Self {
+    AuthConfig {
+      oidc: OidcConfig::default(),
+      github: GithubConfig::default(),
+    }
+  }
+}
+
+impl Default for OidcConfig {
+  fn default() -> Self {
+    OidcConfig {
+      endpoint: None,
+      app_id: None,
+      app_secret: None,
+    }
+  }
+}
+
+impl Default for GithubConfig {
+  fn default() -> Self {
+    GithubConfig {
+      endpoint: None,
+      app_id: None,
+      app_secret: None,
+    }
+  }
+}
+
+impl Default for LoggingConfig {
+  fn default() -> Self {
+    LoggingConfig {
+      file: "info".to_string(),
+      pattern: "pretty".to_string(),
+    }
+  }
+}
+
+impl Default for ServiceConfig {
+  fn default() -> Self {
+    ServiceConfig {
+      db: DbConfig::default(),
+    }
+  }
+}
+
+impl Default for DbConfig {
+  fn default() -> Self {
+    DbConfig {
+      db_type: DbType::Sqlite,
+      sqlite: SqliteConfig::default(),
+      mongo: MongoConfig::default(),
+    }
+  }
+}
+
+impl Default for SqliteConfig {
+  fn default() -> Self {
+    SqliteConfig {
+      dir: "/tmp/revezone/db".to_string(),
+    }
+  }
+}
+
+impl Default for MongoConfig {
+  fn default() -> Self {
+    MongoConfig {
+      url: "mongodb://localhost:27017".to_string(),
+    }
+  }
+}
+
+// macro_rules! generate_getters {
+//   ($struct_name:ident, $($field:ident: $type:ty),+) => {
+//         impl $struct_name {
+//             $(
+//                 pub fn $field(&self) -> $type {
+//                     self.$field.clone().unwrap_or_else(|| $struct_name::default().$field.unwrap())
+//                 }
+//             )+
+//         }
+//   };
+// }
+
+// generate_getters!(ServerConfig,
+//     bind: String,
+//     mgmt_bind: String,
+//     thread_max_pool: u32
+// );

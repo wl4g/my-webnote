@@ -133,8 +133,7 @@ async fn start_mgmt_server(
 }
 
 fn load_config(path: String) -> Result<ApiConfig, anyhow::Error> {
-  let config = ApiConfig::parse(&path).validate()?;
-  Ok(config)
+  if path.is_empty() { Ok(ApiConfig::default()) } else { Ok(ApiConfig::parse(&path).validate()?) }
 }
 
 pub fn build_cli() -> Command {
@@ -155,7 +154,8 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
   let config_path = matches
     .get_one::<String>("config")
     .map(PathBuf::from)
-    .unwrap_or_else(|| PathBuf::from("/etc/revezone/server.yaml"));
+    // .unwrap_or_else(|| PathBuf::from("/etc/revezone/server.yaml"))
+    .unwrap_or_default();
 
   let config = load_config(config_path.to_string_lossy().into_owned()).unwrap();
 
