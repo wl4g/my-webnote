@@ -1,7 +1,7 @@
 use crate::models::users::User;
-use super::Repository;
-use super::mongo::MongoRepository;
+use super::{ mongo::MongoRepository, AsyncRepository };
 use anyhow::Error;
+use axum::async_trait;
 
 pub struct UserMongoRepository {
   inner: MongoRepository<User>,
@@ -13,28 +13,30 @@ impl UserMongoRepository {
   }
 }
 
-impl Repository<User> for UserMongoRepository {
-  fn select_all(&self) -> Result<Vec<User>, Error> {
+#[allow(unused)]
+#[async_trait]
+impl AsyncRepository<User> for UserMongoRepository {
+  async fn select_all(&self) -> Result<Vec<User>, Error> {
     todo!()
   }
 
-  fn select_by_id(&self, id: i32) -> Result<User, Error> {
+  async fn select_by_id(&self, id: i64) -> Result<User, Error> {
     todo!()
   }
 
-  fn insert(&self, param: User) -> Result<User, Error> {
+  async fn insert(&self, param: User) -> Result<i64, Error> {
     todo!()
   }
 
-  fn update(&self, param: User) -> Result<User, Error> {
+  async fn update(&self, param: User) -> Result<u64, Error> {
     todo!()
   }
 
-  fn delete_all(&self, id: i32) -> Result<i32, Error> {
+  async fn delete_all(&self) -> Result<u64, Error> {
     todo!()
   }
 
-  fn delete_by_id(&self, id: i32) -> Result<i32, Error> {
+  async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
     todo!()
   }
 }

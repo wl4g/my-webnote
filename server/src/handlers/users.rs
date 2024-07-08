@@ -11,15 +11,13 @@ impl<'a> UserHandler<'a> {
     Self { state }
   }
 
-  pub async fn get_users(&self) -> Result<Vec<User>, Error> {
+  pub async fn find_all(&self) -> Result<Vec<User>, Error> {
     let mut repo = self.state.user_repo.lock().await;
-    repo.repo(&self.state.config).select_all()
+    repo.repo(&self.state.config).select_all().await
   }
 
-  pub async fn create_user(&self, user: User) -> Result<User, Error> {
+  pub async fn save(&self, user: User) -> Result<i64, Error> {
     let mut repo = self.state.user_repo.lock().await;
-    repo.repo(&self.state.config).insert(user)
+    repo.repo(&self.state.config).insert(user).await
   }
-
-  // More functions ...
 }

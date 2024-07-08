@@ -239,7 +239,7 @@ impl Default for DbConfig {
 impl Default for SqliteConfig {
   fn default() -> Self {
     SqliteConfig {
-      dir: "/tmp/".to_string(),
+      dir: "/tmp/revezone_db".to_string(),
     }
   }
 }

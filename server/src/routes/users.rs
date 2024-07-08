@@ -19,7 +19,7 @@ pub async fn get_users(
   Query(param): Query<QueryUserRequest>
 ) -> impl IntoResponse {
   let handler = UserHandler::new(&state);
-  match handler.get_users().await {
+  match handler.find_all().await {
     Ok(users) => (StatusCode::OK, Json(users)).into_response(),
     Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
   }
@@ -27,7 +27,7 @@ pub async fn get_users(
 
 async fn create_user(State(state): State<AppState>, Json(user): Json<User>) -> impl IntoResponse {
   let handler = UserHandler::new(&state);
-  match handler.create_user(user).await {
+  match handler.save(user).await {
     Ok(created_user) => (StatusCode::CREATED, Json(created_user)).into_response(),
     Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
   }

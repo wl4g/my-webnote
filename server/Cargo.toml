@@ -56,12 +56,15 @@ tower-http = { version = "0.5.2", features = ["trace"] }
 # Database libs.
 mongo = "0.1.0"
 # mongodb = "2.8.2"
+syrette = "0.5.1"
 sqlx = { version = "0.7.4", features = [
     "runtime-tokio-rustls",
+    "runtime-async-std",
     "sqlite",
+    "macros",
     "chrono"
 ] }
-syrette = "0.5.1"
+async-trait = "0.1.81"
 
 [features]
 # Notice: Use optional dependencies to avoid slow automatic compilation during debugging

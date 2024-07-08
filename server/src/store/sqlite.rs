@@ -1,10 +1,13 @@
-use anyhow::{ Error, Ok };
+use anyhow::Error;
+use axum::async_trait;
 use std::any::Any;
+use std::fs;
 use std::marker::PhantomData;
+use std::path::Path;
 use sqlx::SqlitePool;
 
-use super::Repository;
 use crate::config::config::DbConfig;
+use super::AsyncRepository;
 
 pub struct SQLiteRepository<T: Any + Send + Sync> {
   phantom: PhantomData<T>,
@@ -13,42 +16,71 @@ pub struct SQLiteRepository<T: Any + Send + Sync> {
 
 impl<T: Any + Send + Sync> SQLiteRepository<T> {
   pub async fn new(config: &DbConfig) -> Result<Self, Error> {
-    let conn_url = format!("file:{}/sqlite.db", config.sqlite.dir);
-    Ok(SQLiteRepository {
-      phantom: PhantomData,
-      pool: SqlitePool::connect(&conn_url).await?,
-    })
+    let db_dir = Path::new(&config.sqlite.dir);
+    if !db_dir.exists() {
+      fs::create_dir_all(db_dir).map_err(|e| {
+        eprintln!("Failed to sqlite db create directory: {:?}", e);
+        e
+      })?;
+    }
+
+    // SQLite in-file database.
+    let db_path = db_dir.join("sqlite.db"); // Use the full path
+    match fs::File::create(&db_path) {
+      Ok(_) => println!("Successfully created/opened the database file"),
+      Err(e) => eprintln!("Failed to create/open the database file: {:?}", e),
+    }
+    let conn_url = format!("sqlite:{}", db_path.display());
+    println!("Attempting to connect to: {}", conn_url);
+
+    // SQLite in-memory database.
+    // let conn_url = format!("sqlite::memory:");
+
+    match SqlitePool::connect(&conn_url).await {
+      Ok(pool) => {
+        println!("Successfully connected to the database");
+        Ok(SQLiteRepository {
+          phantom: PhantomData,
+          pool,
+        })
+      }
+      Err(e) => {
+        eprintln!("Database sqlite connection error: {:?}", e);
+        eprintln!("Error details: {}", e);
+        Err(e.into())
+      }
+    }
+  }
+
+  pub fn get_pool(&self) -> &SqlitePool {
+    &self.pool
   }
 }
 
-impl<T: Any + Send + Sync> Repository<T> for SQLiteRepository<T> {
-  fn select_all(&self) -> Result<Vec<T>, Error> {
-    // SQLite 通用查询逻辑
+#[allow(unused)]
+#[async_trait]
+impl<T: Any + Send + Sync> AsyncRepository<T> for SQLiteRepository<T> {
+  async fn select_all(&self) -> Result<Vec<T>, Error> {
     unimplemented!("select not implemented for SQLiteRepository")
   }
 
-  fn select_by_id(&self, id: i32) -> Result<T, Error> {
-    // SQLite 通用按 ID 查询逻辑
+  async fn select_by_id(&self, id: i64) -> Result<T, Error> {
     unimplemented!("select_by_id not implemented for SQLiteRepository")
   }
 
-  fn insert(&self, param: T) -> Result<T, Error> {
-    // SQLite 通用插入逻辑
+  async fn insert(&self, param: T) -> Result<i64, Error> {
     unimplemented!("insert not implemented for SQLiteRepository")
   }
 
-  fn update(&self, param: T) -> Result<T, Error> {
-    // SQLite 通用更新逻辑
+  async fn update(&self, param: T) -> Result<u64, Error> {
     unimplemented!("update not implemented for SQLiteRepository")
   }
 
-  fn delete_all(&self, id: i32) -> Result<i32, Error> {
-    // SQLite 通用删除所有逻辑
+  async fn delete_all(&self) -> Result<u64, Error> {
     unimplemented!("delete_all not implemented for SQLiteRepository")
   }
 
-  fn delete_by_id(&self, id: i32) -> Result<i32, Error> {
-    // SQLite 通用按 ID 删除逻辑
+  async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
     unimplemented!("delete_by_id not implemented for SQLiteRepository")
   }
 }

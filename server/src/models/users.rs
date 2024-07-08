@@ -1,13 +1,28 @@
 use serde::{ Deserialize, Serialize };
+// use sqlx::{ Decode, FromRow };
+use sqlx::{ FromRow, sqlite::SqliteRow, Row };
+
 use super::BaseBean;
 
-#[derive(Serialize, Deserialize, Clone)]
+// #[derive(Serialize, Deserialize, Clone, Debug, FromRow, Decode)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
   #[serde(flatten)]
-  pub base: Option<BaseBean>,
+  pub base: BaseBean,
   pub name: String,
   pub email: String,
   pub password: Option<String>,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for User {
+  fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
+    Ok(User {
+      base: BaseBean::from_row(row).unwrap(),
+      name: row.try_get("name")?,
+      email: row.try_get("email")?,
+      password: row.try_get("password")?,
+    })
+  }
 }
 
 #[derive(Deserialize)]

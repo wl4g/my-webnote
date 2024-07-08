@@ -1,7 +1,9 @@
-use super::Repository;
 use anyhow::Error;
 use std::any::Any;
 use std::marker::PhantomData;
+use axum::async_trait;
+
+use super::AsyncRepository;
 
 pub struct MongoRepository<T: Any + Send + Sync> {
   phantom: PhantomData<T>,
@@ -13,34 +15,30 @@ impl<T: Any + Send + Sync> MongoRepository<T> {
   }
 }
 
-impl<T: Any + Send + Sync> Repository<T> for MongoRepository<T> {
-  fn select_all(&self) -> Result<Vec<T>, Error> {
-    // MongoDB 通用查询逻辑
+#[allow(unused)]
+#[async_trait]
+impl<T: Any + Send + Sync> AsyncRepository<T> for MongoRepository<T> {
+  async fn select_all(&self) -> Result<Vec<T>, Error> {
     unimplemented!("select not implemented for MongoRepository")
   }
 
-  fn select_by_id(&self, id: i32) -> Result<T, Error> {
-    // MongoDB 通用按 ID 查询逻辑
+  async fn select_by_id(&self, id: i64) -> Result<T, Error> {
     unimplemented!("select_by_id not implemented for MongoRepository")
   }
 
-  fn insert(&self, param: T) -> Result<T, Error> {
-    // MongoDB 通用插入逻辑
+  async fn insert(&self, param: T) -> Result<i64, Error> {
     unimplemented!("insert not implemented for MongoRepository")
   }
 
-  fn update(&self, param: T) -> Result<T, Error> {
-    // MongoDB 通用更新逻辑
+  async fn update(&self, param: T) -> Result<u64, Error> {
     unimplemented!("update not implemented for MongoRepository")
   }
 
-  fn delete_all(&self, id: i32) -> Result<i32, Error> {
-    // MongoDB 通用删除所有逻辑
+  async fn delete_all(&self) -> Result<u64, Error> {
     unimplemented!("delete_all not implemented for MongoRepository")
   }
 
-  fn delete_by_id(&self, id: i32) -> Result<i32, Error> {
-    // MongoDB 通用按 ID 删除逻辑
+  async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
     unimplemented!("delete_by_id not implemented for MongoRepository")
   }
 }
