@@ -9,7 +9,8 @@ use config::Config;
 pub struct ApiConfig {
   pub server: ServerConfig,
   pub logging: LoggingConfig,
-  pub service: ServiceConfig,
+  pub swagger: SwaggerConfig,
+  pub db: DbConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -59,8 +60,20 @@ pub struct LoggingConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct ServiceConfig {
-  pub db: DbConfig,
+pub struct SwaggerConfig {
+  pub enabled: bool,
+  pub title: String,
+  pub description: String,
+  pub version: String,
+  pub license_name: String,
+  pub license_url: String,
+  pub contact_name: String,
+  pub contact_email: String,
+  pub contact_url: String,
+  pub terms_of_service: String,
+  //pub security_definitions: vec![],
+  pub swagger_ui_path: String,
+  pub swagger_openapi_url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -93,7 +106,8 @@ impl ApiConfig {
     ApiConfig {
       server: ServerConfig::default(),
       logging: LoggingConfig::default(),
-      service: ServiceConfig::default(),
+      swagger: SwaggerConfig::default(),
+      db: DbConfig::default(),
     }
   }
 
@@ -218,10 +232,22 @@ impl Default for LoggingConfig {
   }
 }
 
-impl Default for ServiceConfig {
+impl Default for SwaggerConfig {
   fn default() -> Self {
-    ServiceConfig {
-      db: DbConfig::default(),
+    SwaggerConfig {
+      enabled: true,
+      title: "Excalidraw Revezone API Server".to_string(),
+      description: "The Excalidraw Revezone API Server".to_string(),
+      version: "1.0.0".to_string(),
+      license_name: "Apache 2.0".to_string(),
+      license_url: "https://www.apache.org/licenses/LICENSE-2.0".to_string(),
+      contact_name: "Revezone API".to_string(),
+      contact_email: "jameswong1376@gmail.com".to_string(),
+      contact_url: "https://github.com/wl4g/revezone".to_string(),
+      terms_of_service: "api/terms-of-service".to_string(),
+      //security_definitions: vec![],
+      swagger_ui_path: "/swagger-ui".to_string(),
+      swagger_openapi_url: "/api-docs/openapi.json".to_string(),
     }
   }
 }

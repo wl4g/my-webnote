@@ -17,12 +17,14 @@ use prometheus::{ Registry, Counter, Histogram, Encoder, TextEncoder };
 use axum_prometheus::PrometheusMetricLayer;
 
 use tokio::task::JoinHandle;
+use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
 use axum::Router;
 use axum::routing::get;
 
-use crate::config::config::ApiConfig;
+use crate::config::config_api::ApiConfig;
+use crate::config::swagger;
 use crate::context::state::AppState;
 // use crate::routes::documents::init as document_router;
 // use crate::routes::folders::init as folder_router;
@@ -89,31 +91,6 @@ fn init_tracing(config: &ApiConfig) {
 }
 
 #[allow(unused)]
-async fn start_server(config: ApiConfig) {
-  let config_arc = Arc::new(config);
-  let (prometheus_layer, _) = PrometheusMetricLayer::pair();
-
-  let app_state = AppState::new(&config_arc).await;
-
-  let app = Router::new()
-    // .merge(document_router())
-    // .merge(folder_router())
-    // .merge(settings_router())
-    .merge(user_router())
-    .layer(prometheus_layer)
-    .with_state(app_state);
-  // .route_layer(axum::Extension(app_state));
-  //.layer(TraceLayer::new_for_http()); // Optional: add logs to tracing.
-
-  let bind_addr = &config_arc.server.bind;
-  info!("Starting API server on {}", bind_addr);
-
-  axum
-    ::serve(tokio::net::TcpListener::bind(&bind_addr).await.unwrap(), app.into_make_service()).await
-    .unwrap();
-}
-
-#[allow(unused)]
 async fn start_mgmt_server(
   config: &ApiConfig,
   signal_sender: oneshot::Sender<()>
@@ -121,20 +98,51 @@ async fn start_mgmt_server(
   let app: Router = Router::new().route("/metrics", get(metrics));
 
   let bind_addr = config.server.mgmt_bind.clone();
-  info!("Starting MGMT server on {}", bind_addr);
+  info!("Starting Management server on {}", bind_addr);
 
   tokio::spawn(async move {
     // TODO When started call to signal sender.
     let _ = signal_sender.send(());
-    info!("Starting MGMT Axum server on {}", bind_addr);
-
     axum
       ::serve(
         tokio::net::TcpListener::bind(&bind_addr).await.unwrap(),
         app.into_make_service()
       ).await
-      .unwrap();
+      .unwrap_or_else(|e| panic!("Error starting management server: {}", e));
   })
+}
+
+#[allow(unused)]
+async fn start_server(config: ApiConfig) {
+  let config_arc = Arc::new(config);
+
+  let app_state = AppState::new(&config_arc).await;
+
+  info!("Register API server middlewares ...");
+  let (prometheus_layer, _) = PrometheusMetricLayer::pair();
+
+  let mut app = Router::new()
+    // .merge(document_router())
+    // .merge(folder_router())
+    // .merge(settings_router())
+    .merge(user_router())
+    .layer(prometheus_layer)
+    //.layer(TraceLayer::new_for_http()) // Optional: add logs to tracing.
+    .with_state(app_state);
+  //.route_layer(axum::Extension(app_state));
+
+  if config_arc.swagger.enabled {
+    app = app.merge(swagger::init_swagger(&config_arc));
+  }
+
+  let bind_addr = &config_arc.server.bind;
+  info!("Starting API server on {}", bind_addr);
+
+  axum
+    ::serve(TcpListener::bind(&bind_addr).await.unwrap(), app.into_make_service()).await
+    .unwrap_or_else(|e| panic!("Error starting API server: {}", e));
+
+  info!("API server is ready");
 }
 
 fn load_config(path: String) -> Result<ApiConfig, anyhow::Error> {
@@ -143,7 +151,7 @@ fn load_config(path: String) -> Result<ApiConfig, anyhow::Error> {
 
 pub fn build_cli() -> Command {
   Command::new("start")
-    .about("Start API server.")
+    .about("Revezone API server.")
     // .arg_required_else_help(true) // When no args are provided, show help.
     .arg(
       Arg::new("config")
@@ -159,7 +167,7 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
   let config_path = matches
     .get_one::<String>("config")
     .map(PathBuf::from)
-    // .unwrap_or_else(|| PathBuf::from("/etc/revezone/server.yaml"))
+    // .unwrap_or_else(|| PathBuf::from("/etc/server.yaml"))
     .unwrap_or_default();
 
   let config = load_config(config_path.to_string_lossy().into_owned()).unwrap();
@@ -170,8 +178,8 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
   let (signal_sender, signal_receiver) = oneshot::channel();
   let mgmt_handle = start_mgmt_server(&config, signal_sender).await;
 
-  signal_receiver.await.expect("MGMT server failed to start");
-  info!("MGMT server is ready");
+  signal_receiver.await.expect("Management server failed to start");
+  info!("Management server is ready");
 
   start_server(config).await;
 

@@ -1,4 +1,4 @@
-use crate::models::users::User;
+use crate::types::users::User;
 use super::{ mongo::MongoRepository, AsyncRepository };
 use anyhow::Error;
 use axum::async_trait;
@@ -28,7 +28,7 @@ impl AsyncRepository<User> for UserMongoRepository {
     todo!()
   }
 
-  async fn update(&self, param: User) -> Result<u64, Error> {
+  async fn update(&self, param: User) -> Result<i64, Error> {
     todo!()
   }
 

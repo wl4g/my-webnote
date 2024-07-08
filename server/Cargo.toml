@@ -59,12 +59,17 @@ mongo = "0.1.0"
 syrette = "0.5.1"
 sqlx = { version = "0.7.4", features = [
     "runtime-tokio-rustls",
-    "runtime-async-std",
+    # "runtime-async-std",
     "sqlite",
     "macros",
     "chrono"
 ] }
+# Async trait polymorphism libs.
 async-trait = "0.1.81"
+# Swagger libs.
+utoipa = { version = "4.2.3", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
+mac_address = "1.1.7"
 
 [features]
 # Notice: Use optional dependencies to avoid slow automatic compilation during debugging

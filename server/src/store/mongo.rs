@@ -30,7 +30,7 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for MongoRepository<T> {
     unimplemented!("insert not implemented for MongoRepository")
   }
 
-  async fn update(&self, param: T) -> Result<u64, Error> {
+  async fn update(&self, param: T) -> Result<i64, Error> {
     unimplemented!("update not implemented for MongoRepository")
   }
 

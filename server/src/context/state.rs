@@ -4,8 +4,8 @@ use tokio::sync::Mutex;
 // use crate::models::documents::Document;
 // use crate::models::folders::Folder;
 // use crate::models::settings::Settings;
-use crate::models::users::User;
-use crate::config::config::ApiConfig;
+use crate::types::users::User;
+use crate::config::config_api::ApiConfig;
 use crate::store::{
   RepositoryContainer,
   //   documents_sqlite::DocumentSQLiteRepository,
@@ -44,7 +44,7 @@ impl AppState {
     //   Box::new(SettingsMongoRepository::new())
     // );
 
-    let db_config = &config_arc.service.db;
+    let db_config = &config_arc.db;
     let user_sqlite_repo = Box::new(UserSQLiteRepository::new(&db_config).await.unwrap());
     let user_repo_container = RepositoryContainer::new(
       user_sqlite_repo,

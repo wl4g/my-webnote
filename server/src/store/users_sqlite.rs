@@ -1,8 +1,9 @@
 use anyhow::{ Error, Ok };
 use axum::async_trait;
 
-use crate::config::config::DbConfig;
-use crate::models::users::User;
+use crate::config::config_api::DbConfig;
+use crate::types::users::User;
+use crate::types::DEFAULT_BY;
 use super::AsyncRepository;
 use super::sqlite::SQLiteRepository;
 
@@ -23,13 +24,14 @@ impl AsyncRepository<User> for UserSQLiteRepository {
   async fn select_all(&self) -> Result<Vec<User>, Error> {
     // see:https://tms-dev-blog.com/rust-sqlx-basics-with-sqlite/
     // see:https://github.com/launchbadge/sqlx/blob/main/sqlx-core/src/query_as.rs
-    let users = sqlx
-      ::query_as::<_, User>("SELECT id, name FROM users")
-      .fetch_all(self.inner.get_pool()).await
-      .unwrap();
+    let result = sqlx
+      ::query_as::<_, User>("SELECT * FROM users")
+      .fetch_all(self.inner.get_pool()).await;
 
-    println!("query users: {:?}", users);
-    Ok(users)
+    result.map_err(|e| {
+      println!("Error to select all: {:?}", e);
+      Error::msg(e.to_string())
+    })
   }
 
   async fn select_by_id(&self, id: i64) -> Result<User, Error> {
@@ -43,47 +45,50 @@ impl AsyncRepository<User> for UserSQLiteRepository {
     Ok(user)
   }
 
-  async fn insert(&self, param: User) -> Result<i64, Error> {
-    let mut user = param;
-    user.base.pre_update(Some("unknow".to_string())); // TODO dynami get login pricipal
+  async fn insert(&self, mut user: User) -> Result<i64, Error> {
+    let inserted_id = dynamic_sqlite_insert!(user, "users", self.inner.get_pool()).unwrap();
+    println!("Inserted user.id: {:?}", inserted_id);
+    Ok(inserted_id)
 
-    sqlx
-      ::query(
-        r#"
-        INSERT INTO users (id, name, email, password, create_by, create_time, update_by, update_time, del_flag)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        "#
-      )
-      .bind(user.base.id)
-      .bind(user.name)
-      .bind(user.email)
-      .bind(user.password) // TODO persistent encrypt password
-      .bind(user.base.create_by)
-      .bind(user.base.create_time)
-      .bind(user.base.update_by)
-      .bind(user.base.update_time)
-      .bind(user.base.del_flag)
-      .execute(self.inner.get_pool()).await
-      .unwrap();
+    // //  let result = sqlx
+    // //   ::query(
+    // //     r#"
+    // //     INSERT INTO users (id, name, email, password, create_by, create_time, update_by, update_time, del_flag)
+    // //      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    // //     "#
+    // //   )
+    // //   .bind(user.base.id)
+    // //   .bind(user.name)
+    // //   .bind(user.email)
+    // //   .bind(user.phone)
+    // //   .bind(user.password) // TODO persistent encrypt password
+    // //   .bind(user.base.create_by)
+    // //   .bind(user.base.create_time)
+    // //   .bind(user.base.update_by)
+    // //   .bind(user.base.update_time)
+    // //   .bind(user.base.del_flag)
+    // //   .execute(self.inner.get_pool()).await
+    // //   .unwrap();
+    // println!("Inserted result: {:?}, user.id: {:?}", result, id);
 
-    println!("inserted user.id: {:?}", user.base.id);
-
-    Ok(user.base.id.unwrap())
+    // Ok(id)
   }
 
-  async fn update(&self, param: User) -> Result<u64, Error> {
-    let id = param.base.id.ok_or_else(|| Error::msg("User id is required for update"))?;
+  async fn update(&self, mut user: User) -> Result<i64, Error> {
+    let updated_id = dynamic_sqlite_update!(user, "users", self.inner.get_pool()).unwrap();
+    println!("Updated user.id: {:?}", updated_id);
+    Ok(updated_id)
 
-    let update_result = sqlx
-      ::query("UPDATE users SET name = $1, email = $2 WHERE id = $3")
-      .bind(param.name)
-      .bind(param.email)
-      .bind(id)
-      .execute(self.inner.get_pool()).await
-      .unwrap();
-
-    println!("updated result: {:?}", update_result);
-    Ok(update_result.rows_affected())
+    // let id = param.base.id.ok_or_else(|| Error::msg("User id is required for update"))?;
+    // let update_result = sqlx
+    //   ::query("UPDATE users SET name = $1, email = $2 WHERE id = $3")
+    //   .bind(param.name)
+    //   .bind(param.email)
+    //   .bind(id)
+    //   .execute(self.inner.get_pool()).await
+    //   .unwrap();
+    // println!("updated result: {:?}", update_result);
+    // Ok(update_result.rows_affected() as i64)
   }
 
   async fn delete_all(&self) -> Result<u64, Error> {
@@ -98,7 +103,7 @@ impl AsyncRepository<User> for UserSQLiteRepository {
 
   async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
     let delete_result = sqlx
-      ::query("DELETE FROM users WHERE name = $1")
+      ::query("DELETE FROM users WHERE id = $1")
       .bind(id)
       .execute(self.inner.get_pool()).await
       .unwrap();
