@@ -41,7 +41,10 @@ tracing-subscriber = { version = "0.3.18", features = ["json", "env-filter"] }
 #
 # Async core libs.
 tokio = { version = "1.38.0", features = ["full", "tracing"] }
-console-subscriber = "0.3.0"
+# Notice: Use optional dependencies to avoid slow automatic compilation during debugging
+# (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
+# will invalidate the compile-time cache).
+console-subscriber = { version = "0.3.0", optional = true }
 #tokio-console = "0.1.11"
 #
 # Web HTTP libs.
@@ -59,6 +62,12 @@ sqlx = { version = "0.7.4", features = [
     "chrono"
 ] }
 syrette = "0.5.1"
+
+[features]
+# Notice: Use optional dependencies to avoid slow automatic compilation during debugging
+# (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
+# will invalidate the compile-time cache).
+tokio-console = ["console-subscriber"]
 
 [[bin]]
 name = "revezone_api"

@@ -7,6 +7,8 @@ use clap::{ Command, Arg };
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+
+#[cfg(feature = "tokio-console")]
 use console_subscriber::ConsoleLayer;
 // use tower_http::trace::TraceLayer;
 
@@ -63,8 +65,6 @@ async fn metrics() -> String {
 
 #[allow(unused)]
 fn init_tracing(config: &ApiConfig) {
-  // TODO using config setup logging.
-
   // Intialize setup logger levels.
   let env_filter = EnvFilter::try_from_default_env()
     .unwrap_or_else(|_| "debug".into())
@@ -74,13 +74,18 @@ fn init_tracing(config: &ApiConfig) {
     .add_directive("tokio=trace".parse().unwrap()); // Notice: Must be at trace level to collect
 
   // Initialize layer with tokio console exporter.
-  let console_layer = ConsoleLayer::builder().with_default_env().spawn();
-  tracing_subscriber
+  let subscriber = tracing_subscriber
     ::registry()
-    .with(console_layer)
     .with(tracing_subscriber::fmt::layer())
-    .with(env_filter)
-    .init();
+    .with(env_filter);
+
+  // Notice: Use optional dependencies to avoid slow automatic compilation during debugging
+  // (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
+  // will invalidate the compile-time cache).
+  #[cfg(feature = "tokio-console")]
+  let subscriber = subscriber.with(ConsoleLayer::builder().with_default_env().spawn());
+
+  subscriber.init();
 }
 
 #[allow(unused)]

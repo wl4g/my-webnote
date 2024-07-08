@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug [start] default configuration",
+            "name": "Debug [start] [not-depends: tokio-console] default config",
             "cargo": {
                 "args": [
                     "build",
@@ -18,14 +18,9 @@
                     "name": "revezone_api",
                     "kind": "bin"
                 },
-                "env": {
-                    // valid command-line: RUSTFLAGS="--cfg tokio_unstable" && cargo build
-                    // see:https://github.com/wl4g-collect/tokio-rs-console/tree/main/console-subscriber#enabling-tokio-instrumentation
-                    "RUSTFLAGS": "--cfg tokio_unstable"
-                }
             },
             "env": {
-                "RUST_BACKTRACE": "1",
+                "RUST_BACKTRACE": "full",
             },
             "args": [
                 "start",
@@ -37,10 +32,35 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug [start] no configuration",
+            "name": "Debug [start] [not-depends: tokio-console] no config",
             "cargo": {
                 "args": [
                     "build",
+                    "--bin=revezone_api",
+                    "--package=revezone-api"
+                ],
+                "filter": {
+                    "name": "revezone_api",
+                    "kind": "bin"
+                },
+            },
+            "env": {
+                "RUST_BACKTRACE": "full"
+            },
+            "args": [
+                "start"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug [start] [depends: tokio-console] default config",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--features",
+                    "tokio-console",
                     "--bin=revezone_api",
                     "--package=revezone-api"
                 ],
@@ -55,7 +75,39 @@
                 }
             },
             "env": {
-                "RUST_BACKTRACE": "1",
+                "RUST_BACKTRACE": "full",
+            },
+            "args": [
+                "start",
+                "--config",
+                "${workspaceFolder}/etc/server.yaml"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug [start] [depends: tokio-console] no config",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--features",
+                    "tokio-console",
+                    "--bin=revezone_api",
+                    "--package=revezone-api"
+                ],
+                "filter": {
+                    "name": "revezone_api",
+                    "kind": "bin"
+                },
+                "env": {
+                    // valid command-line: RUSTFLAGS="--cfg tokio_unstable" && cargo build
+                    // see:https://github.com/wl4g-collect/tokio-rs-console/tree/main/console-subscriber#enabling-tokio-instrumentation
+                    "RUSTFLAGS": "--cfg tokio_unstable"
+                }
+            },
+            "env": {
+                "RUST_BACKTRACE": "full"
             },
             "args": [
                 "start"
