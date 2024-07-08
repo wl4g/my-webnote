@@ -1,15 +1,23 @@
-use super::Repository;
-use anyhow::Error;
+use anyhow::{ Error, Ok };
 use std::any::Any;
 use std::marker::PhantomData;
+use sqlx::SqlitePool;
+
+use super::Repository;
+use crate::config::config::DbConfig;
 
 pub struct SQLiteRepository<T: Any + Send + Sync> {
   phantom: PhantomData<T>,
+  pool: SqlitePool,
 }
 
 impl<T: Any + Send + Sync> SQLiteRepository<T> {
-  pub fn new() -> Self {
-    SQLiteRepository { phantom: PhantomData }
+  pub async fn new(config: &DbConfig) -> Result<Self, Error> {
+    let conn_url = format!("file:{}/sqlite.db", config.sqlite.dir);
+    Ok(SQLiteRepository {
+      phantom: PhantomData,
+      pool: SqlitePool::connect(&conn_url).await?,
+    })
   }
 }
 

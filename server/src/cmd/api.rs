@@ -22,9 +22,9 @@ use axum::routing::get;
 
 use crate::config::config::ApiConfig;
 use crate::context::state::AppState;
-use crate::routes::documents::init as document_router;
-use crate::routes::folders::init as folder_router;
-use crate::routes::settings::init as settings_router;
+// use crate::routes::documents::init as document_router;
+// use crate::routes::folders::init as folder_router;
+// use crate::routes::settings::init as settings_router;
 use crate::routes::users::init as user_router;
 
 lazy_static! {
@@ -88,12 +88,12 @@ async fn start_server(config: ApiConfig) {
   let config_arc = Arc::new(config);
   let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
-  let app_state = AppState::new(&config_arc);
+  let app_state = AppState::new(&config_arc).await;
 
   let app = Router::new()
-    .merge(document_router())
-    .merge(folder_router())
-    .merge(settings_router())
+    // .merge(document_router())
+    // .merge(folder_router())
+    // .merge(settings_router())
     .merge(user_router())
     .layer(prometheus_layer)
     .with_state(app_state);

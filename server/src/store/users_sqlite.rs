@@ -1,15 +1,19 @@
+use anyhow::{ Error, Ok };
+
+use crate::config::config::DbConfig;
 use crate::models::users::User;
 use super::Repository;
 use super::sqlite::SQLiteRepository;
-use anyhow::Error;
 
 pub struct UserSQLiteRepository {
   inner: SQLiteRepository<User>,
 }
 
 impl UserSQLiteRepository {
-  pub fn new() -> Self {
-    UserSQLiteRepository { inner: SQLiteRepository::new() }
+  pub async fn new(config: &DbConfig) -> Result<Self, Error> {
+    Ok(UserSQLiteRepository {
+      inner: SQLiteRepository::new(config).await?,
+    })
   }
 }
 

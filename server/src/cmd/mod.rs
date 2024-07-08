@@ -1,4 +1,4 @@
-pub mod start;
+pub mod api;
 
 use std::{ collections::HashMap, sync::OnceLock };
 use core::panic;
@@ -19,8 +19,8 @@ pub fn register_subcommand_handles() -> &'static HashMap<
     let mut map = HashMap::new();
     map.insert("start", (
       // Type inference error, forced conversion need.
-      start::build_cli as SubcommandBuildFn,
-      start::handle_cli as SubcommandHandleFn,
+      api::build_cli as SubcommandBuildFn,
+      api::handle_cli as SubcommandHandleFn,
     ));
     map
   })
