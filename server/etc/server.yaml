@@ -9,30 +9,30 @@ server:
   auths:
     oidc:
       endpoint: "https://keycloak.example.com/realms/master/.well-known/openid-configuration"
-      app-id: ""
-      app-secret: ""
+      client-id: ""
+      client-secret: ""
     github:
       endpoint: ""
-      app-id: ""
-      app-secret: ""
+      client-id: ""
+      client-secret: ""
 
 logging:
   file: /tmp/excalidraw-revezone/server.log
   pattern: "xxx" # e.g: "[yyyy-MM-dd T HH:mm:ss.SSS] [INFO] - users.rs:34 : Add to user jack01 ..."
 
-swagger:
-  enabled: true
-  title: "Excalidraw Revezone API Server"
-  description: "The Excalidraw Revezone API Server"
-  version: "1.0.0"
-  license_name: "Apache 2.0"
-  license_url: "https://www.apache.org/licenses/LICENSE-2.0"
-  contact_name: "Revezone API"
-  contact_email: "jameswong1376@gmail.com"
-  contact_url: "https://github.com/wl4g/revezone"
-  terms_of_service: "api/terms-of-service"
-  swagger_ui_path: "/swagger-ui"
-  swagger_openapi_url: "/swagger-ui/openapi.json"
+# swagger:
+#   enabled: true
+#   title: "Excalidraw Revezone API Server"
+#   description: "The Excalidraw Revezone API Server"
+#   version: "1.0.0"
+#   license_name: "Apache 2.0"
+#   license_url: "https://www.apache.org/licenses/LICENSE-2.0"
+#   contact_name: "Revezone API"
+#   contact_email: "jameswong1376@gmail.com"
+#   contact_url: "https://github.com/wl4g/revezone"
+#   terms_of_service: "api/terms-of-service"
+#   swagger_ui_path: "/swagger-ui"
+#   swagger_openapi_url: "/swagger-ui/openapi.json"
 
 db:
   type: sqlite # mongo|sqlite

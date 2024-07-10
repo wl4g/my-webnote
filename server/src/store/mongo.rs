@@ -3,6 +3,8 @@ use std::any::Any;
 use std::marker::PhantomData;
 use axum::async_trait;
 
+use crate::types::{ PageResponse, PageRequest };
+
 use super::AsyncRepository;
 
 pub struct MongoRepository<T: Any + Send + Sync> {
@@ -18,7 +20,7 @@ impl<T: Any + Send + Sync> MongoRepository<T> {
 #[allow(unused)]
 #[async_trait]
 impl<T: Any + Send + Sync> AsyncRepository<T> for MongoRepository<T> {
-  async fn select_all(&self) -> Result<Vec<T>, Error> {
+  async fn select(&self, mut param: T, page: PageRequest) -> Result<(PageResponse, Vec<T>), Error> {
     unimplemented!("select not implemented for MongoRepository")
   }
 

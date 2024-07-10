@@ -1,4 +1,4 @@
-use crate::types::users::User;
+use crate::types::{ users::User, PageResponse, PageRequest };
 use super::{ mongo::MongoRepository, AsyncRepository };
 use anyhow::Error;
 use axum::async_trait;
@@ -16,7 +16,11 @@ impl UserMongoRepository {
 #[allow(unused)]
 #[async_trait]
 impl AsyncRepository<User> for UserMongoRepository {
-  async fn select_all(&self) -> Result<Vec<User>, Error> {
+  async fn select(
+    &self,
+    mut param: User,
+    page: PageRequest
+  ) -> Result<(PageResponse, Vec<User>), Error> {
     todo!()
   }
 

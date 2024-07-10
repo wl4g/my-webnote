@@ -14,7 +14,7 @@
 // }
 
 // impl Repository<Folder> for FolderMongoRepository {
-//   fn select_all(&self) -> Result<Vec<Folder>, Error> {
+//   fn select(&self) -> Result<Vec<Folder>, Error> {
 //     todo!()
 //   }
 

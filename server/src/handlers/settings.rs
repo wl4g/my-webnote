@@ -13,7 +13,7 @@
 
 //   pub async fn get_settings(&self) -> Result<Vec<Settings>, Error> {
 //     let mut repo = self.state.settings_repo.lock().await;
-//     repo.repo(&self.state.config).select_all()
+//     repo.repo(&self.state.config).select()
 //   }
 
 //   pub async fn create_settings(&self, settings: Settings) -> Result<Settings, Error> {

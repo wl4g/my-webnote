@@ -13,13 +13,14 @@ pub mod users_mongo;
 use anyhow::Error;
 use axum::async_trait;
 
-use crate::config::config_api::{ ApiConfig, DbType };
+use crate::{ config::config_api::{ ApiConfig, DbType }, types::{ PageResponse, PageRequest } };
 
 #[async_trait] // solution2: async fn + dyn polymorphism problem.
 pub trait AsyncRepository<T>: Send {
   // solution1: async fn + dyn polymorphism problem.
-  // fn select_all(&self) -> Box<dyn Future<Output = Result<Vec<T>, Error>> + Send>;
-  async fn select_all(&self) -> Result<Vec<T>, Error> where T: 'static + Send + Sync;
+  // fn select(&self) -> Box<dyn Future<Output = Result<Page<T>, Error>> + Send>;
+  async fn select(&self, mut param: T, page: PageRequest) -> Result<(PageResponse, Vec<T>), Error>
+    where T: 'static + Send + Sync;
   async fn select_by_id(&self, id: i64) -> Result<T, Error> where T: 'static + Send + Sync;
   async fn insert(&self, mut param: T) -> Result<i64, Error> where T: 'static + Send + Sync;
   async fn update(&self, mut param: T) -> Result<i64, Error> where T: 'static + Send + Sync;

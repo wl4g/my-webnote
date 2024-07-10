@@ -5,7 +5,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use super::config_api::ApiConfig;
 use crate::routes::users::{ __path_get_users, __path_save_user, __path_delete_user };
-use crate::types::BaseBean;
+use crate::types::{ BaseBean, PageRequest, PageResponse };
 use crate::types::users::{
   User,
   QueryUserRequest,
@@ -35,6 +35,8 @@ use crate::types::users::{
   components(
     schemas(
       BaseBean,
+      PageRequest,
+      PageResponse,
       User,
       QueryUserRequest,
       QueryUserResponse,

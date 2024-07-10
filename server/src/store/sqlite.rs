@@ -8,7 +8,8 @@ use axum::async_trait;
 
 use tracing::{ info, debug };
 use sqlx::{ migrate::MigrateDatabase, Pool, Sqlite, SqlitePool };
-use crate::config::config_api::DbConfig;
+
+use crate::{ config::config_api::DbConfig, types::{ PageResponse, PageRequest } };
 use super::AsyncRepository;
 
 //
@@ -98,7 +99,7 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
 #[allow(unused)]
 #[async_trait]
 impl<T: Any + Send + Sync> AsyncRepository<T> for SQLiteRepository<T> {
-  async fn select_all(&self) -> Result<Vec<T>, Error> {
+  async fn select(&self, mut param: T, page: PageRequest) -> Result<(PageResponse, Vec<T>), Error> {
     unimplemented!("select not implemented for SQLiteRepository")
   }
 
@@ -124,9 +125,67 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for SQLiteRepository<T> {
   }
 }
 
+macro_rules! dynamic_sqlite_query {
+  ($bean:expr, $table:expr, $pool:expr, $order_by:expr, $page:expr, $($t:ty),+) => {
+          {
+              let serialized = serde_json::to_value($bean).unwrap();
+              let obj = serialized.as_object().unwrap();
+
+              let mut fields = Vec::new();
+              let mut params = Vec::new();
+              for (key, value) in obj {
+                  if !value.is_null() {
+                    let v = value.as_str().unwrap_or("");
+                    if !v.is_empty() {
+                        fields.push(format!("{} = ?", key));
+                        params.push(value.as_str().unwrap());
+                    }
+                  }
+              }
+              let where_clause = if fields.is_empty() {
+                  "1=1".to_string()
+              } else {
+                  fields.join(" AND ")
+              };
+
+              // Queries to get total count.
+              let total_query = format!("SELECT COUNT(1) FROM {} WHERE {}", $table, where_clause);
+              use sqlx::Row;
+              let total_count = sqlx::query(&total_query)
+                .fetch_one($pool)
+                .await
+                .map(|row| row.get::<i64, _>(0) as i64)
+                .unwrap();
+
+              // Queries to get data.
+              let query = format!("SELECT * FROM {} WHERE {} ORDER BY {} LIMIT {} OFFSET {}", 
+                    $table, where_clause, $order_by, $page.get_limit(), $page.get_offset());
+
+              let mut operator = sqlx::query_as::<_, $($t),+>(&query);
+              for param in params.iter() {
+                  operator = operator.bind(param);
+              }
+
+              match operator.fetch_all($pool).await {
+                  std::result::Result::Ok(result) => {
+                    let page = PageResponse::new(Some(total_count),
+                        Some($page.num.unwrap()),
+                        Some($page.get_limit()));
+                      Ok((page, result))
+                  },
+                  Err(error) => {
+                      Err(error.into())
+                  }
+              }
+          }
+  };
+}
+
 macro_rules! dynamic_sqlite_insert {
   ($bean:expr, $table:expr, $pool:expr) => {
     {
+        use crate::utils::types::GenericValue;
+
         let id = $bean.base.pre_insert(Some(DEFAULT_BY.to_string())); // TODO dynamic get login principal.
         let serialized = serde_json::to_value($bean).unwrap();
         let obj = serialized.as_object().unwrap();
@@ -136,9 +195,24 @@ macro_rules! dynamic_sqlite_insert {
         let mut params = Vec::new();
         for (key, value) in obj {
             if !value.is_null() {
-                fields.push(key.as_str());
-                values.push("?");
-                params.push(value.to_string());
+                if value.is_boolean() {
+                    let v = value.as_bool().unwrap();
+                    fields.push(key.as_str());
+                    values.push("?");
+                    params.push(GenericValue::Bool(v));
+                } else if value.is_number() {
+                    let v = value.as_i64().unwrap();
+                    fields.push(key.as_str());
+                    values.push("?");
+                    params.push(GenericValue::Int64(v));
+                } else if value.is_string() {
+                    let v = value.as_str().unwrap_or("");
+                    if !v.is_empty() {
+                        fields.push(key.as_str());
+                        values.push("?");
+                        params.push(GenericValue::String(v.to_string()));
+                    }
+                }
             }
         }
         if fields.is_empty() {
@@ -154,7 +228,13 @@ macro_rules! dynamic_sqlite_insert {
 
         let mut operator = sqlx::query(&query);
         for param in params.iter() {
-            operator = operator.bind(param);
+            if let GenericValue::Bool(v) = param {
+                operator = operator.bind(v);
+            } else if let GenericValue::Int64(v) = param {
+                operator = operator.bind(v);
+            } else if let GenericValue::String(v) = param {
+                operator = operator.bind(v);
+            }
         }
 
         match operator.execute($pool).await {
@@ -174,6 +254,8 @@ macro_rules! dynamic_sqlite_insert {
 macro_rules! dynamic_sqlite_update {
   ($bean:expr, $table:expr, $pool:expr) => {
         {
+            use crate::utils::types::GenericValue;
+
             $bean.base.pre_update(Some(DEFAULT_BY.to_string())); // TODO dynamic get login principal.
             let id = $bean.base.id.unwrap();
             let serialized = serde_json::to_value($bean).unwrap();
@@ -183,8 +265,21 @@ macro_rules! dynamic_sqlite_update {
             let mut params = Vec::new();
             for (key, value) in obj {
                 if !value.is_null() {
-                    fields.push(format!("{} = ?", key));
-                    params.push(value.to_string());
+                    if value.is_boolean() {
+                        let v = value.as_bool().unwrap();
+                        fields.push(format!("{} = ?", key));
+                        params.push(GenericValue::Bool(v));
+                    } else if value.is_number() {
+                        let v = value.as_i64().unwrap();
+                        fields.push(format!("{} = ?", key));
+                        params.push(GenericValue::Int64(v));
+                    } else if value.is_string() {
+                        let v = value.as_str().unwrap_or("");
+                        if !v.is_empty() {
+                            fields.push(format!("{} = ?", key));
+                            params.push(GenericValue::String(v.to_string()));
+                        }
+                    }
                 }
             }
             if fields.is_empty() {
@@ -194,7 +289,13 @@ macro_rules! dynamic_sqlite_update {
             let query = format!("UPDATE {} SET {} WHERE id = ?", $table, fields.join(", "));
             let mut operator = sqlx::query(&query);
             for param in params.iter() {
-                operator = operator.bind(param);
+                if let GenericValue::Bool(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::Int64(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::String(v) = param {
+                    operator = operator.bind(v);
+                }
             }
             operator = operator.bind(id);
 

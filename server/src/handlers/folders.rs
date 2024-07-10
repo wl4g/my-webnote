@@ -13,7 +13,7 @@
 
 //   pub async fn get_folders(&self) -> Result<Vec<Folder>, Error> {
 //     let mut repo = self.state.folder_repo.lock().await;
-//     repo.repo(&self.state.config).select_all()
+//     repo.repo(&self.state.config).select()
 //   }
 
 //   pub async fn create_folder(&self, folder: Folder) -> Result<Folder, Error> {

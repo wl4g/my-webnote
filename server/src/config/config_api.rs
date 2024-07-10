@@ -40,17 +40,19 @@ pub struct AuthConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct OidcConfig {
   pub endpoint: Option<String>,
-  #[serde(rename = "app-id")]
-  pub app_id: Option<String>,
-  pub app_secret: Option<String>,
+  #[serde(rename = "client-id")]
+  pub client_id: Option<String>,
+  #[serde(rename = "client-secret")]
+  pub client_secret: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct GithubConfig {
   pub endpoint: Option<String>,
-  #[serde(rename = "app-id")]
-  pub app_id: Option<String>,
-  pub app_secret: Option<String>,
+  #[serde(rename = "client-id")]
+  pub client_id: Option<String>,
+  #[serde(rename = "client-secret")]
+  pub client_secret: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -113,6 +115,8 @@ impl ApiConfig {
 
   // see:https://github.com/mehcode/config-rs/blob/master/examples/simple/main.rs
   pub fn parse(path: &String) -> ApiConfig {
+    // serde_yaml::from_str(&contents)?;
+
     let config = Config::builder()
       .add_source(config::File::with_name(path))
       .add_source(config::Environment::with_prefix("REVEZONE"))
@@ -123,14 +127,6 @@ impl ApiConfig {
 
     config
   }
-
-  //   pub fn from_file<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-  //     let mut file = File::open(path)?;
-  //     let mut contents = String::new();
-  //     file.read_to_string(&mut contents)?;
-  //     let config: RevezoneApiConfig = serde_yaml::from_str(&contents)?;
-  //     Ok(config)
-  //   }
 
   pub fn validate(self) -> Result<ApiConfig, anyhow::Error> {
     // // Validate server configuration
@@ -207,8 +203,8 @@ impl Default for OidcConfig {
   fn default() -> Self {
     OidcConfig {
       endpoint: None,
-      app_id: None,
-      app_secret: None,
+      client_id: None,
+      client_secret: None,
     }
   }
 }
@@ -217,8 +213,8 @@ impl Default for GithubConfig {
   fn default() -> Self {
     GithubConfig {
       endpoint: None,
-      app_id: None,
-      app_secret: None,
+      client_id: None,
+      client_secret: None,
     }
   }
 }
@@ -277,21 +273,3 @@ impl Default for MongoConfig {
     }
   }
 }
-
-// macro_rules! generate_getters {
-//   ($struct_name:ident, $($field:ident: $type:ty),+) => {
-//         impl $struct_name {
-//             $(
-//                 pub fn $field(&self) -> $type {
-//                     self.$field.clone().unwrap_or_else(|| $struct_name::default().$field.unwrap())
-//                 }
-//             )+
-//         }
-//   };
-// }
-
-// generate_getters!(ServerConfig,
-//     bind: String,
-//     mgmt_bind: String,
-//     thread_max_pool: u32
-// );

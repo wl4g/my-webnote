@@ -2,7 +2,7 @@ use serde::{ Deserialize, Serialize };
 // use sqlx::{ Decode, FromRow };
 use sqlx::{ FromRow, sqlite::SqliteRow, Row };
 
-use super::BaseBean;
+use super::{ BaseBean, PageResponse, PageRequest };
 
 // #[derive(Serialize, Deserialize, Clone, Debug, FromRow, Decode)]
 #[derive(Serialize, Deserialize, Clone, Debug, utoipa::ToSchema)]
@@ -41,6 +41,7 @@ impl<'r> FromRow<'r, SqliteRow> for User {
 
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct QueryUserRequest {
+  pub page: PageRequest,
   pub name: Option<String>,
   pub email: Option<String>,
   pub phone: Option<String>,
@@ -66,12 +67,13 @@ impl QueryUserRequest {
 
 #[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
 pub struct QueryUserResponse {
-  users: Vec<User>,
+  pub page: Option<PageResponse>,
+  pub data: Option<Vec<User>>,
 }
 
 impl QueryUserResponse {
-  pub fn new(users: Vec<User>) -> Self {
-    QueryUserResponse { users }
+  pub fn new(page: PageResponse, data: Vec<User>) -> Self {
+    QueryUserResponse { page: Some(page), data: Some(data) }
   }
 }
 
@@ -114,6 +116,12 @@ pub struct SaveUserResponse {
   pub id: i64,
 }
 
+impl SaveUserResponse {
+  pub fn new(id: i64) -> Self {
+    SaveUserResponse { id }
+  }
+}
+
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct DeleteUserRequest {
   pub id: i64,
@@ -122,4 +130,10 @@ pub struct DeleteUserRequest {
 #[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
 pub struct DeleteUserResponse {
   pub count: u64,
+}
+
+impl DeleteUserResponse {
+  pub fn new(count: u64) -> Self {
+    DeleteUserResponse { count }
+  }
 }

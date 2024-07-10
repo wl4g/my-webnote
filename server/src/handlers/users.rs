@@ -1,6 +1,7 @@
 use anyhow::Error;
 use crate::context::state::AppState;
 use crate::types::users::{ DeleteUserRequest, QueryUserRequest, SaveUserRequest, User };
+use crate::types::PageResponse;
 
 pub struct UserHandler<'a> {
   state: &'a AppState,
@@ -11,9 +12,9 @@ impl<'a> UserHandler<'a> {
     Self { state }
   }
 
-  pub async fn find(&self, param: QueryUserRequest) -> Result<Vec<User>, Error> {
+  pub async fn find(&self, param: QueryUserRequest) -> Result<(PageResponse, Vec<User>), Error> {
     let mut repo = self.state.user_repo.lock().await;
-    repo.repo(&self.state.config).select_all().await
+    repo.repo(&self.state.config).select(param.to_user(), param.page).await
   }
 
   pub async fn save(&self, param: SaveUserRequest) -> Result<i64, Error> {

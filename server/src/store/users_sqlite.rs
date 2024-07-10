@@ -3,7 +3,9 @@ use axum::async_trait;
 
 use crate::config::config_api::DbConfig;
 use crate::types::users::User;
+use crate::types::PageRequest;
 use crate::types::DEFAULT_BY;
+use crate::types::PageResponse;
 use super::AsyncRepository;
 use super::sqlite::SQLiteRepository;
 
@@ -21,22 +23,37 @@ impl UserSQLiteRepository {
 
 #[async_trait]
 impl AsyncRepository<User> for UserSQLiteRepository {
-  async fn select_all(&self) -> Result<Vec<User>, Error> {
-    // see:https://tms-dev-blog.com/rust-sqlx-basics-with-sqlite/
-    // see:https://github.com/launchbadge/sqlx/blob/main/sqlx-core/src/query_as.rs
-    let result = sqlx
-      ::query_as::<_, User>("SELECT * FROM users")
-      .fetch_all(self.inner.get_pool()).await;
+  async fn select(
+    &self,
+    user: User,
+    page: PageRequest
+  ) -> Result<(PageResponse, Vec<User>), Error> {
+    let result = dynamic_sqlite_query!(
+      user,
+      "users",
+      self.inner.get_pool(),
+      "update_time",
+      page,
+      User
+    ).unwrap();
 
-    result.map_err(|e| {
-      println!("Error to select all: {:?}", e);
-      Error::msg(e.to_string())
-    })
+    println!("query users: {:?}", result);
+    Ok((result.0, result.1))
+
+    // sqlx
+    //   ::query_as::<_, User>("SELECT * FROM users LIMIT $1 OFFSET $2")
+    //   .bind(page.get_offset())
+    //   .bind(page.get_limit())
+    //   .fetch_all(self.inner.get_pool()).await
+    //   .map_err(|e| {
+    //      println!("Error to select all: {:?}", e);
+    //      Error::msg(e.to_string())
+    //   })
   }
 
   async fn select_by_id(&self, id: i64) -> Result<User, Error> {
     let user = sqlx
-      ::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
+      ::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
       .bind(id)
       .fetch_one(self.inner.get_pool()).await
       .unwrap();

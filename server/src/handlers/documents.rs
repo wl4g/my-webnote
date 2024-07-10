@@ -13,7 +13,7 @@
 
 //   pub async fn get_documents(&self) -> Result<Vec<Document>, Error> {
 //     let mut repo = self.state.document_repo.lock().await;
-//     repo.repo(&self.state.config).select_all()
+//     repo.repo(&self.state.config).select()
 //   }
 
 //   pub async fn create_document(&self, document: Document) -> Result<Document, Error> {

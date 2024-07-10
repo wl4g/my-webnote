@@ -14,7 +14,7 @@
 // }
 
 // impl Repository<Settings> for SettingsMongoRepository {
-//   fn select_all(&self) -> Result<Vec<Settings>, Error> {
+//   fn select(&self) -> Result<Vec<Settings>, Error> {
 //     todo!()
 //   }
 

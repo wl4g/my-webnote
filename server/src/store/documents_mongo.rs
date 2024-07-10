@@ -15,7 +15,7 @@
 
 // #[async_trait]
 // impl AsyncRepository<Document> for DocumentMongoRepository {
-//   fn select_all(&self) -> Result<Vec<Document>, Error> {
+//   fn select(&self) -> Result<Vec<Document>, Error> {
 //     todo!()
 //   }
 

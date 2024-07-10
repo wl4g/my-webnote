@@ -11,9 +11,9 @@ create table if not exists users (
     google_claims_sub varchar(64) null, -- 'Google IdP 授权服务返回的 sub claim 用于绑定唯一标识用户'
     google_claims_name varchar(64) null, -- 'Google IdP 授权服务返回的 name claim 用于存储用户名'
     status integer null default 0,
-    create_by integer null,
-    create_time datetime default current_timestamp,
-    update_by integer null,
-    update_time datetime default current_timestamp,
+    create_by varchar(64) null,
+    create_time integer default current_timestamp,
+    update_by varchar(64) null,
+    update_time integer default current_timestamp,
     del_flag integer not null default 0
 );
