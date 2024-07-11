@@ -41,6 +41,8 @@ tracing-subscriber = { version = "0.3.18", features = ["json", "env-filter"] }
 #
 # Async core libs.
 tokio = { version = "1.38.0", features = ["full", "tracing"] }
+# Async core trait polymorphism libs.
+async-trait = "0.1.81"
 # Notice: Use optional dependencies to avoid slow automatic compilation during debugging
 # (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
 # will invalidate the compile-time cache).
@@ -64,16 +66,19 @@ sqlx = { version = "0.7.4", features = [
     "macros",
     "chrono"
 ] }
-# Async trait polymorphism libs.
-async-trait = "0.1.81"
 # Swagger libs.
 utoipa = { version = "4.2.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 mac_address = "1.1.7"
 # Auth libs.
-oauth2 = "4.3"
 reqwest = { version = "0.12.5", features = ["json"] }
+url = "2.3"
 tower-cookies = "0.10.0"
+oauth2 = "4.3"
+openid = "0.14.0"
+# Cache libs.
+moka = { version = "0.12.8", features = ["future"] }
+redis = { version = "0.25.4", features = ["tokio-comp", "cluster-async"] }
 
 [features]
 # Notice: Use optional dependencies to avoid slow automatic compilation during debugging

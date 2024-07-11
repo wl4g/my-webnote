@@ -69,6 +69,14 @@ pub struct PageRequest {
 }
 
 impl PageRequest {
+  pub fn default() -> PageRequest {
+    PageRequest {
+      num: Some(1),
+      limit: Some(10),
+      // cached_forward_last_min_id: None,
+      // cached_backend_last_max_id: None,
+    }
+  }
   pub fn get_offset(&self) -> i32 {
     let n = self.num.unwrap_or(1);
     if n <= 0 {

@@ -9,6 +9,7 @@ use config::Config;
 pub struct ApiConfig {
   pub server: ServerConfig,
   pub logging: LoggingConfig,
+  pub cache: CacheConfig,
   pub swagger: SwaggerConfig,
   pub db: DbConfig,
 }
@@ -21,7 +22,7 @@ pub struct ServerConfig {
   #[serde(rename = "thread-max-pool")]
   pub thread_max_pool: u32,
   pub cors: CorsConfig,
-  pub auths: AuthConfig,
+  pub auth: AuthConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -44,12 +45,12 @@ pub struct OidcConfig {
   pub client_id: Option<String>,
   #[serde(rename = "client-secret")]
   pub client_secret: Option<String>,
-  #[serde(rename = "auth-url")]
-  pub auth_url: Option<String>,
-  #[serde(rename = "token-url")]
-  pub token_url: Option<String>,
+  #[serde(rename = "discovery-endpoint")]
+  pub discovery_endpoint: Option<String>,
   #[serde(rename = "redirect-url")]
   pub redirect_url: Option<String>,
+  #[serde(rename = "scope")]
+  pub scope: Option<String>,
 }
 
 // see:https://github.com/settings/developers
@@ -67,6 +68,11 @@ pub struct GithubConfig {
   pub token_url: Option<String>,
   #[serde(rename = "redirect-url")]
   pub redirect_url: Option<String>,
+  // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+  #[serde(rename = "scope")]
+  pub scope: Option<String>,
+  #[serde(rename = "user-info-url")]
+  pub user_info_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -76,18 +82,60 @@ pub struct LoggingConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct CacheConfig {
+  pub provider: CacheProvider,
+  pub memory: MemoryConfig,
+  pub redis: RedisConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub enum CacheProvider {
+  Memory,
+  Redis,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MemoryConfig {
+  #[serde(rename = "initial-capacity")]
+  pub initial_capacity: Option<u32>,
+  #[serde(rename = "max-capacity")]
+  pub max_capacity: Option<u64>,
+  pub ttl: Option<u64>,
+  #[serde(rename = "eviction-policy")]
+  pub eviction_policy: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct RedisConfig {
+  pub nodes: Vec<String>,
+  pub username: Option<String>,
+  pub password: Option<String>,
+  #[serde(rename = "connection-timeout")]
+  pub connection_timeout: Option<u64>,
+  #[serde(rename = "response-timeout")]
+  pub response_timeout: Option<u64>,
+  pub retries: Option<u32>,
+  #[serde(rename = "max-retry-wait")]
+  pub max_retry_wait: Option<u64>,
+  #[serde(rename = "min-retry-wait")]
+  pub min_retry_wait: Option<u64>,
+  #[serde(rename = "read-from-replicas")]
+  pub read_from_replicas: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct SwaggerConfig {
   pub enabled: bool,
-  pub title: String,
-  pub description: String,
-  pub version: String,
-  pub license_name: String,
-  pub license_url: String,
-  pub contact_name: String,
-  pub contact_email: String,
-  pub contact_url: String,
-  pub terms_of_service: String,
-  //pub security_definitions: vec![],
+  // pub title: String,
+  // pub description: String,
+  // pub version: String,
+  // pub license_name: String,
+  // pub license_url: String,
+  // pub contact_name: String,
+  // pub contact_email: String,
+  // pub contact_url: String,
+  // pub terms_of_service: String,
+  // //pub security_definitions: vec![],
   pub swagger_ui_path: String,
   pub swagger_openapi_url: String,
 }
@@ -122,6 +170,7 @@ impl ApiConfig {
     ApiConfig {
       server: ServerConfig::default(),
       logging: LoggingConfig::default(),
+      cache: CacheConfig::default(),
       swagger: SwaggerConfig::default(),
       db: DbConfig::default(),
     }
@@ -189,7 +238,7 @@ impl Default for ServerConfig {
       mgmt_bind: "0.0.0.0:11700".to_string(),
       thread_max_pool: 4,
       cors: CorsConfig::default(),
-      auths: AuthConfig::default(),
+      auth: AuthConfig::default(),
     }
   }
 }
@@ -219,9 +268,9 @@ impl Default for OidcConfig {
       enabled: Some(false),
       client_id: None,
       client_secret: None,
-      auth_url: None,
-      token_url: None,
+      discovery_endpoint: None,
       redirect_url: None,
+      scope: Some("openid profile email".to_string()),
     }
   }
 }
@@ -235,6 +284,11 @@ impl Default for GithubConfig {
       auth_url: None,
       token_url: None,
       redirect_url: None,
+      // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+      scope: Some(
+        "openid profile user:email user:follow read:user read:project public_repo".to_string()
+      ),
+      user_info_url: None,
     }
   }
 }
@@ -248,20 +302,57 @@ impl Default for LoggingConfig {
   }
 }
 
+impl Default for CacheConfig {
+  fn default() -> Self {
+    CacheConfig {
+      provider: CacheProvider::Memory,
+      memory: MemoryConfig::default(),
+      redis: RedisConfig::default(),
+    }
+  }
+}
+
+impl Default for MemoryConfig {
+  fn default() -> Self {
+    MemoryConfig {
+      initial_capacity: Some(32),
+      max_capacity: Some(65535),
+      ttl: Some(3600),
+      eviction_policy: Some("lru".to_string()),
+    }
+  }
+}
+
+impl Default for RedisConfig {
+  fn default() -> Self {
+    RedisConfig {
+      nodes: vec!["redis://127.0.0.1:6379".to_string()],
+      username: None,
+      password: None,
+      connection_timeout: Some(3000),
+      response_timeout: Some(6000),
+      retries: Some(1),
+      max_retry_wait: Some(65536),
+      min_retry_wait: Some(1280),
+      read_from_replicas: Some(false),
+    }
+  }
+}
+
 impl Default for SwaggerConfig {
   fn default() -> Self {
     SwaggerConfig {
       enabled: true,
-      title: "Excalidraw Revezone API Server".to_string(),
-      description: "The Excalidraw Revezone API Server".to_string(),
-      version: "1.0.0".to_string(),
-      license_name: "Apache 2.0".to_string(),
-      license_url: "https://www.apache.org/licenses/LICENSE-2.0".to_string(),
-      contact_name: "Revezone API".to_string(),
-      contact_email: "jameswong1376@gmail.com".to_string(),
-      contact_url: "https://github.com/wl4g/revezone".to_string(),
-      terms_of_service: "api/terms-of-service".to_string(),
-      //security_definitions: vec![],
+      // title: "Excalidraw Revezone API Server".to_string(),
+      // description: "The Excalidraw Revezone API Server".to_string(),
+      // version: "1.0.0".to_string(),
+      // license_name: "Apache 2.0".to_string(),
+      // license_url: "https://www.apache.org/licenses/LICENSE-2.0".to_string(),
+      // contact_name: "Revezone API".to_string(),
+      // contact_email: "jameswong1376@gmail.com".to_string(),
+      // contact_url: "https://github.com/wl4g/revezone".to_string(),
+      // terms_of_service: "api/terms-of-service".to_string(),
+      // //security_definitions: vec![],
       swagger_ui_path: "/swagger-ui".to_string(),
       swagger_openapi_url: "/api-docs/openapi.json".to_string(),
     }

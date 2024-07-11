@@ -45,6 +45,9 @@ pub struct QueryUserRequest {
   pub name: Option<String>,
   pub email: Option<String>,
   pub phone: Option<String>,
+  pub oidc_claims_sub: Option<String>,
+  pub github_claims_sub: Option<String>,
+  pub google_claims_sub: Option<String>,
 }
 
 impl QueryUserRequest {

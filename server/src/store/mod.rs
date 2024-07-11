@@ -52,7 +52,7 @@ impl<T> RepositoryContainer<T> where T: 'static + Send + Sync {
     &*self.mongo_repo
   }
 
-  pub fn repo(&mut self, config: &ApiConfig) -> &dyn AsyncRepository<T> {
+  pub fn repo(/*&mut self*/ &self, config: &ApiConfig) -> &dyn AsyncRepository<T> {
     match config.db.db_type {
       DbType::Sqlite => self.sqlite_repo(),
       DbType::Mongo => self.mongo_repo(),

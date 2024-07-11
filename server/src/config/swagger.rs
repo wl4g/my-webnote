@@ -4,8 +4,14 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::config_api::ApiConfig;
+use crate::routes::auths::{
+    __path_login_oidc,
+    __path_login_github,
+    __path_callback_github,
+    __path_callback_oidc,
+    __path_logout,
+};
 use crate::routes::users::{ __path_get_users, __path_save_user, __path_delete_user };
-use crate::routes::auths::{ __path_callback_github, __path_callback_oidc };
 use crate::types::{ BaseBean, PageRequest, PageResponse };
 use crate::types::users::{
   User,
@@ -33,7 +39,16 @@ use crate::types::auths::CallbackGithubRequest;
   ),
   //security((), "my_auth" = ["read:items", "edit:items"], "token_jwt" = []),
   external_docs(url = "https://github.com/wl4g/revezone", description = "More about our APIs"),
-  paths(get_users, save_user, delete_user, callback_github, callback_oidc),
+  paths(
+    login_oidc,
+    login_github,
+    callback_github,
+    callback_oidc,
+    logout,
+    get_users,
+    save_user,
+    delete_user
+  ),
   components(
     schemas(
       BaseBean,
