@@ -26,6 +26,7 @@ use axum::routing::get;
 use crate::config::config_api::ApiConfig;
 use crate::config::swagger;
 use crate::context::state::AppState;
+use crate::routes::auths::init as auth_router;
 // use crate::routes::documents::init as document_router;
 // use crate::routes::folders::init as folder_router;
 // use crate::routes::settings::init as settings_router;
@@ -122,9 +123,11 @@ async fn start_server(config: ApiConfig) {
   let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
   let mut app = Router::new()
+    .route("/", get(root))
     // .merge(document_router())
     // .merge(folder_router())
     // .merge(settings_router())
+    .merge(auth_router())
     .merge(user_router())
     .layer(prometheus_layer)
     //.layer(TraceLayer::new_for_http()) // Optional: add logs to tracing.
@@ -143,6 +146,10 @@ async fn start_server(config: ApiConfig) {
     .unwrap_or_else(|e| panic!("Error starting API server: {}", e));
 
   info!("API server is ready");
+}
+
+async fn root() -> &'static str {
+  "Welcome to the Rust Excalidraw Revezone API!"
 }
 
 fn load_config(path: String) -> Result<ApiConfig, anyhow::Error> {

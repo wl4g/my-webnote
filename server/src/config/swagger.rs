@@ -5,6 +5,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use super::config_api::ApiConfig;
 use crate::routes::users::{ __path_get_users, __path_save_user, __path_delete_user };
+use crate::routes::auths::{ __path_callback_github, __path_callback_oidc };
 use crate::types::{ BaseBean, PageRequest, PageResponse };
 use crate::types::users::{
   User,
@@ -15,6 +16,7 @@ use crate::types::users::{
   DeleteUserRequest,
   DeleteUserResponse,
 };
+use crate::types::auths::CallbackGithubRequest;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
@@ -31,7 +33,7 @@ use crate::types::users::{
   ),
   //security((), "my_auth" = ["read:items", "edit:items"], "token_jwt" = []),
   external_docs(url = "https://github.com/wl4g/revezone", description = "More about our APIs"),
-  paths(get_users, save_user, delete_user),
+  paths(get_users, save_user, delete_user, callback_github, callback_oidc),
   components(
     schemas(
       BaseBean,
@@ -43,7 +45,8 @@ use crate::types::users::{
       SaveUserRequest,
       SaveUserResponse,
       DeleteUserRequest,
-      DeleteUserResponse
+      DeleteUserResponse,
+      CallbackGithubRequest
     )
   )
 )]

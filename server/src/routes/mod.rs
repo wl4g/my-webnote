@@ -1,3 +1,4 @@
+pub mod auths;
 pub mod documents;
 pub mod folders;
 pub mod settings;

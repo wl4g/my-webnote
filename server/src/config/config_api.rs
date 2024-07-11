@@ -39,20 +39,34 @@ pub struct AuthConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct OidcConfig {
-  pub endpoint: Option<String>,
+  pub enabled: Option<bool>,
   #[serde(rename = "client-id")]
   pub client_id: Option<String>,
   #[serde(rename = "client-secret")]
   pub client_secret: Option<String>,
+  #[serde(rename = "auth-url")]
+  pub auth_url: Option<String>,
+  #[serde(rename = "token-url")]
+  pub token_url: Option<String>,
+  #[serde(rename = "redirect-url")]
+  pub redirect_url: Option<String>,
 }
 
+// see:https://github.com/settings/developers
+// see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 #[derive(Debug, Deserialize, Clone)]
 pub struct GithubConfig {
-  pub endpoint: Option<String>,
+  pub enabled: Option<bool>,
   #[serde(rename = "client-id")]
   pub client_id: Option<String>,
   #[serde(rename = "client-secret")]
   pub client_secret: Option<String>,
+  #[serde(rename = "auth-url")]
+  pub auth_url: Option<String>,
+  #[serde(rename = "token-url")]
+  pub token_url: Option<String>,
+  #[serde(rename = "redirect-url")]
+  pub redirect_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -202,9 +216,12 @@ impl Default for AuthConfig {
 impl Default for OidcConfig {
   fn default() -> Self {
     OidcConfig {
-      endpoint: None,
+      enabled: Some(false),
       client_id: None,
       client_secret: None,
+      auth_url: None,
+      token_url: None,
+      redirect_url: None,
     }
   }
 }
@@ -212,9 +229,12 @@ impl Default for OidcConfig {
 impl Default for GithubConfig {
   fn default() -> Self {
     GithubConfig {
-      endpoint: None,
+      enabled: Some(false),
       client_id: None,
       client_secret: None,
+      auth_url: None,
+      token_url: None,
+      redirect_url: None,
     }
   }
 }

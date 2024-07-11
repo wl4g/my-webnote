@@ -11,10 +11,12 @@ server:
       endpoint: "https://keycloak.example.com/realms/master/.well-known/openid-configuration"
       client-id: ""
       client-secret: ""
+    # see:https://github.com/settings/developers
+    # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
     github:
-      endpoint: ""
-      client-id: ""
-      client-secret: ""
+      endpoint: "https://github.com/login/oauth/authorize"
+      client-id: "Ov23li21SkhoBFIQaGPD"
+      client-secret: "374b9761778707170e6538932974ea940b45972f"
 
 logging:
   file: /tmp/excalidraw-revezone/server.log
