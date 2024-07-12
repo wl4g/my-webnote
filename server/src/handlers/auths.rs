@@ -68,7 +68,7 @@ impl<'a> AuthHandler<'a> {
 
     // Add current jwt token to cache blacklist, expiration time is less than now time - id_token issue time.
     let ak = param.access_token.expect("access_token is None");
-    let key = format!("{}:{}", LOGOUT_BLACKLIST_PREFIX, ak);
+    let key = Self::build_logout_blacklist_key(ak.as_str());
     let value = Utc::now().timestamp_millis().to_string();
     match cache.set(key, value, Some(3600_000)).await {
       std::result::Result::Ok(_) => {
@@ -80,5 +80,9 @@ impl<'a> AuthHandler<'a> {
         Err(e)
       }
     }
+  }
+
+  pub fn build_logout_blacklist_key(access_token: &str) -> String {
+    format!("{}:{}", LOGOUT_BLACKLIST_PREFIX, access_token)
   }
 }

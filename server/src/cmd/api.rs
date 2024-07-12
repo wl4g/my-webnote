@@ -4,6 +4,8 @@ use anyhow::Ok;
 
 use clap::{ Command, Arg };
 
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -27,6 +29,7 @@ use crate::config::config_api::ApiConfig;
 use crate::config::swagger;
 use crate::context::state::AppState;
 use crate::routes::auths::init as auth_router;
+use crate::routes::auths::auth_middleware;
 // use crate::routes::documents::init as document_router;
 // use crate::routes::folders::init as folder_router;
 // use crate::routes::settings::init as settings_router;
@@ -96,7 +99,9 @@ async fn start_mgmt_server(
   config: &ApiConfig,
   signal_sender: oneshot::Sender<()>
 ) -> JoinHandle<()> {
-  let app: Router = Router::new().route("/metrics", get(metrics));
+  let (prometheus_layer, _) = PrometheusMetricLayer::pair();
+
+  let app: Router = Router::new().route("/metrics", get(metrics)).layer(prometheus_layer);
 
   let bind_addr = config.server.mgmt_bind.clone();
   info!("Starting Management server on {}", bind_addr);
@@ -120,7 +125,6 @@ async fn start_server(config: ApiConfig) {
   let app_state = AppState::new(&config_arc).await;
 
   info!("Register API server middlewares ...");
-  let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
   let mut app = Router::new()
     .route("/", get(root))
@@ -129,8 +133,11 @@ async fn start_server(config: ApiConfig) {
     // .merge(settings_router())
     .merge(auth_router())
     .merge(user_router())
-    .layer(prometheus_layer)
-    //.layer(TraceLayer::new_for_http()) // Optional: add logs to tracing.
+    .layer(
+      ServiceBuilder::new()
+        .layer(TraceLayer::new_for_http()) // Optional: add logs to tracing.
+        .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth_middleware))
+    )
     .with_state(app_state);
   //.route_layer(axum::Extension(app_state));
 

@@ -1,10 +1,12 @@
 use axum::{
+  body::Body,
   extract::{ Query, State },
-  response::{ IntoResponse, Redirect },
+  http::{ Request, StatusCode },
+  middleware::Next,
+  response::{ IntoResponse, Redirect, Response },
   routing::{ get, post },
   Router,
 };
-use axum::http::StatusCode;
 
 use oauth2::{ AuthorizationCode, Scope, TokenResponse };
 use tower_cookies::{ cookie::{ time::{ self }, CookieBuilder }, CookieManagerLayer, Cookies };
@@ -23,6 +25,57 @@ pub fn init() -> Router<AppState> {
     .route("/auth/callback/github", get(callback_github))
     .route("/auth/logout", post(logout))
     .layer(CookieManagerLayer::new())
+}
+
+pub async fn auth_middleware(
+  State(state): State<AppState>,
+  req: Request<Body>,
+  next: Next
+) -> Result<Response, StatusCode> {
+  let path = req.uri().path();
+
+  // Exclude paths that don't require authentication.
+  if
+    path == "/" ||
+    path.starts_with("/auth/") ||
+    path == "/logout" ||
+    path.starts_with("/swagger-ui/") ||
+    path.starts_with("/public/")
+  {
+    return Ok(next.run(req).await);
+  }
+
+  // Verify for bearer access token.
+  if let Some(auth_header) = req.headers().get("Authorization") {
+    if let std::result::Result::Ok(auth_str) = auth_header.to_str() {
+      if auth_str.starts_with("Bearer ") {
+        if validate_token(&state, &auth_str[7..]).await {
+          return Ok(next.run(req).await);
+        }
+      }
+    }
+  }
+
+  Err(StatusCode::UNAUTHORIZED)
+}
+
+async fn validate_token(state: &AppState, ak: &str) -> bool {
+  // 1. Verify whether the access token is valid.
+  // TODO
+
+  // 2. Verify whether the access token is in the cancelled blacklist.
+  let cache = state.string_cache.cache(&state.config);
+  //let handler = AuthHandler::new(state);
+  match cache.get(AuthHandler::build_logout_blacklist_key(ak)).await {
+    std::result::Result::Ok(_) => {
+      tracing::warn!("Invalid the ak for {}", ak);
+      false
+    }
+    Err(_) => {
+      tracing::debug!("Valid the ak: {}", ak);
+      true
+    }
+  }
 }
 
 #[utoipa::path(
@@ -81,7 +134,6 @@ pub async fn callback_oidc(
 
       match token_result {
         Ok(token) => {
-          // 处理成功获取的token
           // 例如，可以将token存储在session中，然后重定向到主页
           // 这里只是一个示例，你可能需要根据你的需求进行调整
           Redirect::to("/").into_response()
