@@ -1,5 +1,7 @@
+use lazy_static::lazy_static;
 use anyhow::{ Error, Ok };
 use chrono::Utc;
+use openidconnect::{ core::CoreUserInfoClaims, LanguageTag };
 use crate::{
   context::state::AppState,
   types::{ auths::{ GithubUserInfo, LogoutRequest }, users::SaveUserRequest },
@@ -7,7 +9,12 @@ use crate::{
 
 use super::users::UserHandler;
 
-pub const LOGOUT_BLACKLIST_PREFIX: &'static str = "logout:blacklist:";
+pub const AUTH_NONCE_PREFIX: &'static str = "auth:nonce:";
+pub const AUTH_LOGOUT_BLACKLIST_PREFIX: &'static str = "auth:logout:blacklist:";
+
+lazy_static! {
+  pub static ref LANG_CLAIMS_NAME_KEY: LanguageTag = LanguageTag::new("name".to_owned());
+}
 
 pub struct AuthHandler<'a> {
   state: &'a AppState,
@@ -18,9 +25,98 @@ impl<'a> AuthHandler<'a> {
     Self { state }
   }
 
-  pub async fn handle_auth_github(&self, user_info: GithubUserInfo) -> Result<i64, Error> {
-    let github_user_id = user_info.id.expect("github user_id is None");
-    let github_user_name = user_info.login.expect("github user_name is None");
+  pub async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error> {
+    let cache = self.state.string_cache.cache(&self.state.config);
+
+    let key = Self::build_logout_blacklist_key(sid);
+    let value = nonce;
+
+    // TODO: using expires config? To ensure safety, expire as soon as possible. 10s
+    match cache.set(key, value, Some(10_000)).await {
+      std::result::Result::Ok(_) => {
+        tracing::info!("Created auth nonce for {}", sid);
+        Ok(())
+      }
+      Err(e) => {
+        tracing::error!("Created auth nonce failed for {}, cause: {}", sid, e);
+        Err(e)
+      }
+    }
+  }
+
+  pub async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error> {
+    let cache = self.state.string_cache.cache(&self.state.config);
+
+    let key = Self::build_logout_blacklist_key(sid);
+
+    match cache.get(key).await {
+      std::result::Result::Ok(nonce) => {
+        tracing::info!("Got auth nonce for {}", sid);
+        Ok(nonce)
+      }
+      Err(e) => {
+        tracing::error!("Get auth nonce failed for {}, cause: {}", sid, e);
+        Err(e)
+      }
+    }
+  }
+
+  pub async fn handle_auth_callback_oidc(
+    &self,
+    userinfo: CoreUserInfoClaims
+  ) -> Result<i64, Error> {
+    let oidc_user_id = userinfo.subject().as_str();
+    let oidc_user_name = userinfo.name().map(|n|
+      n
+        .get(Some(&LANG_CLAIMS_NAME_KEY))
+        .map(|u| u.to_string())
+        .unwrap_or_default()
+    );
+
+    let handler = UserHandler::new(self.state);
+
+    // 1. Get user by oidc user_id
+    let user = handler.get(None, Some(oidc_user_id.to_string()), None).await.unwrap();
+
+    // 2. If user exists, update user github subject ID.
+    let save_param;
+    if user.is_some() {
+      save_param = SaveUserRequest {
+        id: user.unwrap().base.id,
+        name: oidc_user_name,
+        email: None,
+        phone: None,
+        password: None,
+        oidc_claims_sub: None,
+        oidc_claims_name: None,
+        github_claims_sub: None,
+        github_claims_name: None,
+        google_claims_sub: None,
+        google_claims_name: None,
+      };
+    } else {
+      // 3. If user not exists, create user by github login, which auto register user.
+      save_param = SaveUserRequest {
+        id: None,
+        name: oidc_user_name.clone(),
+        email: None,
+        phone: None,
+        password: None,
+        oidc_claims_sub: Some(oidc_user_id.to_string()),
+        oidc_claims_name: oidc_user_name,
+        github_claims_sub: None,
+        github_claims_name: None,
+        google_claims_sub: None,
+        google_claims_name: None,
+      };
+    }
+
+    handler.save(save_param).await
+  }
+
+  pub async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error> {
+    let github_user_id = userinfo.id.expect("github user_id is None");
+    let github_user_name = userinfo.login.expect("github user_name is None");
 
     let handler = UserHandler::new(self.state);
 
@@ -82,7 +178,11 @@ impl<'a> AuthHandler<'a> {
     }
   }
 
+  pub fn build_auth_nonce_key(nonce: &str) -> String {
+    format!("{}:{}", AUTH_NONCE_PREFIX, nonce)
+  }
+
   pub fn build_logout_blacklist_key(access_token: &str) -> String {
-    format!("{}:{}", LOGOUT_BLACKLIST_PREFIX, access_token)
+    format!("{}:{}", AUTH_LOGOUT_BLACKLIST_PREFIX, access_token)
   }
 }

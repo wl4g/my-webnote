@@ -41,10 +41,10 @@ auth:
   jwt-validity-rk: 86400000
   jwt-secret: "changeit"
   oidc:
-    enabled: false
+    enabled: true
     client-id: "revezone-wl4g"
     client-secret: "ZySKr09pTaG5xpyfPI28ARMp4MV3GXxB"
-    issue-url: "https://iam.example.com/realms/master"
+    issue-url: "https://iam.wl4g.com/realms/master"
     redirect-url: "http://localhost:8888/auth/callback/oidc"
     scope: "openid profile email"
   # see:https://github.com/settings/developers

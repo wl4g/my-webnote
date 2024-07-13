@@ -27,8 +27,8 @@ use crate::{
 
 pub fn init() -> Router<AppState> {
   Router::new()
-    .route("/auth/login/oidc", get(connect_oidc))
-    .route("/auth/login/github", get(connect_github))
+    .route("/auth/connect/oidc", get(connect_oidc))
+    .route("/auth/connect/github", get(connect_github))
     .route("/auth/callback/oidc", get(callback_oidc))
     .route("/auth/callback/github", get(callback_github))
     .route("/auth/logout", post(logout))
@@ -103,7 +103,7 @@ async fn validate_token(state: &AppState, ak: &str) -> bool {
 
 #[utoipa::path(
   get,
-  path = "/auth/login/oidc",
+  path = "/auth/connect/oidc",
   responses((status = 200, description = "Login for OIDC.")),
   tag = ""
 )]
@@ -127,7 +127,16 @@ pub async fn connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
         nonce
       );
 
-      Ok(Redirect::to(auth_url.as_str()))
+      // TODO: using dependency injection to get the handler
+      let handler: AuthHandler = AuthHandler::new(&state);
+      // TODO: generate sid to cookie.
+      match handler.handle_auth_create_nonce("sid", nonce.secret().to_string()).await {
+        std::result::Result::Ok(_) => { Ok(Redirect::to(auth_url.as_str())) }
+        Err(e) => {
+          tracing::error!("Create nonce failed: {}", e);
+          Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+      }
     }
     None => Err(StatusCode::INTERNAL_SERVER_ERROR),
   }
@@ -135,7 +144,7 @@ pub async fn connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
 
 #[utoipa::path(
   get,
-  path = "/auth/login/github",
+  path = "/auth/connect/github",
   responses((status = 200, description = "Login for Github.")),
   tag = ""
 )]
@@ -186,9 +195,19 @@ pub async fn callback_oidc(
             .ok_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, "No ID token found".to_string()))
             .unwrap();
 
-          let claims: &openidconnect::IdTokenClaims<openidconnect::EmptyAdditionalClaims, openidconnect::core::CoreGenderClaim> = match
-            id_token.claims(&client.id_token_verifier(), &openidconnect::Nonce::new_random())
-          {
+          // TODO: using dependency injection to get the handler
+          let handler = AuthHandler::new(&state);
+          // TODO: get sid from cookie.
+          let nonce_string = handler
+            .handle_auth_get_nonce("sid").await
+            .unwrap()
+            .expect("Could not get oidc authenticating nonce");
+          let nonce = openidconnect::Nonce::new(nonce_string);
+
+          let claims: &openidconnect::IdTokenClaims<
+            openidconnect::EmptyAdditionalClaims,
+            openidconnect::core::CoreGenderClaim
+          > = match id_token.claims(&client.id_token_verifier(), &nonce) {
             Ok(claims) => claims,
             Err(e) => {
               return (
@@ -221,6 +240,8 @@ pub async fn callback_oidc(
           println!("User subject: {}", claims.subject().as_str());
           println!("User name: {:?}", userinfo.name());
           println!("User email: {:?}", userinfo.email());
+
+          AuthHandler::new(&state).handle_auth_callback_oidc(userinfo);
 
           Redirect::to("/").into_response()
         }
@@ -298,7 +319,7 @@ pub async fn callback_github(
           //   let res: hyper::Response<axum::body::Body> = Redirect::to("/").into_response();
           //   res
 
-          AuthHandler::new(&state).handle_auth_github(github_user);
+          AuthHandler::new(&state).handle_auth_callback_github(github_user);
 
           Redirect::to("/").into_response()
         }
