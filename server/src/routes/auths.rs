@@ -8,19 +8,27 @@ use axum::{
   Router,
 };
 
-use oauth2::{ AuthorizationCode, Scope, TokenResponse };
+use oauth2::{ AuthorizationCode, CsrfToken, Scope, TokenResponse };
+
+use openidconnect::{
+  core::{ CoreAuthenticationFlow, CoreTokenResponse, CoreUserInfoClaims },
+  reqwest::async_http_client,
+  Nonce,
+};
+
 use tower_cookies::{ cookie::{ time::{ self }, CookieBuilder }, CookieManagerLayer, Cookies };
 
 use crate::{
   context::state::AppState,
   handlers::auths::AuthHandler,
-  types::auths::{ CallbackGithubRequest, GithubUserInfo, LogoutRequest },
+  types::auths::{ CallbackGithubRequest, CallbackOidcRequest, GithubUserInfo, LogoutRequest },
+  utils,
 };
 
 pub fn init() -> Router<AppState> {
   Router::new()
-    .route("/auth/login/oidc", get(login_oidc))
-    .route("/auth/login/github", get(login_github))
+    .route("/auth/login/oidc", get(connect_oidc))
+    .route("/auth/login/github", get(connect_github))
     .route("/auth/callback/oidc", get(callback_oidc))
     .route("/auth/callback/github", get(callback_github))
     .route("/auth/logout", post(logout))
@@ -34,18 +42,20 @@ pub async fn auth_middleware(
 ) -> Result<Response, StatusCode> {
   let path = req.uri().path();
 
-  // Exclude paths that don't require authentication.
+  // 1. Exclude paths that don't require authentication.
   if
     path == "/" ||
     path.starts_with("/auth/") ||
     path == "/logout" ||
     path.starts_with("/swagger-ui/") ||
+    path.starts_with("/static/") ||
+    path.starts_with("/healthz/") ||
     path.starts_with("/public/")
   {
     return Ok(next.run(req).await);
   }
 
-  // Verify for bearer access token.
+  // 2. Verify for bearer token.
   if let Some(auth_header) = req.headers().get("Authorization") {
     if let std::result::Result::Ok(auth_str) = auth_header.to_str() {
       if auth_str.starts_with("Bearer ") {
@@ -60,20 +70,33 @@ pub async fn auth_middleware(
 }
 
 async fn validate_token(state: &AppState, ak: &str) -> bool {
-  // 1. Verify whether the access token is valid.
-  // TODO
-
-  // 2. Verify whether the access token is in the cancelled blacklist.
-  let cache = state.string_cache.cache(&state.config);
-  //let handler = AuthHandler::new(state);
-  match cache.get(AuthHandler::build_logout_blacklist_key(ak)).await {
-    std::result::Result::Ok(_) => {
-      tracing::warn!("Invalid the ak for {}", ak);
-      false
+  // 1. Verify the token is valid.
+  match utils::auths::validate_jwt(&state.config.auth, ak) {
+    std::result::Result::Ok(claims) => {
+      let exp = time::OffsetDateTime::from_unix_timestamp(claims.exp as i64).unwrap();
+      let now = time::OffsetDateTime::now_utc();
+      if exp > now {
+        // 2. Verify whether the token is in the cancelled blacklist.
+        let cache = state.string_cache.cache(&state.config);
+        //let handler = AuthHandler::new(state);
+        match cache.get(AuthHandler::build_logout_blacklist_key(ak)).await {
+          std::result::Result::Ok(_) => {
+            tracing::warn!("Invalid the token because in blacklist for {}", ak);
+            false
+          }
+          Err(_) => {
+            tracing::debug!("Valid the token because not in blacklist for {}", ak);
+            true
+          }
+        }
+      } else {
+        tracing::debug!("Valid the token for {}", ak);
+        false
+      }
     }
     Err(_) => {
-      tracing::debug!("Valid the ak: {}", ak);
-      true
+      tracing::warn!("Invalid the token because expired for {}", ak);
+      false
     }
   }
 }
@@ -84,13 +107,26 @@ async fn validate_token(state: &AppState, ak: &str) -> bool {
   responses((status = 200, description = "Login for OIDC.")),
   tag = ""
 )]
-pub async fn login_oidc(State(state): State<AppState>) -> impl IntoResponse {
+pub async fn connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
   match &state.oidc_client {
     Some(client) => {
-      let (auth_url, _) = client
-        .authorize_url(oauth2::CsrfToken::new_random)
-        .add_scope(Scope::new(state.config.server.auth.oidc.scope.clone().unwrap()))
+      let (auth_url, csrf_token, nonce) = client
+        .authorize_url(
+          CoreAuthenticationFlow::AuthorizationCode,
+          CsrfToken::new_random,
+          Nonce::new_random
+        )
+        .add_scope(Scope::new(state.config.auth.oidc.scope.clone().unwrap()))
         .url();
+
+      // TODO: 例如存储 csrf_token 和 nonce 以供后续安全校验使用
+      tracing::debug!(
+        "Connecting to OIDC url: {}, csrf: {:?}, nonce: {:?}",
+        auth_url.as_str(),
+        csrf_token,
+        nonce
+      );
+
       Ok(Redirect::to(auth_url.as_str()))
     }
     None => Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -103,12 +139,12 @@ pub async fn login_oidc(State(state): State<AppState>) -> impl IntoResponse {
   responses((status = 200, description = "Login for Github.")),
   tag = ""
 )]
-pub async fn login_github(State(state): State<AppState>) -> impl IntoResponse {
+pub async fn connect_github(State(state): State<AppState>) -> impl IntoResponse {
   match &state.github_client {
     Some(client) => {
       let (auth_url, _) = client
         .authorize_url(oauth2::CsrfToken::new_random)
-        .add_scope(Scope::new(state.config.server.auth.github.scope.clone().unwrap()))
+        .add_scope(Scope::new(state.config.auth.github.scope.clone().unwrap()))
         .url();
       Ok(Redirect::to(auth_url.as_str()))
     }
@@ -124,34 +160,74 @@ pub async fn login_github(State(state): State<AppState>) -> impl IntoResponse {
 )]
 pub async fn callback_oidc(
   State(state): State<AppState>,
-  Query(param): Query<CallbackGithubRequest>
+  Query(param): Query<CallbackOidcRequest>
 ) -> impl IntoResponse {
   match &state.oidc_client {
     Some(client) => {
-      let token_result = client
-        .exchange_code(AuthorizationCode::new(param.code.unwrap()))
-        .request_async(oauth2::reqwest::async_http_client).await;
+      let code = match param.code {
+        Some(code) => code,
+        None => {
+          return (
+            StatusCode::BAD_REQUEST,
+            "Missing authorization code".to_string(),
+          ).into_response();
+        }
+      };
+
+      let token_result: Result<CoreTokenResponse, _> = client
+        .exchange_code(AuthorizationCode::new(code))
+        .request_async(async_http_client).await;
 
       match token_result {
-        Ok(token) => {
-          // 例如，可以将token存储在session中，然后重定向到主页
-          // 这里只是一个示例，你可能需要根据你的需求进行调整
+        Ok(token_response) => {
+          let id_token = token_response
+            .extra_fields()
+            .id_token()
+            .ok_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, "No ID token found".to_string()))
+            .unwrap();
+
+          let claims: &openidconnect::IdTokenClaims<openidconnect::EmptyAdditionalClaims, openidconnect::core::CoreGenderClaim> = match
+            id_token.claims(&client.id_token_verifier(), &openidconnect::Nonce::new_random())
+          {
+            Ok(claims) => claims,
+            Err(e) => {
+              return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to verify ID token: {:?}", e),
+              ).into_response();
+            }
+          };
+
+          let access_token = token_response.access_token().clone();
+
+          let userinfo_request = match client.user_info(access_token, None) {
+            Ok(req) => req,
+            Err(e) => {
+              return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create user info request: {:?}", e),
+              ).into_response();
+            }
+          };
+
+          let userinfo: CoreUserInfoClaims = userinfo_request
+            .request_async(async_http_client).await
+            .map_err(|e| (
+              StatusCode::INTERNAL_SERVER_ERROR,
+              format!("Failed to get user info: {:?}", e),
+            ))
+            .unwrap();
+
+          println!("User subject: {}", claims.subject().as_str());
+          println!("User name: {:?}", userinfo.name());
+          println!("User email: {:?}", userinfo.email());
+
           Redirect::to("/").into_response()
         }
         Err(e) => {
-          let errmsg = match e {
-            oauth2::RequestTokenError::ServerResponse(resp) => {
-              resp
-                .error_description()
-                .map(|s| s.as_str())
-                .unwrap_or_default()
-                .to_string()
-            }
-            _ => "Unknown error".to_string(),
-          };
           (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to exchange token: {:?}", errmsg),
+            format!("Failed to exchange token: {:?}", e),
           ).into_response()
         }
       }
@@ -179,7 +255,7 @@ pub async fn callback_github(
 
       match token_result {
         Ok(token) => {
-          let url = state.config.server.auth.github.user_info_url
+          let url = state.config.auth.github.user_info_url
             .clone()
             .expect("Missing 'user_info_url' configure");
 

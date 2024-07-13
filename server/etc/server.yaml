@@ -2,37 +2,24 @@ server:
   bind: "0.0.0.0:8888"
   mgmt-bind: "0.0.0.0:11700"
   thread-max-pool: 32
-  cors:
-    hosts: ["*"]
-    headers: ["*"]
-    methods: ["*"]
-  auth:
-    oidc:
-      enabled: true
-      client-id: ""
-      client-secret: ""
-      discovery-endpoint: "https://iam.wl4g.com/realms/master/.well-known/openid-configuration"
-      redirect-url: "http://localhost:8888/auth/callback/oidc"
-      scope: "openid profile email"
-    # see:https://github.com/settings/developers
-    # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
-    github:
-      enabled: true
-      client-id: "Ov23li21SkhoBFIQaGPD"
-      client-secret: "374b9761778707170e6538932974ea940b45972f"
-      auth-url: "https://github.com/login/oauth/authorize"
-      token-url: "https://github.com/login/oauth/access_token"
-      redirect-url: "http://localhost:8888/auth/callback/github"
-      # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
-      scope: "user"
-      user-info-url: "https://api.github.com/user"
+  #cors:
+  #  hosts: ["*"]
+  #  headers: ["*"]
+  #  methods: ["*"]
 
 logging:
-  file: /tmp/excalidraw-revezone/server.log
+  file: /tmp/revezone/server.log
   pattern: "xxx" # e.g: "[yyyy-MM-dd T HH:mm:ss.SSS] [INFO] - users.rs:34 : Add to user jack01 ..."
 
+db:
+  type: SQLite # Mongo|SQLite
+  sqlite:
+    dir: /tmp/revezone/
+  mongo:
+    url: mongodb://127.0.0.1:27017/revezone
+
 cache:
-  provider: Memory
+  provider: Memory # Memory|Redis
   memory:
     initial-capacity: 32
     max-capacity: 65535
@@ -40,14 +27,38 @@ cache:
     eviction-policy: LRU
   redis:
     nodes: ["redis://127.0.0.1:6379"]
-    #username: "default"
-    #password: "bitnami"
+    #username: "" # eg: "default"
+    #password: "" # eg: "bitnami"
     connection-timeout: 3000
     response-timeout: 6000
     retries: 1
     max-retry-wait: 65536
     min-retry-wait: 1280
     read-from-replica: true
+
+auth:
+  jwt-validity-ak: 3600000
+  jwt-validity-rk: 86400000
+  jwt-secret: "changeit"
+  oidc:
+    enabled: false
+    client-id: "revezone-wl4g"
+    client-secret: "ZySKr09pTaG5xpyfPI28ARMp4MV3GXxB"
+    issue-url: "https://iam.example.com/realms/master"
+    redirect-url: "http://localhost:8888/auth/callback/oidc"
+    scope: "openid profile email"
+  # see:https://github.com/settings/developers
+  # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+  github:
+    enabled: true
+    client-id: "Ov23li21SkhoBFIQaGPD"
+    client-secret: "374b9761778707170e6538932974ea940b45972f"
+    auth-url: "https://github.com/login/oauth/authorize"
+    token-url: "https://github.com/login/oauth/access_token"
+    redirect-url: "http://localhost:8888/auth/callback/github"
+    # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+    scope: "user"
+    user-info-url: "https://api.github.com/user"
 
 swagger:
   enabled: true
@@ -63,9 +74,4 @@ swagger:
   swagger_ui_path: "/swagger-ui"
   swagger_openapi_url: "/swagger-ui/openapi.json"
 
-db:
-  type: sqlite # mongo|sqlite
-  sqlite:
-    dir: /tmp/excalidraw-revezone/
-  mongo:
-    url: xxxx
+

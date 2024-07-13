@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use anyhow::Ok;
 use serde::Deserialize;
 // use std::fs::File;
@@ -8,6 +10,7 @@ use config::Config;
 #[derive(Debug, Deserialize, Clone)]
 pub struct ApiConfig {
   pub server: ServerConfig,
+  pub auth: AuthConfig,
   pub logging: LoggingConfig,
   pub cache: CacheConfig,
   pub swagger: SwaggerConfig,
@@ -21,8 +24,8 @@ pub struct ServerConfig {
   pub mgmt_bind: String,
   #[serde(rename = "thread-max-pool")]
   pub thread_max_pool: u32,
+  #[serde(default = "CorsConfig::default")]
   pub cors: CorsConfig,
-  pub auth: AuthConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -33,52 +36,34 @@ pub struct CorsConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct AuthConfig {
-  pub oidc: OidcConfig,
-  pub github: GithubConfig,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct OidcConfig {
-  pub enabled: Option<bool>,
-  #[serde(rename = "client-id")]
-  pub client_id: Option<String>,
-  #[serde(rename = "client-secret")]
-  pub client_secret: Option<String>,
-  #[serde(rename = "discovery-endpoint")]
-  pub discovery_endpoint: Option<String>,
-  #[serde(rename = "redirect-url")]
-  pub redirect_url: Option<String>,
-  #[serde(rename = "scope")]
-  pub scope: Option<String>,
-}
-
-// see:https://github.com/settings/developers
-// see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
-#[derive(Debug, Deserialize, Clone)]
-pub struct GithubConfig {
-  pub enabled: Option<bool>,
-  #[serde(rename = "client-id")]
-  pub client_id: Option<String>,
-  #[serde(rename = "client-secret")]
-  pub client_secret: Option<String>,
-  #[serde(rename = "auth-url")]
-  pub auth_url: Option<String>,
-  #[serde(rename = "token-url")]
-  pub token_url: Option<String>,
-  #[serde(rename = "redirect-url")]
-  pub redirect_url: Option<String>,
-  // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
-  #[serde(rename = "scope")]
-  pub scope: Option<String>,
-  #[serde(rename = "user-info-url")]
-  pub user_info_url: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
 pub struct LoggingConfig {
   pub file: String,
   pub pattern: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct DbConfig {
+  #[serde(rename = "type")]
+  pub db_type: DbType,
+  pub sqlite: SqliteConfig,
+  pub mongo: MongoConfig,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum DbType {
+  Sqlite,
+  Mongo,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct SqliteConfig {
+  pub dir: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MongoConfig {
+  pub url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -124,6 +109,69 @@ pub struct RedisConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct AuthConfig {
+  #[serde(rename = "jwt-validity-ak")]
+  pub jwt_validity_ak: Option<i64>,
+  #[serde(rename = "jwt-validity-rk")]
+  pub jwt_validity_rk: Option<i64>,
+  #[serde(rename = "jwt-secret")]
+  pub jwt_secret: Option<String>,
+  pub oidc: OidcConfig,
+  pub github: GithubConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OidcConfig {
+  pub enabled: Option<bool>,
+  #[serde(rename = "client-id")]
+  pub client_id: Option<String>,
+  #[serde(rename = "client-secret")]
+  pub client_secret: Option<String>,
+  #[serde(rename = "issue-url")]
+  pub issue_url: Option<String>,
+  #[serde(rename = "redirect-url")]
+  pub redirect_url: Option<String>,
+  #[serde(rename = "scope")]
+  pub scope: Option<String>,
+}
+
+// see:https://github.com/settings/developers
+// see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+#[derive(Debug, Deserialize, Clone)]
+pub struct OAuth2Config {
+  pub enabled: Option<bool>,
+  #[serde(rename = "client-id")]
+  pub client_id: Option<String>,
+  #[serde(rename = "client-secret")]
+  pub client_secret: Option<String>,
+  #[serde(rename = "auth-url")]
+  pub auth_url: Option<String>,
+  #[serde(rename = "token-url")]
+  pub token_url: Option<String>,
+  #[serde(rename = "redirect-url")]
+  pub redirect_url: Option<String>,
+  // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
+  #[serde(rename = "scope")]
+  pub scope: Option<String>,
+  #[serde(rename = "user-info-url")]
+  pub user_info_url: Option<String>,
+}
+
+// see:https://github.com/settings/developers
+// see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+#[derive(Debug, Deserialize, Clone)]
+pub struct GithubConfig(OAuth2Config);
+
+// Copy all OAuth2Config functions to GithubConfig.
+impl Deref for GithubConfig {
+  type Target = OAuth2Config;
+
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct SwaggerConfig {
   pub enabled: bool,
   // pub title: String,
@@ -140,35 +188,11 @@ pub struct SwaggerConfig {
   pub swagger_openapi_url: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct DbConfig {
-  #[serde(rename = "type")]
-  pub db_type: DbType,
-  pub sqlite: SqliteConfig,
-  pub mongo: MongoConfig,
-}
-
-#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum DbType {
-  Sqlite,
-  Mongo,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct SqliteConfig {
-  pub dir: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct MongoConfig {
-  pub url: String,
-}
-
 impl ApiConfig {
   pub fn default() -> ApiConfig {
     ApiConfig {
       server: ServerConfig::default(),
+      auth: AuthConfig::default(),
       logging: LoggingConfig::default(),
       cache: CacheConfig::default(),
       swagger: SwaggerConfig::default(),
@@ -238,7 +262,6 @@ impl Default for ServerConfig {
       mgmt_bind: "0.0.0.0:11700".to_string(),
       thread_max_pool: 4,
       cors: CorsConfig::default(),
-      auth: AuthConfig::default(),
     }
   }
 }
@@ -253,11 +276,37 @@ impl Default for CorsConfig {
   }
 }
 
-impl Default for AuthConfig {
+impl Default for LoggingConfig {
   fn default() -> Self {
-    AuthConfig {
-      oidc: OidcConfig::default(),
-      github: GithubConfig::default(),
+    LoggingConfig {
+      file: "info".to_string(),
+      pattern: "pretty".to_string(),
+    }
+  }
+}
+
+impl Default for DbConfig {
+  fn default() -> Self {
+    DbConfig {
+      db_type: DbType::Sqlite,
+      sqlite: SqliteConfig::default(),
+      mongo: MongoConfig::default(),
+    }
+  }
+}
+
+impl Default for SqliteConfig {
+  fn default() -> Self {
+    SqliteConfig {
+      dir: "/tmp/revezone_db".to_string(),
+    }
+  }
+}
+
+impl Default for MongoConfig {
+  fn default() -> Self {
+    MongoConfig {
+      url: "mongodb://localhost:27017".to_string(),
     }
   }
 }
@@ -268,16 +317,16 @@ impl Default for OidcConfig {
       enabled: Some(false),
       client_id: None,
       client_secret: None,
-      discovery_endpoint: None,
+      issue_url: None,
       redirect_url: None,
       scope: Some("openid profile email".to_string()),
     }
   }
 }
 
-impl Default for GithubConfig {
+impl Default for OAuth2Config {
   fn default() -> Self {
-    GithubConfig {
+    OAuth2Config {
       enabled: Some(false),
       client_id: None,
       client_secret: None,
@@ -293,12 +342,10 @@ impl Default for GithubConfig {
   }
 }
 
-impl Default for LoggingConfig {
+impl Default for GithubConfig {
   fn default() -> Self {
-    LoggingConfig {
-      file: "info".to_string(),
-      pattern: "pretty".to_string(),
-    }
+    // Beautifully impls for like java extends.
+    GithubConfig(OAuth2Config::default())
   }
 }
 
@@ -339,6 +386,18 @@ impl Default for RedisConfig {
   }
 }
 
+impl Default for AuthConfig {
+  fn default() -> Self {
+    AuthConfig {
+      jwt_validity_ak: Some(3600_000),
+      jwt_validity_rk: Some(86400_000),
+      jwt_secret: Some("changeit".to_string()),
+      oidc: OidcConfig::default(),
+      github: GithubConfig::default(),
+    }
+  }
+}
+
 impl Default for SwaggerConfig {
   fn default() -> Self {
     SwaggerConfig {
@@ -355,32 +414,6 @@ impl Default for SwaggerConfig {
       // //security_definitions: vec![],
       swagger_ui_path: "/swagger-ui".to_string(),
       swagger_openapi_url: "/api-docs/openapi.json".to_string(),
-    }
-  }
-}
-
-impl Default for DbConfig {
-  fn default() -> Self {
-    DbConfig {
-      db_type: DbType::Sqlite,
-      sqlite: SqliteConfig::default(),
-      mongo: MongoConfig::default(),
-    }
-  }
-}
-
-impl Default for SqliteConfig {
-  fn default() -> Self {
-    SqliteConfig {
-      dir: "/tmp/revezone_db".to_string(),
-    }
-  }
-}
-
-impl Default for MongoConfig {
-  fn default() -> Self {
-    MongoConfig {
-      url: "mongodb://localhost:27017".to_string(),
     }
   }
 }
