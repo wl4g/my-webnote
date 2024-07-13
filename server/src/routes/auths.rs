@@ -1,3 +1,5 @@
+use std::result::Result;
+use std::result::Result::Ok;
 use axum::{
   body::Body,
   extract::{ Query, State },
@@ -43,16 +45,23 @@ pub async fn auth_middleware(
   let path = req.uri().path();
 
   // 1. Exclude paths that don't require authentication.
+  // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.
+  // The root path is also excluded by default.
   if
     path == "/" ||
-    path.starts_with("/auth/") ||
-    path == "/logout" ||
-    path.starts_with("/swagger-ui/") ||
-    path.starts_with("/static/") ||
-    path.starts_with("/healthz/") ||
-    path.starts_with("/public/")
+    path.starts_with("/auth/connect/") ||
+    path.starts_with("/auth/callback/") ||
+    path.starts_with("/auth/logout")
   {
     return Ok(next.run(req).await);
+  }
+  // 1.2 According to the configuration of anonymous authentication path.
+  let anonymous_paths: &Option<Vec<String>> = &state.config.auth.anonymous_paths;
+  if let Some(paths) = anonymous_paths {
+    if paths.iter().any(|p| path.starts_with(p)) {
+      // If it is an anonymous path, pass it directly.
+      return Ok(next.run(req).await);
+    }
   }
 
   // 2. Verify for bearer token.
@@ -189,25 +198,29 @@ pub async fn callback_oidc(
 
       match token_result {
         Ok(token_response) => {
-          let id_token = token_response
-            .extra_fields()
-            .id_token()
-            .ok_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, "No ID token found".to_string()))
-            .unwrap();
+          let id_token = match token_response.extra_fields().id_token() {
+            Some(token) => token,
+            None => {
+              return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "No ID token found".to_string(),
+              ).into_response();
+            }
+          };
 
-          // TODO: using dependency injection to get the handler
           let handler = AuthHandler::new(&state);
-          // TODO: get sid from cookie.
-          let nonce_string = handler
-            .handle_auth_get_nonce("sid").await
-            .unwrap()
-            .expect("Could not get oidc authenticating nonce");
+          let nonce_string = match handler.handle_auth_get_nonce("sid").await {
+            Ok(Some(nonce)) => nonce,
+            _ => {
+              return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Could not get oidc authenticating nonce".to_string(),
+              ).into_response();
+            }
+          };
           let nonce = openidconnect::Nonce::new(nonce_string);
 
-          let claims: &openidconnect::IdTokenClaims<
-            openidconnect::EmptyAdditionalClaims,
-            openidconnect::core::CoreGenderClaim
-          > = match id_token.claims(&client.id_token_verifier(), &nonce) {
+          let claims = match id_token.claims(&client.id_token_verifier(), &nonce) {
             Ok(claims) => claims,
             Err(e) => {
               return (
@@ -218,7 +231,6 @@ pub async fn callback_oidc(
           };
 
           let access_token = token_response.access_token().clone();
-
           let userinfo_request = match client.user_info(access_token, None) {
             Ok(req) => req,
             Err(e) => {
@@ -229,21 +241,37 @@ pub async fn callback_oidc(
             }
           };
 
-          let userinfo: CoreUserInfoClaims = userinfo_request
-            .request_async(async_http_client).await
-            .map_err(|e| (
-              StatusCode::INTERNAL_SERVER_ERROR,
-              format!("Failed to get user info: {:?}", e),
-            ))
-            .unwrap();
+          let userinfo: CoreUserInfoClaims = match
+            userinfo_request.request_async(async_http_client).await
+          {
+            Ok(info) => info,
+            Err(e) => {
+              return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get user info: {:?}", e),
+              ).into_response();
+            }
+          };
 
-          println!("User subject: {}", claims.subject().as_str());
-          println!("User name: {:?}", userinfo.name());
-          println!("User email: {:?}", userinfo.email());
+          tracing::debug!("User subject: {}", claims.subject().as_str());
+          tracing::debug!("User name: {:?}", userinfo.name());
+          tracing::debug!("User email: {:?}", userinfo.email());
 
-          AuthHandler::new(&state).handle_auth_callback_oidc(userinfo);
-
-          Redirect::to("/").into_response()
+          let result = match AuthHandler::new(&state).handle_auth_callback_oidc(userinfo).await {
+            Ok(c) => {
+              if c > 0 {
+                Redirect::to("/").into_response()
+              } else {
+                (
+                  StatusCode::INTERNAL_SERVER_ERROR,
+                  "Failed to bind user".to_string(),
+                ).into_response()
+              }
+            }
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+          };
+          result
+          // Redirect::to("/").into_response()
         }
         Err(e) => {
           (

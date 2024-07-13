@@ -9,12 +9,18 @@ use config::Config;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ApiConfig {
+  #[serde(default = "ServerConfig::default")]
   pub server: ServerConfig,
-  pub auth: AuthConfig,
+  #[serde(default = "LoggingConfig::default")]
   pub logging: LoggingConfig,
-  pub cache: CacheConfig,
-  pub swagger: SwaggerConfig,
+  #[serde(default = "DbConfig::default")]
   pub db: DbConfig,
+  #[serde(default = "CacheConfig::default")]
+  pub cache: CacheConfig,
+  #[serde(default = "AuthConfig::default")]
+  pub auth: AuthConfig,
+  #[serde(default = "SwaggerConfig::default")]
+  pub swagger: SwaggerConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -110,6 +116,8 @@ pub struct RedisConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AuthConfig {
+  #[serde(rename = "anonymous-paths")]
+  pub anonymous_paths: Option<Vec<String>>,
   #[serde(rename = "jwt-validity-ak")]
   pub jwt_validity_ak: Option<i64>,
   #[serde(rename = "jwt-validity-rk")]
@@ -389,6 +397,7 @@ impl Default for RedisConfig {
 impl Default for AuthConfig {
   fn default() -> Self {
     AuthConfig {
+      anonymous_paths: None,
       jwt_validity_ak: Some(3600_000),
       jwt_validity_rk: Some(86400_000),
       jwt_secret: Some("changeit".to_string()),

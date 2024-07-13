@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow::{ Error, Ok };
 use crate::context::state::AppState;
@@ -19,7 +19,7 @@ impl<'a> UserHandler<'a> {
     oidc_claims_sub: Option<String>,
     github_claims_sub: Option<String>,
     google_claims_sub: Option<String>
-  ) -> Result<Option<Rc<User>>, Error> {
+  ) -> Result<Option<Arc<User>>, Error> {
     let param = QueryUserRequest {
       page: PageRequest::default(),
       name: None,
@@ -31,7 +31,9 @@ impl<'a> UserHandler<'a> {
     };
     let res = self.find(param).await.unwrap().1;
     if res.len() > 0 {
-      let user = Rc::new(res.get(0).unwrap().clone());
+      // Notice: Fuck, I don't know why?
+      // 如果这里使用 Rc 包装而不是 Arc，那么在 routes/auths.rs中 fn init() { Router::new().route("/auth/callback/github", get(callback_github)) } 会报错泛型参数匹配错误.
+      let user = Arc::new(res.get(0).unwrap().clone());
       return Ok(Some(user));
     } else {
       Ok(None)

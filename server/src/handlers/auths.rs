@@ -76,7 +76,7 @@ impl<'a> AuthHandler<'a> {
     let handler = UserHandler::new(self.state);
 
     // 1. Get user by oidc user_id
-    let user = handler.get(None, Some(oidc_user_id.to_string()), None).await.unwrap();
+    let user = handler.get(Some(oidc_user_id.to_string()), None, None).await.unwrap();
 
     // 2. If user exists, update user github subject ID.
     let save_param;

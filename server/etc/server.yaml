@@ -37,6 +37,11 @@ cache:
     read-from-replica: true
 
 auth:
+  anonymous-paths:
+    - "/swagger-ui/"
+    - "/healthz/"
+    - "/public/"
+    - "/static/"
   jwt-validity-ak: 3600000
   jwt-validity-rk: 86400000
   jwt-secret: "changeit"
