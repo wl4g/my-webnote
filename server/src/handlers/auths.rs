@@ -1,6 +1,8 @@
 use std::{ collections::HashMap, sync::Arc };
 
 use axum::response::{ IntoResponse, Redirect };
+use hyper::header::HeaderValue;
+
 use lazy_static::lazy_static;
 use anyhow::{ Error, Ok };
 use chrono::Utc;
@@ -171,9 +173,29 @@ impl<'a> AuthHandler<'a> {
   ) -> hyper::Response<axum::body::Body> {
     // TODO: 附加更多自定义 JWT 信息
     let extra_claims = HashMap::new();
-    let ak = utils::auths::create_jwt(config, user_id, false, extra_claims);
-    let headers = utils::webs::create_cookie_headers("_ak", &ak);
-    (headers, Redirect::to("/")).into_response()
+    let ak = utils::auths::create_jwt(config, user_id, false, Some(extra_claims));
+    let rk = utils::auths::create_jwt(config, user_id, true, None);
+
+    // let mut headers = header::HeaderMap::new();
+    // utils::webs::add_cookie("_ak", &ak, &mut headers);
+    // println!("==={:?}", headers);
+    // utils::webs::add_cookie("_rk", &rk, &mut headers);
+    // println!("==={:?}", headers);
+    // (headers, Redirect::to("/")).into_response()
+
+    let mut response = Redirect::to("/").into_response();
+
+    let ak_cookie = format!("_ak={}; Path=/; HttpOnly; SameSite=Strict", ak);
+    let rk_cookie = format!("_rk={}; Path=/; HttpOnly; SameSite=Strict", rk);
+
+    response
+      .headers_mut()
+      .append(hyper::header::SET_COOKIE, HeaderValue::from_str(&ak_cookie).unwrap());
+    response
+      .headers_mut()
+      .append(hyper::header::SET_COOKIE, HeaderValue::from_str(&rk_cookie).unwrap());
+
+    response
   }
 
   pub async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error> {

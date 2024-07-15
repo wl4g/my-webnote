@@ -10,14 +10,14 @@ use crate::config::config_api::ApiConfig;
 pub struct Claims {
   pub sub: String,
   pub exp: usize,
-  pub ext: HashMap<String, String>,
+  pub ext: Option<HashMap<String, String>>,
 }
 
 pub fn create_jwt(
   config: &Arc<ApiConfig>,
   user_id: &str,
   is_refresh: bool,
-  extra_claims: HashMap<String, String>
+  extra_claims: Option<HashMap<String, String>>
 ) -> String {
   let expiration = Utc::now()
     .checked_add_signed(

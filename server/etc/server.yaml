@@ -45,7 +45,7 @@ auth:
     - "/healthz/**"
     - "/public/**"
     - "/static/**"
-    - "/sys/**" # for dev only
+    # - "/sys/**" # for dev only
   jwt-validity-ak: 3600000
   jwt-validity-rk: 86400000
   jwt-secret: "changeit"

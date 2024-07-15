@@ -75,11 +75,28 @@ pub async fn auth_middleware(
 
   // 2. Verify for bearer token.
   if let Some(auth_header) = req.headers().get("Authorization") {
+    // with Header
     if let std::result::Result::Ok(auth_str) = auth_header.to_str() {
       if auth_str.starts_with("Bearer ") {
-        if validate_token(&state, &auth_str[7..]).await {
+        let ak = &auth_str[7..];
+        if validate_token(&state, ak).await {
           return Ok(next.run(req).await);
         }
+      }
+    }
+  } else {
+    // with Cookie
+    let ak = req
+      .headers()
+      .get("Cookie")
+      .map(|c| {
+        let cookie_str = String::from_utf8(c.as_bytes().to_vec()).unwrap();
+        utils::webs::get_cookie_from_str(cookie_str.as_str(), "_ak")
+      })
+      .unwrap_or(None);
+    if ak.is_some() {
+      if validate_token(&state, ak.unwrap().as_str()).await {
+        return Ok(next.run(req).await);
       }
     }
   }
@@ -97,9 +114,9 @@ async fn validate_token(state: &AppState, ak: &str) -> bool {
         // 2. Verify whether the token is in the cancelled blacklist.
         let cache = state.string_cache.cache(&state.config);
         match cache.get(AuthHandler::build_logout_blacklist_key(ak)).await {
-          std::result::Result::Ok(_) => {
+          std::result::Result::Ok(logout) => {
             tracing::warn!("Invalid the token because in blacklist for {}", ak);
-            false
+            logout.is_none()
           }
           Err(_) => {
             tracing::debug!("Valid the token because not in blacklist for {}", ak);
