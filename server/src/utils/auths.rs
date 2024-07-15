@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::{ collections::HashMap, sync::Arc };
 
 use chrono::{ Duration, Utc };
 use jsonwebtoken::{ decode, encode, DecodingKey, EncodingKey, Header, Validation };
 use serde::{ Deserialize, Serialize };
 
-use crate::config::config_api::AuthProperties;
+use crate::config::config_api::ApiConfig;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
@@ -14,7 +14,7 @@ pub struct Claims {
 }
 
 pub fn create_jwt(
-  config: &AuthProperties,
+  config: &Arc<ApiConfig>,
   user_id: &str,
   is_refresh: bool,
   extra_claims: HashMap<String, String>
@@ -23,9 +23,9 @@ pub fn create_jwt(
     .checked_add_signed(
       Duration::milliseconds(
         if is_refresh {
-          config.jwt_validity_rk.unwrap()
+          config.auth.jwt_validity_rk.unwrap()
         } else {
-          config.jwt_validity_ak.unwrap()
+          config.auth.jwt_validity_ak.unwrap()
         }
       )
     )
@@ -41,18 +41,18 @@ pub fn create_jwt(
   encode(
     &Header::default(),
     &claims,
-    &EncodingKey::from_secret(config.jwt_secret.to_owned().unwrap().as_ref())
+    &EncodingKey::from_secret(config.auth.jwt_secret.to_owned().unwrap().as_ref())
   ).expect("failed to encode jwt")
 }
 
 pub fn validate_jwt(
-  config: &AuthProperties,
+  config: &Arc<ApiConfig>,
   token: &str
 ) -> Result<Claims, jsonwebtoken::errors::Error> {
   let validation = Validation::default();
   let token_data = decode::<Claims>(
     token,
-    &DecodingKey::from_secret(config.jwt_secret.to_owned().unwrap().as_ref()),
+    &DecodingKey::from_secret(config.auth.jwt_secret.to_owned().unwrap().as_ref()),
     &validation
   )?;
   Ok(token_data.claims)

@@ -1,10 +1,15 @@
+use std::{ collections::HashMap, sync::Arc };
+
+use axum::response::{ IntoResponse, Redirect };
 use lazy_static::lazy_static;
 use anyhow::{ Error, Ok };
 use chrono::Utc;
 use openidconnect::{ core::CoreUserInfoClaims, LanguageTag };
 use crate::{
+  config::config_api::ApiConfig,
   context::state::AppState,
   types::{ auths::{ GithubUserInfo, LogoutRequest }, users::SaveUserRequest },
+  utils,
 };
 
 use super::users::UserHandler;
@@ -157,6 +162,18 @@ impl<'a> AuthHandler<'a> {
     }
 
     handler.save(save_param).await
+  }
+
+  pub async fn handle_login_success(
+    &self,
+    config: &Arc<ApiConfig>,
+    user_id: &str
+  ) -> hyper::Response<axum::body::Body> {
+    // TODO: 附加更多自定义 JWT 信息
+    let extra_claims = HashMap::new();
+    let ak = utils::auths::create_jwt(config, user_id, false, extra_claims);
+    let headers = utils::webs::create_cookie_headers("_ak", &ak);
+    (headers, Redirect::to("/")).into_response()
   }
 
   pub async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error> {

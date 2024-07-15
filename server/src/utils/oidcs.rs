@@ -1,54 +1,13 @@
-use axum::{ extract::Query, response::{ IntoResponse, Redirect } };
 use openidconnect::{
-  core::{ CoreAuthenticationFlow, CoreClient, CoreProviderMetadata },
+  core::{ CoreClient, CoreProviderMetadata },
   reqwest::async_http_client,
-  AuthorizationCode,
   ClientId,
   ClientSecret,
   IssuerUrl,
-  Nonce,
   RedirectUrl,
-  Scope,
 };
-use serde::Deserialize;
-use std::env;
 
 use crate::config::config_api::OidcProperties;
-
-// async fn login() -> Redirect {
-//   let client = create_oidc_client().await.unwrap();
-
-//   let (auth_url, _csrf_token, _nonce) = client
-//     .authorize_url(
-//       CoreAuthenticationFlow::AuthorizationCode,
-//       || Nonce::new_random(),
-//       || openidconnect::CsrfToken::new_random()
-//     )
-//     .add_scope(Scope::new("openid".to_string()))
-//     .add_scope(Scope::new("profile".to_string()))
-//     .url();
-
-//   Redirect::to(auth_url.as_str())
-// }
-
-#[derive(Deserialize)]
-struct CallbackParams {
-  code: String,
-}
-
-// async fn callback(Query(params): Query<CallbackParams>) -> impl IntoResponse {
-//   let client = create_oidc_client().await.unwrap();
-
-//   let token_response = client
-//     .exchange_code(AuthorizationCode::new(params.code))
-//     .request_async(async_http_client).await
-//     .unwrap();
-
-//   let id_token = token_response.id_token().unwrap();
-//   let claims = id_token.claims(&client.id_token_verifier(), &Nonce::new_random()).unwrap();
-
-//   format!("Logged in as: {}", claims.subject().as_str())
-// }
 
 /*
 curl 'https://keycloak.example.com/realms/master/.well-known/openid-configuration'

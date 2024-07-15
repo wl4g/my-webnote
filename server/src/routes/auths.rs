@@ -3,7 +3,7 @@ use std::result::Result::Ok;
 use axum::{
   body::Body,
   extract::{ Query, State },
-  http::{ Request, StatusCode },
+  http::{ Request, StatusCode, header },
   middleware::Next,
   response::{ IntoResponse, Redirect, Response },
   routing::{ get, post },
@@ -89,14 +89,13 @@ pub async fn auth_middleware(
 
 async fn validate_token(state: &AppState, ak: &str) -> bool {
   // 1. Verify the token is valid.
-  match utils::auths::validate_jwt(&state.config.auth, ak) {
+  match utils::auths::validate_jwt(&state.config, ak) {
     std::result::Result::Ok(claims) => {
       let exp = time::OffsetDateTime::from_unix_timestamp(claims.exp as i64).unwrap();
       let now = time::OffsetDateTime::now_utc();
       if exp > now {
         // 2. Verify whether the token is in the cancelled blacklist.
         let cache = state.string_cache.cache(&state.config);
-        //let handler = AuthHandler::new(state);
         match cache.get(AuthHandler::build_logout_blacklist_key(ak)).await {
           std::result::Result::Ok(_) => {
             tracing::warn!("Invalid the token because in blacklist for {}", ak);
@@ -147,16 +146,20 @@ pub async fn connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
 
       // TODO: using dependency injection to get the handler
       let handler: AuthHandler = AuthHandler::new(&state);
-      // TODO: generate sid to cookie.
-      match handler.handle_auth_create_nonce("sid", nonce.secret().to_string()).await {
-        std::result::Result::Ok(_) => { Ok(Redirect::to(auth_url.as_str())) }
+
+      match handler.handle_auth_create_nonce(csrf_token.secret(), nonce.secret().to_string()).await {
+        std::result::Result::Ok(_) => {
+          // TODO: 此基于 cookie crsf 校验 nonce 的机制仅支持浏览器环境, 若是 Android/iOS 如何设计更优雅?移动端非web其实不需要crsf?
+          let headers = utils::webs::create_cookie_headers("_csrf_token", csrf_token.secret());
+          (headers, Redirect::to(auth_url.as_str())).into_response()
+        }
         Err(e) => {
           tracing::error!("Create nonce failed: {}", e);
-          Err(StatusCode::INTERNAL_SERVER_ERROR)
+          StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
       }
     }
-    None => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
   }
 }
 
@@ -187,7 +190,8 @@ pub async fn connect_github(State(state): State<AppState>) -> impl IntoResponse 
 )]
 pub async fn callback_oidc(
   State(state): State<AppState>,
-  Query(param): Query<CallbackOidcRequest>
+  Query(param): Query<CallbackOidcRequest>,
+  headers: header::HeaderMap
 ) -> impl IntoResponse {
   match &state.oidc_client {
     Some(client) => {
@@ -217,8 +221,21 @@ pub async fn callback_oidc(
             }
           };
 
-          let handler = AuthHandler::new(&state);
-          let nonce_string = match handler.handle_auth_get_nonce("sid").await {
+          // TODO: 此基于 cookie crsf 校验 nonce 的机制仅支持浏览器环境, 若是 Android/iOS 如何设计更优雅?移动端非web其实不需要crsf?
+          let csrf_token = match utils::webs::get_cookie_from_headers("_csrf_token", headers) {
+            Some(token) => token,
+            None => {
+              return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "No CSRF token found".to_string(),
+              ).into_response();
+            }
+          };
+
+          // TODO: using dependency injection to get the handler
+          let handler: AuthHandler = AuthHandler::new(&state);
+
+          let nonce_string = match handler.handle_auth_get_nonce(csrf_token.as_str()).await {
             Ok(Some(nonce)) => nonce,
             _ => {
               return (
@@ -262,25 +279,27 @@ pub async fn callback_oidc(
             }
           };
 
-          tracing::debug!("User subject: {}", claims.subject().as_str());
+          let user_id = claims.subject().to_string();
+          tracing::debug!("User subject: {}", user_id);
           tracing::debug!("User name: {:?}", userinfo.name());
           tracing::debug!("User email: {:?}", userinfo.email());
 
-          let result = match AuthHandler::new(&state).handle_auth_callback_oidc(userinfo).await {
+          // TODO: using dependency injection to get the handler
+          let handler = AuthHandler::new(&state);
+          let result = match handler.handle_auth_callback_oidc(userinfo).await {
             Ok(c) => {
               if c > 0 {
-                Redirect::to("/").into_response()
+                handler.handle_login_success(&state.config, &user_id).await
               } else {
                 (
                   StatusCode::INTERNAL_SERVER_ERROR,
-                  "Failed to bind user".to_string(),
+                  "Failed to bind oidc user".to_string(),
                 ).into_response()
               }
             }
             Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
           };
           result
-          // Redirect::to("/").into_response()
         }
         Err(e) => {
           (
@@ -337,28 +356,26 @@ pub async fn callback_github(
           println!("Received github user info {:?}", user_info);
 
           // TODO 未知原因 github 正常返回 json，但解码失败，暂先手动解析.
-          let id = user_info["id"].to_string();
+          let user_id = user_info["id"].as_str().expect("github user id not found");
           let login = user_info["login"].to_string();
-          let github_user = GithubUserInfo::default(Some(id), Some(login));
+          let github_user = GithubUserInfo::default(Some(user_id.to_string()), Some(login));
 
-          //   let res = match AuthHandler::new(&state).handle_auth_github(github_user).await {
-          //     Ok(_) => {
-          //       // Add session id to cookie.
-          //       //   let cookie = CookieBuilder::new("_WL4G_REVEZONE_SID", "bar")
-          //       //     .max_age(time::Duration::ZERO)
-          //       //     .path("/")
-          //       //     .build();
-          //       Redirect::to("/").into_response()
-          //     }
-          //     Err(e) => { (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response() }
-          //   };
-
-          //   let res: hyper::Response<axum::body::Body> = Redirect::to("/").into_response();
-          //   res
-
-          AuthHandler::new(&state).handle_auth_callback_github(github_user);
-
-          Redirect::to("/").into_response()
+          // TODO: using dependency injection to get the handler
+          let handler = AuthHandler::new(&state);
+          let result = match handler.handle_auth_callback_github(github_user).await {
+            Ok(c) => {
+              if c > 0 {
+                handler.handle_login_success(&state.config, user_id).await
+              } else {
+                (
+                  StatusCode::INTERNAL_SERVER_ERROR,
+                  "Failed to bind github user".to_string(),
+                ).into_response()
+              }
+            }
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+          };
+          result
         }
         Err(e) => {
           let cause = match e {

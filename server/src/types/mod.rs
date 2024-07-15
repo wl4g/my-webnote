@@ -61,7 +61,9 @@ impl BaseBean {
 
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct PageRequest {
+  #[schema(example = "1")]
   pub num: Option<i32>, // page number.
+  #[schema(example = "10")]
   pub limit: Option<i32>, // The per page records count.
   // For large data of fast-queries cached condition acceleration.
   // pub cached_forward_last_min_id: Option<i64>,
@@ -79,8 +81,8 @@ impl PageRequest {
   }
   pub fn get_offset(&self) -> i32 {
     let n = self.num.unwrap_or(1);
-    if n <= 0 {
-      0
+    if n < 1 {
+      1
     } else {
       (n - 1) * self.get_limit()
     }
@@ -88,8 +90,8 @@ impl PageRequest {
 
   pub fn get_limit(&self) -> i32 {
     let l = self.limit.unwrap_or(10);
-    if l <= 0 {
-      0
+    if l < 1 {
+      1
     } else {
       l
     }
