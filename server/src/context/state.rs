@@ -9,7 +9,7 @@ use crate::cache::CacheContainer;
 // use crate::models::folders::Folder;
 // use crate::models::settings::Settings;
 use crate::types::users::User;
-use crate::config::config_api::{ ApiConfig, ApiProperties };
+use crate::config::config_api::ApiConfig;
 use crate::store::{
   RepositoryContainer,
   // documents_sqlite::DocumentSQLiteRepository,
@@ -37,13 +37,11 @@ pub struct AppState {
 }
 
 impl AppState {
-  pub async fn new(config: &Arc<ApiProperties>) -> AppState {
-    let api_config = ApiConfig::new(config);
-
-    let cache_config = &api_config.cache;
+  pub async fn new(config: &Arc<ApiConfig>) -> AppState {
+    let cache_config = &config.cache;
 
     // Build DB repositories.
-    let db_config = &api_config.db;
+    let db_config = &config.db;
     // let document_repo_container = RepositoryContainer::new(
     //   Box::new(DocumentSQLiteRepository::new()),
     //   Box::new(DocumentMongoRepository::new())
@@ -78,7 +76,7 @@ impl AppState {
 
     let app_state = AppState {
       // Notice: Arc object clone only increments the reference counter, and does not copy the actual data block.
-      config: api_config.clone(),
+      config: config.clone(),
       //document_repo: Arc::new(Mutex::new(document_repo_container)),
       //folder_repo: Arc::new(Mutex::new(folder_repo_container)),
       //settings_repo: Arc::new(Mutex::new(settings_repo_container)),

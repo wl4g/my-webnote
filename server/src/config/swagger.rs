@@ -3,7 +3,7 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::config_api::ApiProperties;
+use super::config_api::ApiConfig;
 use crate::routes::auths::{
   __path_connect_oidc,
   __path_connect_github,
@@ -67,7 +67,7 @@ use crate::types::auths::CallbackGithubRequest;
 )]
 struct ApiDoc;
 
-pub fn init_swagger(config: &Arc<ApiProperties>) -> SwaggerUi {
+pub fn init_swagger(config: &Arc<ApiConfig>) -> SwaggerUi {
   // Manual build of OpenAPI.
   // use utoipa::openapi::{ ContactBuilder, InfoBuilder, LicenseBuilder, Paths };
   // let info = InfoBuilder::new()

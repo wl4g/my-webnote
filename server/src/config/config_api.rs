@@ -1,4 +1,4 @@
-use std::{ ops::Deref, sync::Arc };
+use std::{ ops::Deref, sync::Arc, time::Duration };
 
 use anyhow::Ok;
 use globset::{ Glob, GlobSet, GlobSetBuilder };
@@ -10,6 +10,8 @@ use config::Config;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ApiProperties {
+  #[serde(rename = "service-name")]
+  pub service_name: String,
   #[serde(default = "ServerProperties::default")]
   pub server: ServerProperties,
   #[serde(default = "LoggingProperties::default")]
@@ -22,6 +24,8 @@ pub struct ApiProperties {
   pub auth: AuthProperties,
   #[serde(default = "SwaggerProperties::default")]
   pub swagger: SwaggerProperties,
+  #[serde(default = "MonitoringProperties::default")]
+  pub monitoring: MonitoringProperties,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -197,31 +201,33 @@ pub struct SwaggerProperties {
   pub swagger_openapi_url: String,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct MonitoringProperties {
+  pub enabled: bool,
+  #[serde(default = "OtelProperties::default")]
+  pub otel: OtelProperties,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OtelProperties {
+  pub endpoint: String,
+  pub protocol: String,
+  pub timeout: Option<u64>,
+  // Notice: More OTEL custom configuration use to environment: OTEL_SPAN_xxx, see to: opentelemetry_sdk::trace::config::default()
+}
+
 impl ApiProperties {
   pub fn default() -> ApiProperties {
     ApiProperties {
+      service_name: String::from("the-revezone-api"),
       server: ServerProperties::default(),
-      auth: AuthProperties::default(),
       logging: LoggingProperties::default(),
-      cache: CacheProperties::default(),
-      swagger: SwaggerProperties::default(),
       db: DbProperties::default(),
+      cache: CacheProperties::default(),
+      auth: AuthProperties::default(),
+      swagger: SwaggerProperties::default(),
+      monitoring: MonitoringProperties::default(),
     }
-  }
-
-  // see:https://github.com/mehcode/config-rs/blob/master/examples/simple/main.rs
-  pub fn parse(path: &String) -> ApiProperties {
-    // serde_yaml::from_str(&contents)?;
-
-    let config = Config::builder()
-      .add_source(config::File::with_name(path))
-      .add_source(config::Environment::with_prefix("REVEZONE"))
-      .build()
-      .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
-      .try_deserialize::<ApiProperties>()
-      .unwrap_or_else(|err| panic!("Error deserialize config: {}", err));
-
-    config
   }
 
   pub fn validate(self) -> Result<ApiProperties, anyhow::Error> {
@@ -261,6 +267,25 @@ impl ApiProperties {
     // }
 
     Ok(self)
+  }
+
+  pub fn to_use_config(&self) -> Arc<ApiConfig> {
+    ApiConfig::new(&self)
+  }
+
+  // see:https://github.com/mehcode/config-rs/blob/master/examples/simple/main.rs
+  pub fn parse(path: &String) -> ApiProperties {
+    // serde_yaml::from_str(&contents)?;
+
+    let config = Config::builder()
+      .add_source(config::File::with_name(path))
+      .add_source(config::Environment::with_prefix("REVEZONE"))
+      .build()
+      .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
+      .try_deserialize::<ApiProperties>()
+      .unwrap_or_else(|err| panic!("Error deserialize config: {}", err));
+
+    config
   }
 }
 
@@ -424,6 +449,25 @@ impl Default for SwaggerProperties {
       // //security_definitions: vec![],
       swagger_ui_path: "/swagger-ui".to_string(),
       swagger_openapi_url: "/api-docs/openapi.json".to_string(),
+    }
+  }
+}
+
+impl Default for MonitoringProperties {
+  fn default() -> Self {
+    MonitoringProperties {
+      enabled: true,
+      otel: OtelProperties::default(),
+    }
+  }
+}
+
+impl Default for OtelProperties {
+  fn default() -> Self {
+    OtelProperties {
+      endpoint: String::from("http://localhost:4317"),
+      protocol: String::from("grpc"),
+      timeout: Some(Duration::from_secs(10).as_millis() as u64),
     }
   }
 }

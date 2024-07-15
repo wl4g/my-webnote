@@ -64,15 +64,6 @@ pub async fn auth_middleware(
     return Ok(next.run(req).await);
   }
   // 1.2 According to the configuration of anonymous authentication path.
-  // 1.2.1 Use general string matching.
-  //let anonymous_paths: &Option<Vec<String>> = &state.config.auth.anonymous_paths;
-  //if let Some(paths) = anonymous_paths {
-  //  if paths.iter().any(|p| path.starts_with(p)) {
-  //    // If it is an anonymous path, pass it directly.
-  //    return Ok(next.run(req).await);
-  //  }
-  //}
-  // 1.2.2 Use glob ant matching.
   let is_anonymous = state.config.auth_anonymous_glob_matcher
     .as_ref()
     .map(|glob| glob.is_match(path))

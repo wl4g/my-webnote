@@ -36,6 +36,11 @@ axum-prometheus = "0.6.1"
 # Tracing libs.
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "env-filter"] }
+tracing-opentelemetry = "0.24.0"
+opentelemetry = { version = "0.23.0" }
+opentelemetry_sdk = { version = "0.23.0", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.16.0", features = ["grpc-tonic"] }
+opentelemetry-http = { version = "0.12.0" }
 #
 # Async core libs.
 tokio = { version = "1.38.0", features = ["full", "tracing"] }
@@ -52,6 +57,7 @@ axum = { version = "0.7.5" }
 hyper = { version = "1.3.1", features = ["full"] }
 tower = "0.4.1"
 tower-http = { version = "0.5.2", features = ["trace", "auth"] }
+tower-cookies = "0.10.0"
 globset = "0.4.14" # ant glob path patterns
 #
 # Database libs.
@@ -72,7 +78,6 @@ mac_address = "1.1.7"
 # Auth libs.
 reqwest = { version = "0.12.5", features = ["json"] }
 url = "2.3"
-tower-cookies = "0.10.0"
 oauth2 = "4.3"
 openidconnect = "3.5.0"
 jsonwebtoken = "9.3.0"

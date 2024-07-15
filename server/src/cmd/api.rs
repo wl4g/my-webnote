@@ -7,6 +7,7 @@ use clap::{ Command, Arg };
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::info;
+use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
@@ -25,9 +26,11 @@ use tokio::sync::oneshot;
 use axum::Router;
 use axum::routing::get;
 
+use crate::config::config_api::ApiConfig;
 use crate::config::config_api::ApiProperties;
 use crate::config::swagger;
 use crate::context::state::AppState;
+use crate::monitoring::otel::create_otel_tracer;
 use crate::routes::auths::init as auth_router;
 use crate::routes::auths::auth_middleware;
 // use crate::routes::documents::init as document_router;
@@ -53,7 +56,7 @@ lazy_static! {
 }
 
 #[allow(unused)]
-fn init_custom_metrics(config: &ApiProperties) {
+async fn init_custom_metrics(config: &Arc<ApiConfig>) {
   REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect("collector can be registered");
   REGISTRY.register(Box::new(MY_HTTP_REQUEST_DURATION.clone())).expect(
     "collector can be registered"
@@ -70,7 +73,7 @@ async fn metrics() -> String {
 }
 
 #[allow(unused)]
-fn init_tracing(config: &ApiProperties) {
+async fn init_tracing(config: &Arc<ApiConfig>) {
   // Intialize setup logger levels.
   let env_filter = EnvFilter::try_from_default_env()
     .unwrap_or_else(|_| "debug".into())
@@ -85,6 +88,13 @@ fn init_tracing(config: &ApiProperties) {
     .with(tracing_subscriber::fmt::layer())
     .with(env_filter);
 
+  // Create OpenTelemetry layer if tracer is available.
+  let otel_layer = create_otel_tracer(config).await.map(OpenTelemetryLayer::new);
+
+  // Add OpenTelemetry layer if available.
+  let subscriber = subscriber.with(otel_layer);
+
+  // Add console layer if feature is enabled.
   // Notice: Use optional dependencies to avoid slow automatic compilation during debugging
   // (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
   // will invalidate the compile-time cache).
@@ -96,7 +106,7 @@ fn init_tracing(config: &ApiProperties) {
 
 #[allow(unused)]
 async fn start_mgmt_server(
-  config: &ApiProperties,
+  config: &Arc<ApiConfig>,
   signal_sender: oneshot::Sender<()>
 ) -> JoinHandle<()> {
   let (prometheus_layer, _) = PrometheusMetricLayer::pair();
@@ -119,11 +129,8 @@ async fn start_mgmt_server(
 }
 
 #[allow(unused)]
-async fn start_server(config: ApiProperties) {
-  let config_arc = Arc::new(config);
-
-  let app_state = AppState::new(&config_arc).await;
-
+async fn start_server(config: &Arc<ApiConfig>) {
+  let app_state = AppState::new(&config).await;
   info!("Register API server middlewares ...");
 
   let mut app = Router::new()
@@ -135,17 +142,26 @@ async fn start_server(config: ApiProperties) {
     .merge(user_router())
     .layer(
       ServiceBuilder::new()
-        .layer(TraceLayer::new_for_http()) // Optional: add logs to tracing.
         .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth_middleware))
+        // Optional: add logs to tracing.
+        .layer(
+          TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
+            tracing::info_span!(
+                            "http_request",
+                            method = %request.method(),
+                            uri = %request.uri(),
+                        )
+          })
+        )
     )
     .with_state(app_state);
   //.route_layer(axum::Extension(app_state));
 
-  if config_arc.swagger.enabled {
-    app = app.merge(swagger::init_swagger(&config_arc));
+  if config.swagger.enabled {
+    app = app.merge(swagger::init_swagger(&config));
   }
 
-  let bind_addr = &config_arc.server.bind;
+  let bind_addr = &config.server.bind;
   info!("Starting API server on {}", bind_addr);
 
   axum
@@ -160,12 +176,16 @@ async fn root() -> &'static str {
 }
 
 fn load_config(path: String) -> Result<ApiProperties, anyhow::Error> {
-  if path.is_empty() { Ok(ApiProperties::default()) } else { Ok(ApiProperties::parse(&path).validate()?) }
+  if path.is_empty() {
+    Ok(ApiProperties::default())
+  } else {
+    Ok(ApiProperties::parse(&path).validate()?)
+  }
 }
 
 pub fn build_cli() -> Command {
   Command::new("start")
-    .about("Revezone API server.")
+    .about("Excalidraw Revezone API server.")
     // .arg_required_else_help(true) // When no args are provided, show help.
     .arg(
       Arg::new("config")
@@ -184,10 +204,11 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
     // .unwrap_or_else(|| PathBuf::from("/etc/server.yaml"))
     .unwrap_or_default();
 
-  let config = load_config(config_path.to_string_lossy().into_owned()).unwrap();
+  let cfg_props = load_config(config_path.to_string_lossy().into_owned()).unwrap();
+  let config = cfg_props.to_use_config();
 
-  init_tracing(&config);
-  init_custom_metrics(&config);
+  init_tracing(&config).await;
+  init_custom_metrics(&config).await;
 
   let (signal_sender, signal_receiver) = oneshot::channel();
   let mgmt_handle = start_mgmt_server(&config, signal_sender).await;
@@ -195,7 +216,7 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
   signal_receiver.await.expect("Management server failed to start");
   info!("Management server is ready");
 
-  start_server(config).await;
+  start_server(&config).await;
 
   mgmt_handle.await.unwrap();
 }

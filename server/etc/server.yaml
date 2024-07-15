@@ -1,3 +1,5 @@
+service-name: revezone-api
+
 server:
   bind: "0.0.0.0:8888"
   mgmt-bind: "0.0.0.0:11700"
@@ -81,4 +83,11 @@ swagger:
   swagger_ui_path: "/swagger-ui"
   swagger_openapi_url: "/swagger-ui/openapi.json"
 
-
+monitoring:
+  enabled: true
+  # Notice: More OTEL custom configuration use to environment: OTEL_SPAN_xxx
+  # see to: opentelemetry_sdk::trace::config::default()
+  otel:
+    endpoint: "http://localhost:4317"
+    protocol: grpc # Optional: http/protobuf,http/json,grpc
+    timeout: 10000
