@@ -7,7 +7,7 @@ use redis::{
 };
 use std::{ sync::Arc, time::Duration };
 
-use crate::config::config_api::RedisConfig;
+use crate::config::config_api::RedisProperties;
 
 use super::ICache;
 
@@ -16,7 +16,7 @@ pub struct StringRedisCache {
 }
 
 impl StringRedisCache {
-  pub fn new(config: &RedisConfig) -> Self {
+  pub fn new(config: &RedisProperties) -> Self {
     let mut builder = ClusterClientBuilder::new(config.nodes.clone());
     if config.username.is_some() {
       builder = builder.username(config.username.clone().unwrap());

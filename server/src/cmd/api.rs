@@ -25,7 +25,7 @@ use tokio::sync::oneshot;
 use axum::Router;
 use axum::routing::get;
 
-use crate::config::config_api::ApiConfig;
+use crate::config::config_api::ApiProperties;
 use crate::config::swagger;
 use crate::context::state::AppState;
 use crate::routes::auths::init as auth_router;
@@ -53,7 +53,7 @@ lazy_static! {
 }
 
 #[allow(unused)]
-fn init_custom_metrics(config: &ApiConfig) {
+fn init_custom_metrics(config: &ApiProperties) {
   REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect("collector can be registered");
   REGISTRY.register(Box::new(MY_HTTP_REQUEST_DURATION.clone())).expect(
     "collector can be registered"
@@ -70,7 +70,7 @@ async fn metrics() -> String {
 }
 
 #[allow(unused)]
-fn init_tracing(config: &ApiConfig) {
+fn init_tracing(config: &ApiProperties) {
   // Intialize setup logger levels.
   let env_filter = EnvFilter::try_from_default_env()
     .unwrap_or_else(|_| "debug".into())
@@ -96,7 +96,7 @@ fn init_tracing(config: &ApiConfig) {
 
 #[allow(unused)]
 async fn start_mgmt_server(
-  config: &ApiConfig,
+  config: &ApiProperties,
   signal_sender: oneshot::Sender<()>
 ) -> JoinHandle<()> {
   let (prometheus_layer, _) = PrometheusMetricLayer::pair();
@@ -119,7 +119,7 @@ async fn start_mgmt_server(
 }
 
 #[allow(unused)]
-async fn start_server(config: ApiConfig) {
+async fn start_server(config: ApiProperties) {
   let config_arc = Arc::new(config);
 
   let app_state = AppState::new(&config_arc).await;
@@ -159,8 +159,8 @@ async fn root() -> &'static str {
   "Welcome to the Rust Excalidraw Revezone API!"
 }
 
-fn load_config(path: String) -> Result<ApiConfig, anyhow::Error> {
-  if path.is_empty() { Ok(ApiConfig::default()) } else { Ok(ApiConfig::parse(&path).validate()?) }
+fn load_config(path: String) -> Result<ApiProperties, anyhow::Error> {
+  if path.is_empty() { Ok(ApiProperties::default()) } else { Ok(ApiProperties::parse(&path).validate()?) }
 }
 
 pub fn build_cli() -> Command {

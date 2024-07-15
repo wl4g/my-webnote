@@ -9,7 +9,7 @@ use crate::cache::CacheContainer;
 // use crate::models::folders::Folder;
 // use crate::models::settings::Settings;
 use crate::types::users::User;
-use crate::config::config_api::ApiConfig;
+use crate::config::config_api::{ ApiConfig, ApiProperties };
 use crate::store::{
   RepositoryContainer,
   // documents_sqlite::DocumentSQLiteRepository,
@@ -37,11 +37,13 @@ pub struct AppState {
 }
 
 impl AppState {
-  pub async fn new(config_arc: &Arc<ApiConfig>) -> AppState {
-    let cache_config = &config_arc.cache;
+  pub async fn new(config: &Arc<ApiProperties>) -> AppState {
+    let api_config = ApiConfig::new(config);
+
+    let cache_config = &api_config.cache;
 
     // Build DB repositories.
-    let db_config = &config_arc.db;
+    let db_config = &api_config.db;
     // let document_repo_container = RepositoryContainer::new(
     //   Box::new(DocumentSQLiteRepository::new()),
     //   Box::new(DocumentMongoRepository::new())
@@ -67,10 +69,8 @@ impl AppState {
 
     // Build auth clients.
     let auth_clients = (
-      utils::oidcs::create_oidc_client(&config_arc.auth.oidc).await.map(|client| Arc::new(client)),
-      utils::oauth2
-        ::create_oauth2_client(&config_arc.auth.github).await
-        .map(|client| Arc::new(client)),
+      utils::oidcs::create_oidc_client(&config.auth.oidc).await.map(|client| Arc::new(client)),
+      utils::oauth2::create_oauth2_client(&config.auth.github).await.map(|client| Arc::new(client)),
     );
 
     // Build tool http client.
@@ -78,7 +78,7 @@ impl AppState {
 
     let app_state = AppState {
       // Notice: Arc object clone only increments the reference counter, and does not copy the actual data block.
-      config: config_arc.clone(),
+      config: api_config.clone(),
       //document_repo: Arc::new(Mutex::new(document_repo_container)),
       //folder_repo: Arc::new(Mutex::new(folder_repo_container)),
       //settings_repo: Arc::new(Mutex::new(settings_repo_container)),

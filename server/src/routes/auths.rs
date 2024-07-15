@@ -27,13 +27,19 @@ use crate::{
   utils,
 };
 
+pub const AUTH_CONNECT_OIDC_URI: &str = "/auth/connect/oidc";
+pub const AUTH_CONNECT_GITHUB_URI: &str = "/auth/connect/github";
+pub const AUTH_CALLBACK_OIDC_URI: &str = "/auth/callback/oidc";
+pub const AUTH_CALLBACK_GITHUB_URI: &str = "/auth/callback/github";
+pub const AUTH_LOGOUT_URI: &str = "/auth/logout";
+
 pub fn init() -> Router<AppState> {
   Router::new()
-    .route("/auth/connect/oidc", get(connect_oidc))
-    .route("/auth/connect/github", get(connect_github))
-    .route("/auth/callback/oidc", get(callback_oidc))
-    .route("/auth/callback/github", get(callback_github))
-    .route("/auth/logout", post(logout))
+    .route(AUTH_CONNECT_OIDC_URI, get(connect_oidc))
+    .route(AUTH_CONNECT_GITHUB_URI, get(connect_github))
+    .route(AUTH_CALLBACK_OIDC_URI, get(callback_oidc))
+    .route(AUTH_CALLBACK_GITHUB_URI, get(callback_github))
+    .route(AUTH_LOGOUT_URI, post(logout))
     .layer(CookieManagerLayer::new())
 }
 
@@ -49,19 +55,31 @@ pub async fn auth_middleware(
   // The root path is also excluded by default.
   if
     path == "/" ||
-    path.starts_with("/auth/connect/") ||
-    path.starts_with("/auth/callback/") ||
-    path.starts_with("/auth/logout")
+    path == AUTH_CONNECT_OIDC_URI ||
+    path == AUTH_CONNECT_GITHUB_URI ||
+    path == AUTH_CALLBACK_OIDC_URI ||
+    path == AUTH_CALLBACK_GITHUB_URI ||
+    path == AUTH_LOGOUT_URI
   {
     return Ok(next.run(req).await);
   }
   // 1.2 According to the configuration of anonymous authentication path.
-  let anonymous_paths: &Option<Vec<String>> = &state.config.auth.anonymous_paths;
-  if let Some(paths) = anonymous_paths {
-    if paths.iter().any(|p| path.starts_with(p)) {
-      // If it is an anonymous path, pass it directly.
-      return Ok(next.run(req).await);
-    }
+  // 1.2.1 Use general string matching.
+  //let anonymous_paths: &Option<Vec<String>> = &state.config.auth.anonymous_paths;
+  //if let Some(paths) = anonymous_paths {
+  //  if paths.iter().any(|p| path.starts_with(p)) {
+  //    // If it is an anonymous path, pass it directly.
+  //    return Ok(next.run(req).await);
+  //  }
+  //}
+  // 1.2.2 Use glob ant matching.
+  let is_anonymous = state.config.auth_anonymous_glob_matcher
+    .as_ref()
+    .map(|glob| glob.is_match(path))
+    .unwrap_or(false);
+  if is_anonymous {
+    // If it is an anonymous path, pass it directly.
+    return Ok(next.run(req).await);
   }
 
   // 2. Verify for bearer token.
@@ -112,7 +130,7 @@ async fn validate_token(state: &AppState, ak: &str) -> bool {
 
 #[utoipa::path(
   get,
-  path = "/auth/connect/oidc",
+  path = AUTH_CONNECT_OIDC_URI,
   responses((status = 200, description = "Login for OIDC.")),
   tag = ""
 )]
@@ -153,7 +171,7 @@ pub async fn connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
 
 #[utoipa::path(
   get,
-  path = "/auth/connect/github",
+  path = AUTH_CONNECT_GITHUB_URI,
   responses((status = 200, description = "Login for Github.")),
   tag = ""
 )]
@@ -172,7 +190,7 @@ pub async fn connect_github(State(state): State<AppState>) -> impl IntoResponse 
 
 #[utoipa::path(
   get,
-  path = "/auth/callback/oidc",
+  path = AUTH_CALLBACK_OIDC_URI,
   responses((status = 200, description = "Callback for OIDC.")),
   tag = ""
 )]
@@ -288,7 +306,7 @@ pub async fn callback_oidc(
 
 #[utoipa::path(
   get,
-  path = "/auth/callback/github",
+  path = AUTH_CALLBACK_GITHUB_URI,
   responses((status = 200, description = "Callback for github.")),
   tag = ""
 )]

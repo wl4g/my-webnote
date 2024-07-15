@@ -4,7 +4,7 @@ use chrono::{ Duration, Utc };
 use jsonwebtoken::{ decode, encode, DecodingKey, EncodingKey, Header, Validation };
 use serde::{ Deserialize, Serialize };
 
-use crate::config::config_api::AuthConfig;
+use crate::config::config_api::AuthProperties;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
@@ -14,7 +14,7 @@ pub struct Claims {
 }
 
 pub fn create_jwt(
-  config: &AuthConfig,
+  config: &AuthProperties,
   user_id: &str,
   is_refresh: bool,
   extra_claims: HashMap<String, String>
@@ -46,7 +46,7 @@ pub fn create_jwt(
 }
 
 pub fn validate_jwt(
-  config: &AuthConfig,
+  config: &AuthProperties,
   token: &str
 ) -> Result<Claims, jsonwebtoken::errors::Error> {
   let validation = Validation::default();

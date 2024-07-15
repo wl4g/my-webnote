@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::usize;
 
-use crate::config::config_api::MemoryConfig;
+use crate::config::config_api::MemoryProperties;
 
 use super::ICache;
 
@@ -16,7 +16,7 @@ pub struct StringMemoryCache {
 }
 
 impl StringMemoryCache {
-  pub fn new(config: &MemoryConfig) -> Self {
+  pub fn new(config: &MemoryProperties) -> Self {
     let mut builder = Cache::builder();
     if config.initial_capacity.is_some() {
       builder = builder.initial_capacity(config.initial_capacity.clone().unwrap() as usize);

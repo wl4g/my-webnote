@@ -9,7 +9,7 @@ use axum::async_trait;
 use tracing::{ info, debug };
 use sqlx::{ migrate::MigrateDatabase, Pool, Sqlite, SqlitePool };
 
-use crate::{ config::config_api::DbConfig, types::{ PageResponse, PageRequest } };
+use crate::{ config::config_api::DbProperties, types::{ PageResponse, PageRequest } };
 use super::AsyncRepository;
 
 //
@@ -22,7 +22,7 @@ pub struct SQLiteRepository<T: Any + Send + Sync> {
 
 impl<T: Any + Send + Sync> SQLiteRepository<T> {
   // see:https://tms-dev-blog.com/rust-sqlx-basics-with-sqlite/#Adding_a_migration_script
-  pub async fn new(config: &DbConfig) -> Result<Self, Error> {
+  pub async fn new(config: &DbProperties) -> Result<Self, Error> {
     let db_dir = Path::new(&config.sqlite.dir);
     if !db_dir.exists() {
       fs::create_dir_all(db_dir).map_err(|e| {

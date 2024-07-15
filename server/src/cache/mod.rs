@@ -1,7 +1,7 @@
 use anyhow::Error;
 use axum::async_trait;
 
-use crate::config::config_api::{ ApiConfig, CacheProvider };
+use crate::config::config_api::{ ApiProperties, CacheProvider };
 
 pub mod memory;
 pub mod redis;
@@ -35,7 +35,7 @@ impl<T> CacheContainer<T> where T: 'static + Send + Sync {
     &*self.redis_cache
   }
 
-  pub fn cache(&self, config: &ApiConfig) -> &dyn ICache<T> {
+  pub fn cache(&self, config: &ApiProperties) -> &dyn ICache<T> {
     match config.cache.provider {
       CacheProvider::Memory => self.memory_cache(),
       CacheProvider::Redis => self.redis_cache(),

@@ -3,8 +3,6 @@ name = "revezone-api"
 version = "0.1.0"
 edition = "2021"
 
-[dev-dependencies]
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 #
@@ -54,6 +52,7 @@ axum = { version = "0.7.5" }
 hyper = { version = "1.3.1", features = ["full"] }
 tower = "0.4.1"
 tower-http = { version = "0.5.2", features = ["trace", "auth"] }
+globset = "0.4.14" # ant glob path patterns
 #
 # Database libs.
 mongo = "0.1.0"
@@ -92,9 +91,19 @@ name = "revezone_api"
 # path = "src/cmd/api.rs"
 path = "src/main.rs"
 
+[dev-dependencies]
+# Benchmarks libs.
+criterion = "0.5.1"
+
+[[bench]]
+name = "path_matching"
+harness = false
+
+#
 # [[bin]]
 # name = "revezone_cli"
 # path = "src/cmd/cli.rs"
+#
 [build]
 # Enable experimental, but invalid?
 # valid command-line: RUSTFLAGS="--cfg tokio_unstable" && cargo build

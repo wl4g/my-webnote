@@ -13,7 +13,7 @@ use openidconnect::{
 use serde::Deserialize;
 use std::env;
 
-use crate::config::config_api::OidcConfig;
+use crate::config::config_api::OidcProperties;
 
 // async fn login() -> Redirect {
 //   let client = create_oidc_client().await.unwrap();
@@ -343,7 +343,7 @@ curl 'https://keycloak.example.com/realms/master/.well-known/openid-configuratio
   }
 }
 */
-pub async fn create_oidc_client(oidc_config: &OidcConfig) -> Option<CoreClient> {
+pub async fn create_oidc_client(oidc_config: &OidcProperties) -> Option<CoreClient> {
   if oidc_config.enabled.unwrap_or(false) {
     let issuer_url = IssuerUrl::new(
       oidc_config.issue_url.to_owned().expect("Missing 'issue_url' configured")

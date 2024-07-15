@@ -1,6 +1,7 @@
-use std::ops::Deref;
+use std::{ ops::Deref, sync::Arc };
 
 use anyhow::Ok;
+use globset::{ Glob, GlobSet, GlobSetBuilder };
 use serde::Deserialize;
 // use std::fs::File;
 // use std::io::Read;
@@ -8,51 +9,51 @@ use serde::Deserialize;
 use config::Config;
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct ApiConfig {
-  #[serde(default = "ServerConfig::default")]
-  pub server: ServerConfig,
-  #[serde(default = "LoggingConfig::default")]
-  pub logging: LoggingConfig,
-  #[serde(default = "DbConfig::default")]
-  pub db: DbConfig,
-  #[serde(default = "CacheConfig::default")]
-  pub cache: CacheConfig,
-  #[serde(default = "AuthConfig::default")]
-  pub auth: AuthConfig,
-  #[serde(default = "SwaggerConfig::default")]
-  pub swagger: SwaggerConfig,
+pub struct ApiProperties {
+  #[serde(default = "ServerProperties::default")]
+  pub server: ServerProperties,
+  #[serde(default = "LoggingProperties::default")]
+  pub logging: LoggingProperties,
+  #[serde(default = "DbProperties::default")]
+  pub db: DbProperties,
+  #[serde(default = "CacheProperties::default")]
+  pub cache: CacheProperties,
+  #[serde(default = "AuthProperties::default")]
+  pub auth: AuthProperties,
+  #[serde(default = "SwaggerProperties::default")]
+  pub swagger: SwaggerProperties,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct ServerConfig {
+pub struct ServerProperties {
   pub bind: String,
   #[serde(rename = "mgmt-bind")]
   pub mgmt_bind: String,
   #[serde(rename = "thread-max-pool")]
   pub thread_max_pool: u32,
-  #[serde(default = "CorsConfig::default")]
-  pub cors: CorsConfig,
+  #[serde(default = "CorsProperties::default")]
+  pub cors: CorsProperties,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct CorsConfig {
+pub struct CorsProperties {
   pub hosts: Vec<String>,
   pub headers: Vec<String>,
   pub methods: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct LoggingConfig {
+pub struct LoggingProperties {
   pub file: String,
   pub pattern: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct DbConfig {
+pub struct DbProperties {
   #[serde(rename = "type")]
   pub db_type: DbType,
-  pub sqlite: SqliteConfig,
-  pub mongo: MongoConfig,
+  pub sqlite: SqliteProperties,
+  pub mongo: MongoProperties,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
@@ -63,20 +64,20 @@ pub enum DbType {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct SqliteConfig {
+pub struct SqliteProperties {
   pub dir: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct MongoConfig {
+pub struct MongoProperties {
   pub url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct CacheConfig {
+pub struct CacheProperties {
   pub provider: CacheProvider,
-  pub memory: MemoryConfig,
-  pub redis: RedisConfig,
+  pub memory: MemoryProperties,
+  pub redis: RedisProperties,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -86,7 +87,7 @@ pub enum CacheProvider {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct MemoryConfig {
+pub struct MemoryProperties {
   #[serde(rename = "initial-capacity")]
   pub initial_capacity: Option<u32>,
   #[serde(rename = "max-capacity")]
@@ -97,7 +98,7 @@ pub struct MemoryConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct RedisConfig {
+pub struct RedisProperties {
   pub nodes: Vec<String>,
   pub username: Option<String>,
   pub password: Option<String>,
@@ -115,7 +116,7 @@ pub struct RedisConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct AuthConfig {
+pub struct AuthProperties {
   #[serde(rename = "anonymous-paths")]
   pub anonymous_paths: Option<Vec<String>>,
   #[serde(rename = "jwt-validity-ak")]
@@ -124,12 +125,12 @@ pub struct AuthConfig {
   pub jwt_validity_rk: Option<i64>,
   #[serde(rename = "jwt-secret")]
   pub jwt_secret: Option<String>,
-  pub oidc: OidcConfig,
-  pub github: GithubConfig,
+  pub oidc: OidcProperties,
+  pub github: GithubProperties,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct OidcConfig {
+pub struct OidcProperties {
   pub enabled: Option<bool>,
   #[serde(rename = "client-id")]
   pub client_id: Option<String>,
@@ -146,7 +147,7 @@ pub struct OidcConfig {
 // see:https://github.com/settings/developers
 // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 #[derive(Debug, Deserialize, Clone)]
-pub struct OAuth2Config {
+pub struct OAuth2Properties {
   pub enabled: Option<bool>,
   #[serde(rename = "client-id")]
   pub client_id: Option<String>,
@@ -168,11 +169,11 @@ pub struct OAuth2Config {
 // see:https://github.com/settings/developers
 // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 #[derive(Debug, Deserialize, Clone)]
-pub struct GithubConfig(OAuth2Config);
+pub struct GithubProperties(OAuth2Properties);
 
 // Copy all OAuth2Config functions to GithubConfig.
-impl Deref for GithubConfig {
-  type Target = OAuth2Config;
+impl Deref for GithubProperties {
+  type Target = OAuth2Properties;
 
   fn deref(&self) -> &Self::Target {
     &self.0
@@ -180,7 +181,7 @@ impl Deref for GithubConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct SwaggerConfig {
+pub struct SwaggerProperties {
   pub enabled: bool,
   // pub title: String,
   // pub description: String,
@@ -196,20 +197,20 @@ pub struct SwaggerConfig {
   pub swagger_openapi_url: String,
 }
 
-impl ApiConfig {
-  pub fn default() -> ApiConfig {
-    ApiConfig {
-      server: ServerConfig::default(),
-      auth: AuthConfig::default(),
-      logging: LoggingConfig::default(),
-      cache: CacheConfig::default(),
-      swagger: SwaggerConfig::default(),
-      db: DbConfig::default(),
+impl ApiProperties {
+  pub fn default() -> ApiProperties {
+    ApiProperties {
+      server: ServerProperties::default(),
+      auth: AuthProperties::default(),
+      logging: LoggingProperties::default(),
+      cache: CacheProperties::default(),
+      swagger: SwaggerProperties::default(),
+      db: DbProperties::default(),
     }
   }
 
   // see:https://github.com/mehcode/config-rs/blob/master/examples/simple/main.rs
-  pub fn parse(path: &String) -> ApiConfig {
+  pub fn parse(path: &String) -> ApiProperties {
     // serde_yaml::from_str(&contents)?;
 
     let config = Config::builder()
@@ -217,13 +218,13 @@ impl ApiConfig {
       .add_source(config::Environment::with_prefix("REVEZONE"))
       .build()
       .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
-      .try_deserialize::<ApiConfig>()
+      .try_deserialize::<ApiProperties>()
       .unwrap_or_else(|err| panic!("Error deserialize config: {}", err));
 
     config
   }
 
-  pub fn validate(self) -> Result<ApiConfig, anyhow::Error> {
+  pub fn validate(self) -> Result<ApiProperties, anyhow::Error> {
     // // Validate server configuration
     // if let server = &self.server {
     //   if let thread_max_pool = server.thread_max_pool {
@@ -263,20 +264,20 @@ impl ApiConfig {
   }
 }
 
-impl Default for ServerConfig {
+impl Default for ServerProperties {
   fn default() -> Self {
-    ServerConfig {
+    ServerProperties {
       bind: "0.0.0.0:8888".to_string(),
       mgmt_bind: "0.0.0.0:11700".to_string(),
       thread_max_pool: 4,
-      cors: CorsConfig::default(),
+      cors: CorsProperties::default(),
     }
   }
 }
 
-impl Default for CorsConfig {
+impl Default for CorsProperties {
   fn default() -> Self {
-    CorsConfig {
+    CorsProperties {
       hosts: vec!["*".to_string()],
       headers: vec!["*".to_string()],
       methods: vec!["*".to_string()],
@@ -284,44 +285,44 @@ impl Default for CorsConfig {
   }
 }
 
-impl Default for LoggingConfig {
+impl Default for LoggingProperties {
   fn default() -> Self {
-    LoggingConfig {
+    LoggingProperties {
       file: "info".to_string(),
       pattern: "pretty".to_string(),
     }
   }
 }
 
-impl Default for DbConfig {
+impl Default for DbProperties {
   fn default() -> Self {
-    DbConfig {
+    DbProperties {
       db_type: DbType::Sqlite,
-      sqlite: SqliteConfig::default(),
-      mongo: MongoConfig::default(),
+      sqlite: SqliteProperties::default(),
+      mongo: MongoProperties::default(),
     }
   }
 }
 
-impl Default for SqliteConfig {
+impl Default for SqliteProperties {
   fn default() -> Self {
-    SqliteConfig {
+    SqliteProperties {
       dir: "/tmp/revezone_db".to_string(),
     }
   }
 }
 
-impl Default for MongoConfig {
+impl Default for MongoProperties {
   fn default() -> Self {
-    MongoConfig {
+    MongoProperties {
       url: "mongodb://localhost:27017".to_string(),
     }
   }
 }
 
-impl Default for OidcConfig {
+impl Default for OidcProperties {
   fn default() -> Self {
-    OidcConfig {
+    OidcProperties {
       enabled: Some(false),
       client_id: None,
       client_secret: None,
@@ -332,9 +333,9 @@ impl Default for OidcConfig {
   }
 }
 
-impl Default for OAuth2Config {
+impl Default for OAuth2Properties {
   fn default() -> Self {
-    OAuth2Config {
+    OAuth2Properties {
       enabled: Some(false),
       client_id: None,
       client_secret: None,
@@ -350,26 +351,26 @@ impl Default for OAuth2Config {
   }
 }
 
-impl Default for GithubConfig {
+impl Default for GithubProperties {
   fn default() -> Self {
     // Beautifully impls for like java extends.
-    GithubConfig(OAuth2Config::default())
+    GithubProperties(OAuth2Properties::default())
   }
 }
 
-impl Default for CacheConfig {
+impl Default for CacheProperties {
   fn default() -> Self {
-    CacheConfig {
+    CacheProperties {
       provider: CacheProvider::Memory,
-      memory: MemoryConfig::default(),
-      redis: RedisConfig::default(),
+      memory: MemoryProperties::default(),
+      redis: RedisProperties::default(),
     }
   }
 }
 
-impl Default for MemoryConfig {
+impl Default for MemoryProperties {
   fn default() -> Self {
-    MemoryConfig {
+    MemoryProperties {
       initial_capacity: Some(32),
       max_capacity: Some(65535),
       ttl: Some(3600),
@@ -378,9 +379,9 @@ impl Default for MemoryConfig {
   }
 }
 
-impl Default for RedisConfig {
+impl Default for RedisProperties {
   fn default() -> Self {
-    RedisConfig {
+    RedisProperties {
       nodes: vec!["redis://127.0.0.1:6379".to_string()],
       username: None,
       password: None,
@@ -394,22 +395,22 @@ impl Default for RedisConfig {
   }
 }
 
-impl Default for AuthConfig {
+impl Default for AuthProperties {
   fn default() -> Self {
-    AuthConfig {
+    AuthProperties {
       anonymous_paths: None,
       jwt_validity_ak: Some(3600_000),
       jwt_validity_rk: Some(86400_000),
       jwt_secret: Some("changeit".to_string()),
-      oidc: OidcConfig::default(),
-      github: GithubConfig::default(),
+      oidc: OidcProperties::default(),
+      github: GithubProperties::default(),
     }
   }
 }
 
-impl Default for SwaggerConfig {
+impl Default for SwaggerProperties {
   fn default() -> Self {
-    SwaggerConfig {
+    SwaggerProperties {
       enabled: true,
       // title: "Excalidraw Revezone API Server".to_string(),
       // description: "The Excalidraw Revezone API Server".to_string(),
@@ -424,5 +425,36 @@ impl Default for SwaggerConfig {
       swagger_ui_path: "/swagger-ui".to_string(),
       swagger_openapi_url: "/api-docs/openapi.json".to_string(),
     }
+  }
+}
+
+pub struct ApiConfig {
+  pub inner: ApiProperties,
+  pub auth_anonymous_glob_matcher: Option<GlobSet>,
+}
+
+impl Deref for ApiConfig {
+  type Target = ApiProperties;
+  fn deref(&self) -> &Self::Target {
+    &self.inner
+  }
+}
+
+impl ApiConfig {
+  pub fn new(config: &ApiProperties) -> Arc<ApiConfig> {
+    let mut globset = None;
+
+    if config.auth.anonymous_paths.is_some() {
+      let mut builder = GlobSetBuilder::new();
+      for path in config.auth.anonymous_paths.as_ref().unwrap() {
+        builder.add(Glob::new(path).unwrap());
+      }
+      globset = Some(builder.build().unwrap());
+    }
+
+    Arc::new(ApiConfig {
+      inner: config.clone(),
+      auth_anonymous_glob_matcher: globset,
+    })
   }
 }

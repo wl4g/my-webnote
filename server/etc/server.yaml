@@ -39,9 +39,11 @@ cache:
 auth:
   anonymous-paths:
     - "/swagger-ui/"
-    - "/healthz/"
-    - "/public/"
-    - "/static/"
+    - "/swagger-ui/openapi.json"
+    - "/healthz/**"
+    - "/public/**"
+    - "/static/**"
+    - "/sys/**" # for dev only
   jwt-validity-ak: 3600000
   jwt-validity-rk: 86400000
   jwt-secret: "changeit"

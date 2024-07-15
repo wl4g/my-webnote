@@ -1,7 +1,7 @@
 use anyhow::{ Error, Ok };
 use axum::async_trait;
 
-use crate::config::config_api::DbConfig;
+use crate::config::config_api::DbProperties;
 use crate::types::users::User;
 use crate::types::PageRequest;
 use crate::types::DEFAULT_BY;
@@ -14,7 +14,7 @@ pub struct UserSQLiteRepository {
 }
 
 impl UserSQLiteRepository {
-  pub async fn new(config: &DbConfig) -> Result<Self, Error> {
+  pub async fn new(config: &DbProperties) -> Result<Self, Error> {
     Ok(UserSQLiteRepository {
       inner: SQLiteRepository::new(config).await?,
     })
