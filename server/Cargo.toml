@@ -37,6 +37,8 @@ axum-prometheus = "0.6.1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["json", "env-filter"] }
 tracing-opentelemetry = "0.24.0"
+tracing-futures = "0.2"
+tracing-attributes = "0.1.26"
 opentelemetry = { version = "0.23.0" }
 opentelemetry_sdk = { version = "0.23.0", features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.16.0", features = ["grpc-tonic"] }
