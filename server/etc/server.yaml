@@ -1,4 +1,4 @@
-service-name: revezone-api
+service-name: mywebnote
 
 server:
   bind: "0.0.0.0:8888"
@@ -10,15 +10,15 @@ server:
   #  methods: ["*"]
 
 logging:
-  file: /tmp/revezone/server.log
+  file: /tmp/mywebnote/server.log
   pattern: "xxx" # e.g: "[yyyy-MM-dd T HH:mm:ss.SSS] [INFO] - users.rs:34 : Add to user jack01 ..."
 
 db:
   type: SQLite # Mongo|SQLite
   sqlite:
-    dir: /tmp/revezone/
+    dir: /tmp/mywebnote/
   mongo:
-    url: mongodb://127.0.0.1:27017/revezone
+    url: mongodb://127.0.0.1:27017/mywebnote
 
 cache:
   provider: Memory # Memory|Redis
@@ -39,6 +39,11 @@ cache:
     read-from-replica: true
 
 auth:
+  jwt-ak-name: "_ak"
+  jwt-rk-name: "_rk"
+  jwt-validity-ak: 3600000
+  jwt-validity-rk: 86400000
+  jwt-secret: "changeit"
   anonymous-paths:
     - "/swagger-ui/"
     - "/swagger-ui/openapi.json"
@@ -46,12 +51,9 @@ auth:
     - "/public/**"
     - "/static/**"
     # - "/sys/**" # for dev only
-  jwt-validity-ak: 3600000
-  jwt-validity-rk: 86400000
-  jwt-secret: "changeit"
   oidc:
     enabled: true
-    client-id: "revezone-wl4g"
+    client-id: "mywebnote-wl4g"
     client-secret: "ZySKr09pTaG5xpyfPI28ARMp4MV3GXxB"
     issue-url: "https://iam.wl4g.com/realms/master"
     redirect-url: "http://localhost:8888/auth/callback/oidc"
@@ -71,14 +73,14 @@ auth:
 
 swagger:
   enabled: true
-  # title: "Excalidraw Revezone API Server"
-  # description: "The Excalidraw Revezone API Server"
+  # title: "My Webnote API Server"
+  # description: "The My Webnote API Server"
   # version: "1.0.0"
   # license_name: "Apache 2.0"
   # license_url: "https://www.apache.org/licenses/LICENSE-2.0"
-  # contact_name: "Revezone API"
+  # contact_name: "MyWebnote API"
   # contact_email: "jameswong1376@gmail.com"
-  # contact_url: "https://github.com/wl4g/revezone"
+  # contact_url: "https://github.com/wl4g/my-webnote"
   # terms_of_service: "api/terms-of-service"
   swagger_ui_path: "/swagger-ui"
   swagger_openapi_url: "/swagger-ui/openapi.json"

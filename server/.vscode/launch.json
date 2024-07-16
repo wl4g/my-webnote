@@ -11,11 +11,11 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=revezone_api",
-                    "--package=revezone-api"
+                    "--bin=mywebnote",
+                    "--package=mywebnote"
                 ],
                 "filter": {
-                    "name": "revezone_api",
+                    "name": "mywebnote",
                     "kind": "bin"
                 },
             },
@@ -36,11 +36,11 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=revezone_api",
-                    "--package=revezone-api"
+                    "--bin=mywebnote",
+                    "--package=mywebnote"
                 ],
                 "filter": {
-                    "name": "revezone_api",
+                    "name": "mywebnote",
                     "kind": "bin"
                 },
             },
@@ -61,11 +61,11 @@
                     "build",
                     "--features",
                     "tokio-console",
-                    "--bin=revezone_api",
-                    "--package=revezone-api"
+                    "--bin=mywebnote",
+                    "--package=mywebnote"
                 ],
                 "filter": {
-                    "name": "revezone_api",
+                    "name": "mywebnote",
                     "kind": "bin"
                 },
                 "env": {
@@ -93,11 +93,11 @@
                     "build",
                     "--features",
                     "tokio-console",
-                    "--bin=revezone_api",
-                    "--package=revezone-api"
+                    "--bin=mywebnote",
+                    "--package=mywebnote"
                 ],
                 "filter": {
-                    "name": "revezone_api",
+                    "name": "mywebnote",
                     "kind": "bin"
                 },
                 "env": {

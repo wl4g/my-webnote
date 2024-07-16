@@ -28,17 +28,17 @@ use crate::types::auths::CallbackGithubRequest;
 #[openapi(
   info(
     version = "1.0.0",
-    title = "Excalidraw Revezone API",
-    description = "The Excalidraw Revezone API",
+    title = "My Webnote API",
+    description = "The My Webnote API",
     license(name = "Apache 2.0", url = "https://www.apache.org/licenses/LICENSE-2.0"),
     contact(
-      name = "Excalidraw Revezone",
-      url = "https://github.com/wl4g/revezone",
+      name = "My Webnote",
+      url = "https://github.com/wl4g/my-webnote",
       email = "jameswong1376@gmail.com"
     )
   ),
   //security((), "my_auth" = ["read:items", "edit:items"], "token_jwt" = []),
-  external_docs(url = "https://github.com/wl4g/revezone", description = "More about our APIs"),
+  external_docs(url = "https://github.com/wl4g/my-webnote", description = "More about our APIs"),
   paths(
     connect_oidc,
     connect_github,

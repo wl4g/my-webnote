@@ -172,7 +172,7 @@ async fn start_server(config: &Arc<ApiConfig>) {
 }
 
 async fn root() -> &'static str {
-  "Welcome to the Rust Excalidraw Revezone API!"
+  "Welcome to the Rust MyWebnote!"
 }
 
 fn load_config(path: String) -> Result<ApiProperties, anyhow::Error> {
@@ -185,7 +185,7 @@ fn load_config(path: String) -> Result<ApiProperties, anyhow::Error> {
 
 pub fn build_cli() -> Command {
   Command::new("start")
-    .about("Excalidraw Revezone API server.")
+    .about("My Webnote API server.")
     // .arg_required_else_help(true) // When no args are provided, show help.
     .arg(
       Arg::new("config")

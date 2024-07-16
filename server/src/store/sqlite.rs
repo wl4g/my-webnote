@@ -169,7 +169,7 @@ macro_rules! dynamic_sqlite_query {
               match operator.fetch_all($pool).await {
                   std::result::Result::Ok(result) => {
                     let page = PageResponse::new(Some(total_count),
-                        Some($page.num.unwrap()),
+                        Some($page.get_offset()),
                         Some($page.get_limit()));
                       Ok((page, result))
                   },

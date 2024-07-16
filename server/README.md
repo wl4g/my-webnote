@@ -69,14 +69,14 @@ server:
       app_secret:
 
 logging:
-  file: /tmp/excalidraw-revezone/server.log
+  file: /tmp/excalidraw-mywebnote/server.log
   pattern: "xxx" # e.g: "[yyyy-MM-dd T HH:mm:ss.SSS] [INFO] - users.rs:34 : Add to user jack01 ..."
 
 service:
   db:
     type: sqlite # mongo|sqlite
     sqlite:
-      dir: /tmp/excalidraw-revezone/
+      dir: /tmp/excalidraw-mywebnote/
     mongo:
       url: xxxx
 

@@ -27,10 +27,10 @@ pub fn register_subcommand_handles() -> &'static HashMap<
 }
 
 pub fn execute_commands_app() -> () {
-  let mut app = Command::new("Revezone API Server")
+  let mut app = Command::new("MyWebnote API Server")
     .version("1.0.0")
     .author("James Wong")
-    .about("Revezone(excalidraw) Rust API server")
+    .about("MyWebnote (Excalidraw) Rust API server")
     .arg_required_else_help(true); // When no args are provided, show help.
 
   let subcommand_map = register_subcommand_handles();

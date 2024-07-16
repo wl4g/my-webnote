@@ -1,7 +1,11 @@
 [package]
-name = "revezone-api"
+name = "mywebnote"
 version = "0.1.0"
 edition = "2021"
+
+[dev-dependencies]
+# Benchmarks libs.
+criterion = "0.5.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -23,6 +27,7 @@ clap = "4.5.7"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.64"
 serde_yaml = "0.9.32"
+validator = { version = "0.18.1", features = ["derive"] }
 #
 # Logger libs.
 env_logger = "0.11.3"
@@ -61,6 +66,7 @@ tower = "0.4.1"
 tower-http = { version = "0.5.2", features = ["trace", "auth"] }
 tower-cookies = "0.10.0"
 globset = "0.4.14" # ant glob path patterns
+#user_agent = "0.11.0"
 #
 # Database libs.
 mongo = "0.1.0"
@@ -86,6 +92,10 @@ jsonwebtoken = "9.3.0"
 # Cache libs.
 moka = { version = "0.12.8", features = ["future"] }
 redis = { version = "0.25.4", features = ["tokio-comp", "cluster-async"] }
+#
+# Custom macro libs.
+common-log-macro = { path = "./components/common-log-macro" }
+common-page-macro = { path = "./components/common-page-macro" }
 
 [features]
 # Notice: Use optional dependencies to avoid slow automatic compilation during debugging
@@ -94,13 +104,9 @@ redis = { version = "0.25.4", features = ["tokio-comp", "cluster-async"] }
 tokio-console = ["console-subscriber"]
 
 [[bin]]
-name = "revezone_api"
+name = "mywebnote"
 # path = "src/cmd/api.rs"
 path = "src/main.rs"
-
-[dev-dependencies]
-# Benchmarks libs.
-criterion = "0.5.1"
 
 [[bench]]
 name = "path_matching"
@@ -108,7 +114,7 @@ harness = false
 
 #
 # [[bin]]
-# name = "revezone_cli"
+# name = "mywebnote_cli"
 # path = "src/cmd/cli.rs"
 #
 [build]
