@@ -14,11 +14,12 @@ logging:
   pattern: "xxx" # e.g: "[yyyy-MM-dd T HH:mm:ss.SSS] [INFO] - users.rs:34 : Add to user jack01 ..."
 
 db:
-  type: SQLite # Mongo|SQLite
+  type: Mongo # Mongo|SQLite
   sqlite:
     dir: /tmp/mywebnote/
   mongo:
     url: mongodb://127.0.0.1:27017/mywebnote
+    database: mywebnote
 
 cache:
   provider: Memory # Memory|Redis

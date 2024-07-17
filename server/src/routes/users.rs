@@ -44,6 +44,7 @@ pub async fn get_users(
 #[utoipa::path(
     post,
     path = "/sys/user/save",
+    request_body = SaveUserRequest,
     responses((status = 200, description = "Save for user.", body = SaveUserResponse)),
     tag = ""
 )]
@@ -61,12 +62,13 @@ async fn save_user(
 #[utoipa::path(
     post,
     path = "/sys/user/delete",
-    responses((status = 200, description = "Delete for user.", body = DeleteUserRequest)),
+    request_body = DeleteUserRequest,
+    responses((status = 200, description = "Delete for user.", body = DeleteUserResponse)),
     tag = ""
 )]
 async fn delete_user(
     State(state): State<AppState>,
-    ValidatedJson(param): ValidatedJson<DeleteUserRequest>
+    Json(param): Json<DeleteUserRequest>
 ) -> impl IntoResponse {
     let handler = UserHandler::new(&state);
     match handler.delete(param).await {

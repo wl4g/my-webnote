@@ -1,46 +1,73 @@
-use crate::types::{ users::User, PageResponse, PageRequest };
-use super::{ mongo::MongoRepository, AsyncRepository };
+use std::sync::Arc;
+
 use anyhow::Error;
 use axum::async_trait;
 
+use mongodb::Collection;
+use mongodb::bson::doc;
+
+use crate::config::config_api::DbProperties;
+use crate::types::users::User;
+use crate::types::{ PageRequest, PageResponse };
+use super::AsyncRepository;
+use super::mongo::MongoRepository;
+use crate::{ dynamic_mongo_query, dynamic_mongo_insert, dynamic_mongo_update };
+
 pub struct UserMongoRepository {
-  inner: MongoRepository<User>,
+    #[allow(unused)]
+    inner: Arc<MongoRepository<User>>,
+    collection: Collection<User>,
 }
 
 impl UserMongoRepository {
-  pub fn new() -> Self {
-    UserMongoRepository { inner: MongoRepository::new() }
-  }
+    pub async fn new(config: &DbProperties) -> Result<Self, Error> {
+        let inner = Arc::new(MongoRepository::new(config).await?);
+        let collection = inner.get_database().collection("users");
+        Ok(UserMongoRepository { inner, collection })
+    }
 }
 
-#[allow(unused)]
 #[async_trait]
 impl AsyncRepository<User> for UserMongoRepository {
-  async fn select(
-    &self,
-    mut param: User,
-    page: PageRequest
-  ) -> Result<(PageResponse, Vec<User>), Error> {
-    todo!()
-  }
+    async fn select(
+        &self,
+        user: User,
+        page: PageRequest
+    ) -> Result<(PageResponse, Vec<User>), Error> {
+        //let result = &self.inner.select(user, page).await;
+        match dynamic_mongo_query!(user, self.collection, "update_time", page, User) {
+            Ok(result) => {
+                println!("query users: {:?}", result);
+                Ok((result.0, result.1))
+            }
+            Err(error) => Err(error),
+        }
+    }
 
-  async fn select_by_id(&self, id: i64) -> Result<User, Error> {
-    todo!()
-  }
+    async fn select_by_id(&self, id: i64) -> Result<User, Error> {
+        let filter = doc! { "id": id };
+        let user = self.collection
+            .find_one(filter).await?
+            .ok_or_else(|| Error::msg("User not found"))?;
+        Ok(user)
+    }
 
-  async fn insert(&self, param: User) -> Result<i64, Error> {
-    todo!()
-  }
+    async fn insert(&self, mut user: User) -> Result<i64, Error> {
+        dynamic_mongo_insert!(user, self.collection)
+    }
 
-  async fn update(&self, param: User) -> Result<i64, Error> {
-    todo!()
-  }
+    async fn update(&self, mut user: User) -> Result<i64, Error> {
+        dynamic_mongo_update!(user, self.collection)
+    }
 
-  async fn delete_all(&self) -> Result<u64, Error> {
-    todo!()
-  }
+    async fn delete_all(&self) -> Result<u64, Error> {
+        let result = self.collection.delete_many(doc! {}).await?;
+        Ok(result.deleted_count)
+    }
 
-  async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
-    todo!()
-  }
+    async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
+        let filter = doc! { "id": id };
+        let result = self.collection.delete_one(filter).await?;
+        Ok(result.deleted_count)
+    }
 }

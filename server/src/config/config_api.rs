@@ -69,12 +69,13 @@ pub enum DbType {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SqliteProperties {
-    pub dir: String,
+    pub dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MongoProperties {
-    pub url: String,
+    pub url: Option<String>,
+    pub database: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -336,7 +337,7 @@ impl Default for DbProperties {
 impl Default for SqliteProperties {
     fn default() -> Self {
         SqliteProperties {
-            dir: "/tmp/mywebnote_db".to_string(),
+            dir: Some(String::from("/tmp/mywebnote_db")),
         }
     }
 }
@@ -344,7 +345,8 @@ impl Default for SqliteProperties {
 impl Default for MongoProperties {
     fn default() -> Self {
         MongoProperties {
-            url: "mongodb://localhost:27017".to_string(),
+            url: Some(String::from("mongodb://localhost:27017")),
+            database: Some(String::from("mywebnote")),
         }
     }
 }
