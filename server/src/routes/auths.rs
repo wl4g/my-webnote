@@ -2,8 +2,8 @@ use std::result::Result;
 use std::result::Result::Ok;
 use axum::{
     body::Body,
-    extract::{ Query, State },
-    http::{ header, HeaderValue, Request, StatusCode },
+    extract::{ Query, Request, State },
+    http::{ header, StatusCode },
     middleware::Next,
     response::{ IntoResponse, Redirect, Response },
     routing::{ get, post },
@@ -18,7 +18,7 @@ use openidconnect::{
     Nonce,
 };
 
-use tower_cookies::{ cookie::{ time::{ self }, CookieBuilder }, CookieManagerLayer, Cookies };
+use tower_cookies::{ cookie::{ time::{ self }, CookieBuilder }, CookieManagerLayer };
 
 use crate::{
     context::state::AppState,
@@ -138,7 +138,7 @@ async fn validate_token(state: &AppState, ak: &str) -> bool {
     get,
     path = AUTH_CONNECT_OIDC_URI,
     responses((status = 200, description = "Login for OIDC.")),
-    tag = ""
+    tag = "Authentication"
 )]
 pub async fn connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
     match &state.oidc_client {
@@ -188,7 +188,7 @@ pub async fn connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
     get,
     path = AUTH_CONNECT_GITHUB_URI,
     responses((status = 200, description = "Login for Github.")),
-    tag = ""
+    tag = "Authentication"
 )]
 pub async fn connect_github(State(state): State<AppState>) -> impl IntoResponse {
     match &state.github_client {
@@ -207,7 +207,7 @@ pub async fn connect_github(State(state): State<AppState>) -> impl IntoResponse 
     get,
     path = AUTH_CALLBACK_OIDC_URI,
     responses((status = 200, description = "Callback for OIDC.")),
-    tag = ""
+    tag = "Authentication"
 )]
 pub async fn callback_oidc(
     State(state): State<AppState>,
@@ -345,7 +345,7 @@ pub async fn callback_oidc(
     get,
     path = AUTH_CALLBACK_GITHUB_URI,
     responses((status = 200, description = "Callback for github.")),
-    tag = ""
+    tag = "Authentication"
 )]
 pub async fn callback_github(
     State(state): State<AppState>,
@@ -438,17 +438,48 @@ pub async fn callback_github(
 #[utoipa::path(
     post,
     path = AUTH_LOGOUT_URI,
+    request_body(
+        content = Option<LogoutRequest>,
+        description = "Optional logout request parameters",
+        content_type = "application/json",
+        //example = json!({"access_token": "<ACCESS_TOKEN>", "refresh_token": "<REFRESH_TOKEN>"}),
+        example = json!({"access_token": null, "refresh_token": null}),
+    ),
     responses((status = 200, description = "Logout.")),
-    tag = ""
+    tag = "Authentication"
 )]
-pub async fn logout(State(state): State<AppState>, cookies: Cookies) -> impl IntoResponse {
-    let handler = AuthHandler::new(&state);
-    let result = handler.handle_logout(LogoutRequest {
-        access_token: cookies.get(&state.config.auth_jwt_ak_name).map(|c| c.value().to_string()),
-        refresh_token: cookies.get(&state.config.auth_jwt_rk_name).map(|c| c.value().to_string()),
-    }).await;
+pub async fn logout(
+    State(state): State<AppState>,
+    // Json(param): Json<LogoutRequest>
+    // jar: CookieJar
+    request: axum::extract::Request<Body>
+) -> impl IntoResponse {
+    let cookie_ak = webs::get_cookie_from_req(&state.config.auth_jwt_ak_name, &request);
+    let cookie_rk = webs::get_cookie_from_req(&state.config.auth_jwt_rk_name, &request);
 
-    match result {
+    let param: LogoutRequest = match
+        serde_json::from_slice(
+            &(match axum::body::to_bytes(request.into_body(), usize::MAX).await {
+                Ok(bytes) => bytes,
+                Err(_) => {
+                    return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+                }
+            })
+        )
+    {
+        Ok(param) => param,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid JSON").into_response();
+        }
+    };
+
+    let logout = LogoutRequest {
+        access_token: param.access_token.or_else(|| cookie_ak),
+        refresh_token: param.refresh_token.or_else(|| cookie_rk),
+    };
+
+    let handler = AuthHandler::new(&state);
+    match handler.handle_logout(logout).await {
         Ok(_) => {
             let removal_ak = CookieBuilder::new(state.config.auth_jwt_ak_name.to_string(), "_")
                 .removal()

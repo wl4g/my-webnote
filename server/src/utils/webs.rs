@@ -23,7 +23,7 @@ pub fn add_cookies(response: &mut Response<Body>, cookies: Vec<Cookie>) {
     });
 }
 
-pub fn get_cookie_from_req(key: &str, req: Request<Body>) -> Option<String> {
+pub fn get_cookie_from_req(key: &str, req: &Request<Body>) -> Option<String> {
     get_cookie_from_headers(key, req.headers())
 }
 
