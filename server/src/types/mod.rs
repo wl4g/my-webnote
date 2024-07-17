@@ -7,7 +7,6 @@ pub mod users;
 use serde::{ Deserialize, Serialize };
 use chrono::Utc;
 use sqlx::prelude::FromRow;
-use utoipa::openapi::schema;
 use validator::Validate;
 
 use crate::utils::snowflake::SnowflakeIdGenerator;

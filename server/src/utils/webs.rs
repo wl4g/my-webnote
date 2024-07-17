@@ -1,4 +1,10 @@
-use axum::{ body::Body, extract::Request, http::{ header, HeaderMap, Response, HeaderValue } };
+use axum::{
+    body::Body,
+    extract::Request,
+    http::{ header, HeaderMap, HeaderValue, Response },
+    response::{ IntoResponse, Redirect },
+};
+use hyper::StatusCode;
 use tower_cookies::{ cookie::{ time::Duration, CookieBuilder, SameSite }, Cookie };
 
 pub fn create_cookie_headers(key: &str, value: &str) -> header::HeaderMap {
@@ -55,6 +61,39 @@ pub fn is_browser(headers: &HeaderMap) -> bool {
         .and_then(|value| value.to_str().ok())
         .unwrap_or("");
     user_agent.contains("Mozilla")
+}
+
+pub fn response_redirect_or_json(
+    status: StatusCode,
+    headers: &HeaderMap,
+    cookies: Option<(Cookie, Cookie)>,
+    redirect_url: &str,
+    message: &str,
+    json: &str
+) -> Response<Body> {
+    let mut response;
+    if is_browser(headers) {
+        // Refer to github authorization troubleshooting reason tips.
+        // let url = match url::Url::parse(redirect_url).as_mut() {
+        //     Ok(_url) => {
+        //         _url.set_fragment(Some(format!("troubleshooting-tips-is-{}", message).as_str()));
+        //         _url.to_string()
+        //     }
+        //     Err(e) => {
+        //         println!("url parse error:{}", e);
+        //         "/".to_string() // TODO: redirect to error or default?
+        //     }
+        // };
+        let url = format!("{}#troubleshooting-tips-is-{}", redirect_url, message);
+        // Make a redirect response.
+        response = Redirect::to(url.as_str()).into_response();
+    } else {
+        response = (status, json.to_string()).into_response();
+    }
+    if let Some(pair) = cookies {
+        add_cookies(&mut response, vec![pair.0, pair.1]);
+    }
+    response
 }
 
 mod tests {

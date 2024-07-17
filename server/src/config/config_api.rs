@@ -127,15 +127,21 @@ pub struct AuthProperties {
     #[serde(rename = "jwt-rk-name")]
     pub jwt_rk_name: Option<String>,
     #[serde(rename = "jwt-validity-ak")]
-    pub jwt_validity_ak: Option<i64>,
+    pub jwt_validity_ak: Option<u64>,
     #[serde(rename = "jwt-validity-rk")]
-    pub jwt_validity_rk: Option<i64>,
+    pub jwt_validity_rk: Option<u64>,
     #[serde(rename = "jwt-secret")]
     pub jwt_secret: Option<String>,
     #[serde(rename = "anonymous-paths")]
     pub anonymous_paths: Option<Vec<String>>,
     pub oidc: OidcProperties,
     pub github: GithubProperties,
+    #[serde(rename = "login-url")]
+    pub login_url: Option<String>,
+    #[serde(rename = "success-url")]
+    pub success_url: Option<String>,
+    #[serde(rename = "unauthz-url")]
+    pub unauthz_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -437,6 +443,9 @@ impl Default for AuthProperties {
             anonymous_paths: None,
             oidc: OidcProperties::default(),
             github: GithubProperties::default(),
+            login_url: Some(String::from("/static/login.html")),
+            success_url: Some(String::from("/static/index.html")),
+            unauthz_url: Some(String::from("/static/403.html")),
         }
     }
 }

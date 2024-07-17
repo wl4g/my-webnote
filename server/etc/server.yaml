@@ -71,6 +71,9 @@ auth:
     # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
     scope: "user"
     user-info-url: "https://api.github.com/user"
+  login-url: "/static/login.html"
+  success-url: "/static/index.html"
+  unauthz-url: "/static/unauthz.html"
 
 swagger:
   enabled: true

@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{ Deserialize, Serialize };
 
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct CallbackOidcRequest {
@@ -127,29 +127,31 @@ impl GithubUserInfo {
     }
 }
 
+#[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
+pub struct LoggedResponse {
+    #[serde(rename = "errcode")]
+    pub errcode: i16,
+    #[serde(rename = "errmsg")]
+    pub errmsg: String,
+    // pub provider: Option<String>,
+    #[serde(rename = "redirectUrl")]
+    pub redirect_url: Option<String>,
+    #[serde(rename = "accessToken")]
+    pub access_token: Option<TokenWrapper>,
+    #[serde(rename = "refreshToken")]
+    pub refresh_token: Option<TokenWrapper>,
+}
+
+#[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
+pub struct TokenWrapper {
+    #[serde(rename = "value")]
+    pub value: String,
+    #[serde(rename = "expiresIn")]
+    pub expires_in: u64,
+}
+
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct LogoutRequest {
-    //pub auth_type: Option<String>,
     pub access_token: Option<String>,
     pub refresh_token: Option<String>,
 }
-
-// #[async_trait]
-// impl<S> FromRequest<S> for LogoutRequest where S: Send + Sync, AppState: FromRef<S> {
-//     type Rejection = (StatusCode, String);
-
-//     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-//         let (parts, body) = req.into_parts();
-//         let req = Request::from_parts(parts, body);
-
-//         let json = Json::<LogoutRequest>
-//             ::from_request(req.clone(), state.as_ref()).await
-//             .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-//         let jar = CookieJar::from_request(req, state.as_ref()).await.map_err(|e| (
-//             StatusCode::INTERNAL_SERVER_ERROR,
-//             e.to_string(),
-//         ))?;
-
-//         Ok(LogoutRequest { json, jar })
-//     }
-// }

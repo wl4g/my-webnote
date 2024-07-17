@@ -10,6 +10,7 @@ use axum::{
     Router,
 };
 
+use hyper::HeaderMap;
 use oauth2::{ AuthorizationCode, CsrfToken, Scope, TokenResponse };
 
 use openidconnect::{
@@ -24,7 +25,7 @@ use crate::{
     context::state::AppState,
     handlers::auths::AuthHandler,
     types::auths::{ CallbackGithubRequest, CallbackOidcRequest, GithubUserInfo, LogoutRequest },
-    utils::{ webs, auths },
+    utils::{ auths, webs },
 };
 
 pub const AUTH_CONNECT_OIDC_URI: &str = "/auth/connect/oidc";
@@ -219,10 +220,18 @@ pub async fn callback_oidc(
             let code = match param.code {
                 Some(code) => code,
                 None => {
-                    return (
+                    // return (
+                    //     StatusCode::BAD_REQUEST,
+                    //     "Missing authorization code".to_string(),
+                    // ).into_response();
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        &headers,
+                        &state.config.auth.login_url.to_owned().unwrap(),
                         StatusCode::BAD_REQUEST,
-                        "Missing authorization code".to_string(),
-                    ).into_response();
+                        format!("Missing authentication code").as_str(),
+                        None
+                    );
                 }
             };
 
@@ -235,10 +244,18 @@ pub async fn callback_oidc(
                     let id_token = match token_response.extra_fields().id_token() {
                         Some(token) => token,
                         None => {
-                            return (
+                            // return (
+                            //     StatusCode::INTERNAL_SERVER_ERROR,
+                            //     "No ID token found".to_string(),
+                            // ).into_response();
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                                "No ID token found".to_string(),
-                            ).into_response();
+                                format!("No ID token found").as_str(),
+                                None
+                            );
                         }
                     };
 
@@ -246,10 +263,18 @@ pub async fn callback_oidc(
                     let csrf_token = match webs::get_cookie_from_headers("_csrf_token", &headers) {
                         Some(token) => token,
                         None => {
-                            return (
+                            // return (
+                            //     StatusCode::INTERNAL_SERVER_ERROR,
+                            //     "No csrf token found".to_string(),
+                            // ).into_response();
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                                "No CSRF token found".to_string(),
-                            ).into_response();
+                                format!("No csrf token found").as_str(),
+                                None
+                            );
                         }
                     };
 
@@ -261,10 +286,18 @@ pub async fn callback_oidc(
                     {
                         Ok(Some(nonce)) => nonce,
                         _ => {
-                            return (
+                            // return (
+                            //     StatusCode::INTERNAL_SERVER_ERROR,
+                            //     format!("Failed to get oidc authing nonce").to_string(),
+                            // ).into_response();
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                                "Could not get oidc authenticating nonce".to_string(),
-                            ).into_response();
+                                format!("failed to get oidc authing nonce").as_str(),
+                                None
+                            );
                         }
                     };
                     let nonce = openidconnect::Nonce::new(nonce_string);
@@ -272,10 +305,18 @@ pub async fn callback_oidc(
                     let claims = match id_token.claims(&client.id_token_verifier(), &nonce) {
                         Ok(claims) => claims,
                         Err(e) => {
-                            return (
+                            // return (
+                            //     StatusCode::INTERNAL_SERVER_ERROR,
+                            //     format!("Failed to verify ID token: {:?}", e),
+                            // ).into_response();
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("Failed to verify ID token: {:?}", e),
-                            ).into_response();
+                                format!("failed to verify ID token: {:?}", e).as_str(),
+                                None
+                            );
                         }
                     };
 
@@ -283,10 +324,18 @@ pub async fn callback_oidc(
                     let userinfo_request = match client.user_info(access_token, None) {
                         Ok(req) => req,
                         Err(e) => {
-                            return (
+                            // return (
+                            //     StatusCode::INTERNAL_SERVER_ERROR,
+                            //     format!("Failed to create user info request: {:?}", e),
+                            // ).into_response();
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("Failed to create user info request: {:?}", e),
-                            ).into_response();
+                                format!("failed to create user info request: {:?}", e).as_str(),
+                                None
+                            );
                         }
                     };
 
@@ -295,10 +344,18 @@ pub async fn callback_oidc(
                     {
                         Ok(info) => info,
                         Err(e) => {
-                            return (
+                            // return (
+                            //     StatusCode::INTERNAL_SERVER_ERROR,
+                            //     format!("Failed to get user info: {:?}", e),
+                            // ).into_response();
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("Failed to get user info: {:?}", e),
-                            ).into_response();
+                                format!("failed to get user info claims: {:?}", e).as_str(),
+                                None
+                            );
                         }
                     };
 
@@ -312,32 +369,70 @@ pub async fn callback_oidc(
                     let result = match handler.handle_auth_callback_oidc(userinfo).await {
                         Ok(c) => {
                             if c > 0 {
-                                handler.handle_login_success(&state.config, &user_id).await
+                                handler.handle_login_success(
+                                    &state.config,
+                                    &user_id,
+                                    &headers
+                                ).await
                             } else {
-                                (
+                                // (
+                                //  StatusCode::INTERNAL_SERVER_ERROR,
+                                //  "Failed to bind oidc user".to_string(),
+                                // ).into_response()
+                                return auths::auth_resp_redirect_or_json(
+                                    &state.config,
+                                    &headers,
+                                    &state.config.auth.login_url.to_owned().unwrap(),
                                     StatusCode::INTERNAL_SERVER_ERROR,
-                                    "Failed to bind oidc user".to_string(),
-                                ).into_response()
+                                    "Failed to bind oidc user",
+                                    None
+                                );
                             }
                         }
-                        Err(e) =>
-                            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+                        Err(e) => {
+                            //(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                e.to_string().as_str(),
+                                None
+                            );
+                        }
                     };
                     result
                 }
                 Err(e) => {
-                    (
+                    // (
+                    //  StatusCode::INTERNAL_SERVER_ERROR,
+                    //  format!("Failed to exchange token: {:?}", e),
+                    // ).into_response()
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        &headers,
+                        &state.config.auth.login_url.to_owned().unwrap(),
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to exchange token: {:?}", e),
-                    ).into_response()
+                        format!("failed exchange token: {:?}", e).as_str(),
+                        None
+                    );
                 }
             }
         }
-        None =>
-            (
+        None => {
+            // (
+            //   StatusCode::INTERNAL_SERVER_ERROR,
+            //   "Oidc client not configured".to_string(),
+            // ).into_response()
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                &headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "OIDC client not configured".to_string(),
-            ).into_response(),
+                "Oidc client not configured",
+                None
+            );
+        }
     }
 }
 
@@ -349,7 +444,8 @@ pub async fn callback_oidc(
 )]
 pub async fn callback_github(
     State(state): State<AppState>,
-    Query(param): Query<CallbackGithubRequest>
+    Query(param): Query<CallbackGithubRequest>,
+    headers: HeaderMap
 ) -> impl IntoResponse {
     match &state.github_client {
         Some(client) => {
@@ -366,23 +462,47 @@ pub async fn callback_github(
                         .expect("Missing 'user_info_url' configure");
 
                     // see:https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-a-user
-                    let resp = state.default_http_client
-                        .get(&url)
-                        // see:https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api?apiVersion=2022-11-28#user-agent-required
-                        .header(reqwest::header::USER_AGENT, "The-Rust-App-Reqwest/1.0")
-                        .bearer_auth(token.access_token().secret())
-                        .send().await
-                        .expect("Could not to sending get github user info.");
+                    let resp = match
+                        state.default_http_client
+                            .get(&url)
+                            // see:https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api?apiVersion=2022-11-28#user-agent-required
+                            .header(reqwest::header::USER_AGENT, "The-Rust-App-Reqwest/1.0")
+                            .bearer_auth(token.access_token().secret())
+                            .send().await
+                    {
+                        Ok(resp) => { resp }
+                        Err(e) => {
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                format!(
+                                    "failed to sending get github user info. {:?}",
+                                    e.to_string()
+                                ).as_str(),
+                                None
+                            );
+                        }
+                    };
 
                     let user_info: serde_json::Value = match resp.json().await {
                         Ok(info) => info,
                         Err(e) => {
                             let errmsg = format!("Failed to parse github user info: {}", e);
-                            println!("{}", errmsg);
-                            return (StatusCode::INTERNAL_SERVER_ERROR, errmsg).into_response();
+                            tracing::error!("{}", errmsg);
+                            //return (StatusCode::INTERNAL_SERVER_ERROR, errmsg).into_response();
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                errmsg.as_str(),
+                                None
+                            );
                         }
                     };
-                    println!("Received github user info {:?}", user_info);
+                    tracing::info!("Received github user info {:?}", user_info);
 
                     // TODO 未知原因 github 正常返回 json，但解码失败，暂先手动解析.
                     let user_id = user_info["id"].as_str().expect("github user id not found");
@@ -397,16 +517,33 @@ pub async fn callback_github(
                     let result = match handler.handle_auth_callback_github(github_user).await {
                         Ok(c) => {
                             if c > 0 {
-                                handler.handle_login_success(&state.config, user_id).await
+                                handler.handle_login_success(&state.config, user_id, &headers).await
                             } else {
-                                (
+                                // (
+                                //     StatusCode::INTERNAL_SERVER_ERROR,
+                                //     "Failed to bind github user".to_string(),
+                                // ).into_response()
+                                return auths::auth_resp_redirect_or_json(
+                                    &state.config,
+                                    &headers,
+                                    &state.config.auth.login_url.to_owned().unwrap(),
                                     StatusCode::INTERNAL_SERVER_ERROR,
-                                    "Failed to bind github user".to_string(),
-                                ).into_response()
+                                    "Failed to bind github user",
+                                    None
+                                );
                             }
                         }
-                        Err(e) =>
-                            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+                        Err(e) => {
+                            //(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+                            return auths::auth_resp_redirect_or_json(
+                                &state.config,
+                                &headers,
+                                &state.config.auth.login_url.to_owned().unwrap(),
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                format!("{:?}", e.to_string()).as_str(),
+                                None
+                            );
+                        }
                     };
                     result
                 }
@@ -420,18 +557,35 @@ pub async fn callback_github(
                         }
                         _ => "Unknown error".to_string(),
                     };
-                    (
+                    // (
+                    //     StatusCode::INTERNAL_SERVER_ERROR,
+                    //     format!("Failed to exchange token: {:?}", cause),
+                    // ).into_response()
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        &headers,
+                        &state.config.auth.login_url.to_owned().unwrap(),
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to exchange token: {:?}", cause),
-                    ).into_response()
+                        format!("failed to exchange token. reason: {}", cause).as_str(),
+                        None
+                    );
                 }
             }
         }
-        None =>
-            (
+        None => {
+            // (
+            //   StatusCode::INTERNAL_SERVER_ERROR,
+            //   "Github client not configured".to_string(),
+            // ).into_response()
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                &headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Github client not configured".to_string(),
-            ).into_response(),
+                "Github client not configured",
+                None
+            );
+        }
     }
 }
 
@@ -442,7 +596,6 @@ pub async fn callback_github(
         content = Option<LogoutRequest>,
         description = "Optional logout request parameters",
         content_type = "application/json",
-        //example = json!({"access_token": "<ACCESS_TOKEN>", "refresh_token": "<REFRESH_TOKEN>"}),
         example = json!({"access_token": null, "refresh_token": null}),
     ),
     responses((status = 200, description = "Logout.")),
@@ -450,26 +603,43 @@ pub async fn callback_github(
 )]
 pub async fn logout(
     State(state): State<AppState>,
-    // Json(param): Json<LogoutRequest>
-    // jar: CookieJar
     request: axum::extract::Request<Body>
 ) -> impl IntoResponse {
-    let cookie_ak = webs::get_cookie_from_req(&state.config.auth_jwt_ak_name, &request);
-    let cookie_rk = webs::get_cookie_from_req(&state.config.auth_jwt_rk_name, &request);
+    let headers = &request.headers().clone();
+    let body = request.into_body();
+
+    let cookie_ak = webs::get_cookie_from_headers(&state.config.auth_jwt_ak_name, headers);
+    let cookie_rk = webs::get_cookie_from_headers(&state.config.auth_jwt_rk_name, headers);
 
     let param: LogoutRequest = match
         serde_json::from_slice(
-            &(match axum::body::to_bytes(request.into_body(), usize::MAX).await {
+            &(match axum::body::to_bytes(body, usize::MAX).await {
                 Ok(bytes) => bytes,
                 Err(_) => {
-                    return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+                    //return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        headers,
+                        &state.config.auth.login_url.to_owned().unwrap(),
+                        StatusCode::BAD_REQUEST,
+                        "Read request body failed",
+                        None
+                    );
                 }
             })
         )
     {
         Ok(param) => param,
         Err(_) => {
-            return (StatusCode::BAD_REQUEST, "Invalid JSON").into_response();
+            //return (StatusCode::BAD_REQUEST, "Invalid parameter json").into_response();
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
+                StatusCode::BAD_REQUEST,
+                "Invalid parameter json",
+                None
+            );
         }
     };
 
@@ -484,22 +654,39 @@ pub async fn logout(
             let removal_ak = CookieBuilder::new(state.config.auth_jwt_ak_name.to_string(), "_")
                 .removal()
                 .build();
-
             let removal_rk = CookieBuilder::new(state.config.auth_jwt_rk_name.to_string(), "_")
                 .removal()
                 .build();
 
-            Response::builder()
-                .status(StatusCode::FOUND)
-                .header(header::LOCATION, "/")
-                .header(header::SET_COOKIE, removal_ak.to_string())
-                .header(header::SET_COOKIE, removal_rk.to_string())
-                .body(axum::body::Body::empty())
-                .unwrap()
+            let resp = auths::auth_resp_redirect_or_json(
+                &state.config,
+                headers,
+                &state.config.auth.login_url.to_owned().unwrap().as_str(),
+                StatusCode::BAD_REQUEST,
+                "Bad Parameters",
+                Some((removal_ak, removal_rk))
+            );
+            resp
+
+            // Response::builder()
+            //     .status(StatusCode::FOUND)
+            //     .header(header::LOCATION, "/")
+            //     .header(header::SET_COOKIE, removal_ak.to_string())
+            //     .header(header::SET_COOKIE, removal_rk.to_string())
+            //     .body(axum::body::Body::empty())
+            //     .unwrap()
         }
         Err(e) => {
             println!("Failed to logout. {:?}", e);
-            Redirect::to("/").into_response()
+            //Redirect::to("/").into_response()
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
+                StatusCode::BAD_REQUEST,
+                e.to_string().as_str(),
+                None
+            );
         }
     }
 }

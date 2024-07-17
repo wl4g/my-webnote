@@ -1,7 +1,6 @@
 use std::{ collections::HashMap, sync::Arc };
 
-use axum::response::{ IntoResponse, Redirect };
-
+use hyper::{ header, StatusCode };
 use lazy_static::lazy_static;
 use anyhow::{ Error, Ok };
 use chrono::Utc;
@@ -11,7 +10,7 @@ use crate::{
     config::config_api::ApiConfig,
     context::state::AppState,
     types::{ auths::{ GithubUserInfo, LogoutRequest }, users::SaveUserRequest },
-    utils::{ auths, webs },
+    utils::{ self, auths },
 };
 
 use super::users::UserHandler;
@@ -172,18 +171,17 @@ impl<'a> AuthHandler<'a> {
     pub async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
-        user_id: &str
+        user_id: &str,
+        headers: &header::HeaderMap
     ) -> hyper::Response<axum::body::Body> {
         // TODO: 附加更多自定义 JWT 信息
         let extra_claims = HashMap::new();
         let ak = auths::create_jwt(config, user_id, false, Some(extra_claims));
         let rk = auths::create_jwt(config, user_id, true, None);
 
-        let mut response = Redirect::to("/").into_response();
-
         let ak_cookie = CookieBuilder::new(&config.auth_jwt_ak_name, ak)
             .path("/")
-            .max_age(Duration::milliseconds(config.auth.jwt_validity_ak.unwrap()))
+            .max_age(Duration::milliseconds(config.auth.jwt_validity_ak.unwrap() as i64))
             .secure(true)
             .http_only(true)
             .same_site(SameSite::Strict)
@@ -191,15 +189,25 @@ impl<'a> AuthHandler<'a> {
 
         let rk_cookie = CookieBuilder::new(&config.auth_jwt_rk_name, rk)
             .path("/")
-            .max_age(Duration::milliseconds(config.auth.jwt_validity_rk.unwrap()))
+            .max_age(Duration::milliseconds(config.auth.jwt_validity_rk.unwrap() as i64))
             .secure(true)
             .http_only(true)
             .same_site(SameSite::Strict)
             .build();
 
-        webs::add_cookies(&mut response, vec![ak_cookie, rk_cookie]);
+        // use axum::response::{ IntoResponse, Redirect };
+        // let mut response = Redirect::to("/").into_response();
+        // utils::auths::add_cookies(&mut response, vec![ak_cookie, rk_cookie]);
+        // response
 
-        response
+        utils::auths::auth_resp_redirect_or_json(
+            &config,
+            headers,
+            config.auth.success_url.to_owned().unwrap().as_str(),
+            StatusCode::OK,
+            "Authenticated",
+            Some((ak_cookie, rk_cookie))
+        )
     }
 
     pub async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error> {
