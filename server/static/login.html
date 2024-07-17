@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signin or Signup</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #e8f4f8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        text-align: center;
+        background-color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 300px;
+      }
+      h1 {
+        color: #3498db;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+      input {
+        display: block;
+        width: 100%;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #bdc3c7;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        margin-bottom: 0.5rem;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .oauth-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .oauth-button img {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 20px;
+      }
+      .github {
+        background-color: #24292e;
+      }
+      .github:hover {
+        background-color: #1a1e22;
+      }
+      .oidc {
+        background-color: #4285f4;
+      }
+      .oidc:hover {
+        background-color: #3367d6;
+      }
+      .emoji {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+      .or-divider {
+        margin: 1rem 0;
+        text-align: center;
+        position: relative;
+      }
+      .or-divider::before,
+      .or-divider::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: 45%;
+        height: 1px;
+        background-color: #bdc3c7;
+      }
+      .or-divider::before {
+        left: 0;
+      }
+      .or-divider::after {
+        right: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="emoji">🐱</div>
+      <h1>Welcome back!</h1>
+      <button
+        onclick="window.location.href='/auth/connect/oidc'"
+        class="oauth-button oidc"
+      >
+        <img src="/static/img/openid-logo.jpg" alt="OIDC logo" />
+        Signin using OIDC
+      </button>
+      <button
+        onclick="window.location.href='/auth/connect/github'"
+        class="oauth-button github"
+      >
+        <img
+          src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+          alt="GitHub logo"
+        />
+        Signin with GitHub
+      </button>
+      <div class="or-divider">OR</div>
+      <form>
+        <input type="text" placeholder="Username" required />
+        <input type="password" placeholder="Password" required />
+        <button type="submit">Signin</button>
+      </form>
+    </div>
+  </body>
+</html>

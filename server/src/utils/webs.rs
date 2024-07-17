@@ -76,7 +76,7 @@ pub fn response_redirect_or_json(
         // Refer to github authorization troubleshooting reason tips.
         // let url = match url::Url::parse(redirect_url).as_mut() {
         //     Ok(_url) => {
-        //         _url.set_fragment(Some(format!("troubleshooting-tips-is-{}", message).as_str()));
+        //         _url.set_fragment(Some(format!("help-troubleshooting-is-{}", message).as_str()));
         //         _url.to_string()
         //     }
         //     Err(e) => {
@@ -84,7 +84,7 @@ pub fn response_redirect_or_json(
         //         "/".to_string() // TODO: redirect to error or default?
         //     }
         // };
-        let url = format!("{}#troubleshooting-tips-is-{}", redirect_url, message);
+        let url = format!("{}#help-troubleshooting-is-{}", redirect_url, message);
         // Make a redirect response.
         response = Redirect::to(url.as_str()).into_response();
     } else {

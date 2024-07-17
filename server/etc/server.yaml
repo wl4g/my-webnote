@@ -51,7 +51,6 @@ auth:
     - "/healthz/**"
     - "/public/**"
     - "/static/**"
-    # - "/sys/**" # for dev only
   oidc:
     enabled: true
     client-id: "mywebnote-wl4g"
@@ -73,7 +72,7 @@ auth:
     user-info-url: "https://api.github.com/user"
   login-url: "/static/login.html"
   success-url: "/static/index.html"
-  unauthz-url: "/static/unauthz.html"
+  unauthz-url: "/static/403.html"
 
 swagger:
   enabled: true

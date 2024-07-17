@@ -67,6 +67,9 @@ tower-http = { version = "0.5.2", features = ["trace", "auth"] }
 tower-cookies = "0.10.0"
 globset = "0.4.14" # ant glob path patterns
 #user_agent = "0.11.0"
+rust-embed = "8.5.0"
+mime_guess = "2.0.4"
+#include_dir = "0.7.3"
 #
 # Database libs.
 mongodb = "3.0.1"

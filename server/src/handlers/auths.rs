@@ -89,12 +89,12 @@ impl<'a> AuthHandler<'a> {
         if user.is_some() {
             save_param = SaveUserRequest {
                 id: user.unwrap().base.id,
-                name: oidc_user_name,
+                name: oidc_user_name.to_owned(),
                 email: None,
                 phone: None,
                 password: None,
-                oidc_claims_sub: None,
-                oidc_claims_name: None,
+                oidc_claims_sub: Some(oidc_user_id.to_string()),
+                oidc_claims_name: oidc_user_name,
                 github_claims_sub: None,
                 github_claims_name: None,
                 google_claims_sub: None,
@@ -104,7 +104,7 @@ impl<'a> AuthHandler<'a> {
             // 3. If user not exists, create user by github login, which auto register user.
             save_param = SaveUserRequest {
                 id: None,
-                name: oidc_user_name.clone(),
+                name: oidc_user_name.to_owned(),
                 email: None,
                 phone: None,
                 password: None,
@@ -143,8 +143,8 @@ impl<'a> AuthHandler<'a> {
                 password: None,
                 oidc_claims_sub: None,
                 oidc_claims_name: None,
-                github_claims_sub: None,
-                github_claims_name: None,
+                github_claims_sub: Some(github_user_id.to_string()),
+                github_claims_name: Some(github_user_name.to_string()),
                 google_claims_sub: None,
                 google_claims_name: None,
             };

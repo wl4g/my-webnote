@@ -529,3 +529,8 @@ impl ApiConfig {
         })
     }
 }
+
+pub const DEFAULT_INDEX_HTML: &str = include_str!("../../static/index.html");
+pub const DEFAULT_LOGIN_HTML: &str = include_str!("../../static/login.html");
+pub const DEFAULT_404_HTML: &str = include_str!("../../static/404.html");
+pub const DEFAULT_403_HTML: &str = include_str!("../../static/403.html");

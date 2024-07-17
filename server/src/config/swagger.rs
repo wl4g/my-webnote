@@ -5,11 +5,11 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use super::config_api::ApiConfig;
 use crate::routes::auths::{
-    __path_connect_oidc,
-    __path_connect_github,
-    __path_callback_github,
-    __path_callback_oidc,
-    __path_logout,
+    __path_handle_connect_oidc,
+    __path_handle_connect_github,
+    __path_handle_callback_github,
+    __path_handle_callback_oidc,
+    __path_handle_logout,
 };
 use crate::routes::users::{ __path_get_users, __path_save_user, __path_delete_user };
 use crate::types::{ BaseBean, PageRequest, PageResponse };
@@ -40,11 +40,11 @@ use crate::types::auths::{ CallbackGithubRequest, CallbackOidcRequest, LogoutReq
     //security((), "my_auth" = ["read:items", "edit:items"], "token_jwt" = []),
     external_docs(url = "https://github.com/wl4g/my-webnote", description = "More about our APIs"),
     paths(
-        connect_oidc,
-        connect_github,
-        callback_github,
-        callback_oidc,
-        logout,
+        handle_connect_oidc,
+        handle_connect_github,
+        handle_callback_github,
+        handle_callback_oidc,
+        handle_logout,
         get_users,
         save_user,
         delete_user

@@ -151,15 +151,32 @@ macro_rules! dynamic_mongo_insert {
 macro_rules! dynamic_mongo_update {
     ($bean:expr, $collection:expr) => {
         {
-            use mongodb::bson::{doc, to_bson};
+            use mongodb::bson::{doc, to_bson, Bson};
 
             $bean.base.pre_update(Some(crate::types::DEFAULT_BY.to_string()));
             let id = $bean.base.id.unwrap();
             let serialized = to_bson(&$bean)?;
             let obj = serialized.as_document().unwrap().clone();
 
+            fn is_empty_value(value: &Bson) -> bool {
+                match value {
+                    Bson::String(s) => s.is_empty(),
+                    Bson::Array(arr) => arr.is_empty(),
+                    Bson::Document(doc) => doc.is_empty(),
+                    Bson::Null => true,
+                    _ => false,
+                }
+            }
+
+            let mut update_doc = mongodb::bson::Document::new();
+            for (key, value) in obj.iter() {
+                if !is_empty_value(value) {
+                    update_doc.insert(key, value.clone());
+                }
+            }
+
             let filter = doc! { "id": id };
-            let update = doc! { "$set": obj };
+            let update = doc! { "$set": update_doc };
             let result = $collection.update_one(filter, update).await?;
 
             if result.modified_count > 0 {

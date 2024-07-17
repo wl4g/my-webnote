@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>可爱的小猫咪</title>
+    <style>
+      body {
+        font-family: "Comic Sans MS", cursive, sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        text-align: center;
+      }
+      h1 {
+        color: #6a3d9a;
+      }
+      .cat-image {
+        width: 100px;
+        height: auto;
+        border-radius: 60px;
+      }
+      .footer {
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        color: #808080;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>欢迎来到可爱小猫咪的世界！</h1>
+    <img class="cat-image" src="/static/img/cat1.jpeg" alt="一只可爱的小猫咪" />
+    <p>这里充满了温馨和乐趣！</p>
+    <footer class="footer">版权所有 © 2024. 所有权利保留。</footer>
+
+    <script>
+      document
+        .querySelector("img.cat-image")
+        .addEventListener("click", function () {
+          alert("喵~");
+        });
+    </script>
+  </body>
+</html>

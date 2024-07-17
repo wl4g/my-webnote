@@ -53,7 +53,7 @@ https://api.github.com/user
 */
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct GithubUserInfo {
-    pub id: Option<String>,
+    pub id: Option<i64>,
     pub login: Option<String>,
     pub node_id: Option<String>,
     pub avatar_url: Option<String>,
@@ -89,7 +89,7 @@ pub struct GithubUserInfo {
 }
 
 impl GithubUserInfo {
-    pub fn default(id: Option<String>, login: Option<String>) -> GithubUserInfo {
+    pub fn default(id: Option<i64>, login: Option<String>) -> GithubUserInfo {
         GithubUserInfo {
             id: id,
             login: login,
@@ -150,7 +150,7 @@ pub struct TokenWrapper {
     pub expires_in: u64,
 }
 
-#[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
+#[derive(Deserialize, Clone, Debug, utoipa::ToSchema, utoipa::IntoParams)]
 pub struct LogoutRequest {
     pub access_token: Option<String>,
     pub refresh_token: Option<String>,
