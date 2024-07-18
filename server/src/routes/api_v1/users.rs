@@ -25,9 +25,9 @@ use crate::{
 
 pub fn init() -> Router<AppState> {
     Router::new()
-        .route("/api/v1/user/query", get(handle_get_users))
-        .route("/api/v1/user/save", post(handle_save_user))
-        .route("/api/v1/user/delete", post(handle_delete_user))
+        .route("/api/v1/user/query", get(handle_apiv1_get_users))
+        .route("/api/v1/user/save", post(handle_apiv1_save_user))
+        .route("/api/v1/user/delete", post(handle_apiv1_delete_user))
 }
 
 #[utoipa::path(
@@ -39,9 +39,9 @@ pub fn init() -> Router<AppState> {
         description = "API Getting for all users.",
         body = QueryUserApiV1Response,
     )),
-    tag = ""
+    tag = "API/v1"
 )]
-pub async fn handle_get_users(
+pub async fn handle_apiv1_get_users(
     State(state): State<AppState>,
     Query(param): Query<QueryUserApiV1Request>,
     Query(page): Query<PageRequest>
@@ -57,9 +57,9 @@ pub async fn handle_get_users(
     path = "/api/v1/user/save",
     request_body = SaveUserApiV1Request,
     responses((status = 200, description = "API Save for user.", body = SaveUserApiV1Response)),
-    tag = ""
+    tag = "API/v1"
 )]
-async fn handle_save_user(
+async fn handle_apiv1_save_user(
     State(state): State<AppState>,
     ValidatedJson(param): ValidatedJson<SaveUserApiV1Request>
 ) -> impl IntoResponse {
@@ -74,9 +74,9 @@ async fn handle_save_user(
     path = "/api/v1/user/delete",
     request_body = DeleteUserApiV1Request,
     responses((status = 200, description = "API Delete for user.", body = DeleteUserApiV1Response)),
-    tag = ""
+    tag = "API/v1"
 )]
-async fn handle_delete_user(
+async fn handle_apiv1_delete_user(
     State(state): State<AppState>,
     Json(param): Json<DeleteUserApiV1Request>
 ) -> impl IntoResponse {

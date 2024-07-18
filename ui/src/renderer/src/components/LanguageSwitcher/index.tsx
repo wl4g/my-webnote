@@ -38,7 +38,7 @@ export default function LanguageSwitcher() {
       value={langCode}
       onClick={(e) => e.stopPropagation()}
       onChange={onChange}
-      className="revezone-language-select items-center w-auto whitespace-nowrap"
+      className="mywebnote-language-select items-center w-auto whitespace-nowrap"
       bordered={false}
     >
       {langCodeList.map((item) => {

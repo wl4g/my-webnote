@@ -17,7 +17,7 @@ type Props = {
   children: ReactNode;
 };
 
-const RevezoneLayout = ({ children }: Props): JSX.Element => {
+const MyWebnoteLayout = ({ children }: Props): JSX.Element => {
   const [collapsed, setCollapsed] = useAtom(siderbarCollapsedAtom);
   const [theme] = useAtom(themeAtom);
 
@@ -27,7 +27,7 @@ const RevezoneLayout = ({ children }: Props): JSX.Element => {
   }, [collapsed]);
 
   return (
-    <div className={`revezone-layout ${collapsed ? 'sidebar-collapsed' : null}`}>
+    <div className={`mywebnote-layout ${collapsed ? 'sidebar-collapsed' : null}`}>
       <Layout>
         <Sider
           breakpoint="lg"
@@ -43,7 +43,7 @@ const RevezoneLayout = ({ children }: Props): JSX.Element => {
             console.log(collapsed, type);
           }}
         >
-          <div className="revezone-topleft-toolbar">
+          <div className="mywebnote-topleft-toolbar">
             <PanelLeftClose
               className="panel-left-button w-5 text-current cursor-pointer"
               onClick={switchCollapse}
@@ -68,4 +68,4 @@ const RevezoneLayout = ({ children }: Props): JSX.Element => {
   );
 };
 
-export default RevezoneLayout;
+export default MyWebnoteLayout;

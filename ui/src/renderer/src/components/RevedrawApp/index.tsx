@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FileTreeItem, RevezoneFile } from '@renderer/types/file';
+import { FileTreeItem, MyWebnoteFile } from '@renderer/types/file';
 import { Revedraw } from 'revemate';
 import { ExcalidrawImperativeAPI, NonDeletedExcalidrawElement } from 'revemate/es/Revedraw/types';
 import { boardIndexeddbStorage } from '@renderer/store/boardIndexeddb';
@@ -12,7 +12,7 @@ import { getFileIdOrNameFromLink } from '@renderer/utils/file';
 import './index.css';
 
 interface Props {
-  file: RevezoneFile;
+  file: MyWebnoteFile;
 }
 
 const OS_NAME = getOSName();
@@ -76,15 +76,15 @@ export default function RevedrawApp({ file }: Props) {
       const { link } = element;
       console.log('link', link);
 
-      const fileIdOrNameInRevezone = link && getFileIdOrNameFromLink(link);
+      const fileIdOrNameInMyWebnote = link && getFileIdOrNameFromLink(link);
 
-      if (fileIdOrNameInRevezone) {
-        const files = fileTree?.reduce((prev: RevezoneFile[], item: FileTreeItem) => {
+      if (fileIdOrNameInMyWebnote) {
+        const files = fileTree?.reduce((prev: MyWebnoteFile[], item: FileTreeItem) => {
           return [...prev, ...item.children];
         }, []);
 
         const file = files.find(
-          (_file) => _file.id === fileIdOrNameInRevezone || _file.name === fileIdOrNameInRevezone
+          (_file) => _file.id === fileIdOrNameInMyWebnote || _file.name === fileIdOrNameInMyWebnote
         );
 
         if (file) {

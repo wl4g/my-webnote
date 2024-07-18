@@ -30,7 +30,7 @@ export default function BottomToolbar() {
         icon: <ArrowUpRightFromCircle className="w-4" />,
         label: (
           <a
-            href="https://github.com/wl4g-collect/revezone/issues/new"
+            href="https://github.com/wl4g-collect/mywebnote/issues/new"
             target="_blank"
             rel="noreferrer"
           >
@@ -43,7 +43,7 @@ export default function BottomToolbar() {
         title: t('links.twitter'),
         icon: <Twitter className="w-4" />,
         label: (
-          <a href="https://twitter.com/therevezone" target="_blank" rel="noreferrer">
+          <a href="https://twitter.com/themywebnote" target="_blank" rel="noreferrer">
             {t('links.twitter')}
           </a>
         )
@@ -83,7 +83,7 @@ export default function BottomToolbar() {
         title: t('links.downloadApp'),
         icon: <DownloadCloud className="w-4 animate-bounce" />,
         label: (
-          <a href="https://github.com/wl4g-collect/revezone/releases" target="_blank" rel="noreferrer">
+          <a href="https://github.com/wl4g-collect/mywebnote/releases" target="_blank" rel="noreferrer">
             {t('links.downloadApp')}
           </a>
         )
@@ -96,7 +96,7 @@ export default function BottomToolbar() {
     <div className="bottom-toolbar absolute h-8 pr-4 bottom-0 right-0 flex items-center text-slate-600">
       <a
         className="mr-2 flex items-center"
-        href="https://github.com/wl4g-collect/revezone"
+        href="https://github.com/wl4g-collect/mywebnote"
         target="_blank"
         rel="noreferrer"
         title={t('operation.giveAStar')}

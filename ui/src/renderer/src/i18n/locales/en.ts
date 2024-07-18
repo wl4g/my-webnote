@@ -19,7 +19,7 @@ export default {
     addBoard: 'Add a board',
     rename: 'Rename',
     delete: 'Delete',
-    copyRevezoneLink: 'Copy revezone link',
+    copyMyWebnoteLink: 'Copy mywebnote link',
     giveAStar: 'Git a star',
     switchLanguage: 'Switch Lanugage'
   },
@@ -51,7 +51,7 @@ export default {
   text: {
     untitled: 'Untitled',
     defaultFolder: 'Default Folder',
-    alpha: 'alpha'
+    beta: 'beta'
   },
   storage: {
     cloud: 'Cloud',
@@ -64,7 +64,7 @@ export default {
   publicBeta: {
     title: 'Public Beta Notice',
     description:
-      'Revezone is currently in a public beta, there may still be a few bugs in the product. Please make sure to backup your important data. Please submit a github issue or concat my twitter if you have any questions or suggestions.'
+      'MyWebnote is currently in a public beta, there may still be a few bugs in the product. Please make sure to backup your important data. Please submit a github issue or concat my twitter if you have any questions or suggestions.'
   },
   customFont: {
     customFont: 'Custom font',

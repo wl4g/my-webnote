@@ -1,40 +1,86 @@
-// use crate::models::folders::Folder;
-// use super::Repository;
-// use super::sqlite::SQLiteRepository;
-// use anyhow::Error;
+use anyhow::{ Error, Ok };
+use axum::async_trait;
 
-// pub struct FolderSQLiteRepository {
-//   inner: SQLiteRepository<Folder>,
-// }
+use crate::config::config_api::DbProperties;
+use crate::types::folders::Folder;
+use crate::types::PageRequest;
+use crate::types::PageResponse;
+use super::AsyncRepository;
+use super::sqlite::SQLiteRepository;
 
-// impl FolderSQLiteRepository {
-//   pub fn new() -> Self {
-//     FolderSQLiteRepository { inner: SQLiteRepository::new() }
-//   }
-// }
+pub struct FolderSQLiteRepository {
+    inner: SQLiteRepository<Folder>,
+}
 
-// impl Repository<Folder> for FolderSQLiteRepository {
-//   fn select(&self) -> Result<Vec<Folder>, Error> {
-//     todo!()
-//   }
+impl FolderSQLiteRepository {
+    pub async fn new(config: &DbProperties) -> Result<Self, Error> {
+        Ok(FolderSQLiteRepository {
+            inner: SQLiteRepository::new(config).await?,
+        })
+    }
+}
 
-//   fn select_by_id(&self, id: i32) -> Result<Folder, Error> {
-//     todo!()
-//   }
+#[async_trait]
+impl AsyncRepository<Folder> for FolderSQLiteRepository {
+    async fn select(
+        &self,
+        folder: Folder,
+        page: PageRequest
+    ) -> Result<(PageResponse, Vec<Folder>), Error> {
+        let result = dynamic_sqlite_query!(
+            folder,
+            "folders",
+            self.inner.get_pool(),
+            "update_time",
+            page,
+            Folder
+        ).unwrap();
 
-//   fn insert(&self, param: Folder) -> Result<Folder, Error> {
-//     todo!()
-//   }
+        tracing::info!("query folders: {:?}", result);
+        Ok((result.0, result.1))
+    }
 
-//   fn update(&self, param: Folder) -> Result<Folder, Error> {
-//     todo!()
-//   }
+    async fn select_by_id(&self, id: i64) -> Result<Folder, Error> {
+        let folder = sqlx
+            ::query_as::<_, Folder>("SELECT * FROM folders WHERE id = $1")
+            .bind(id)
+            .fetch_one(self.inner.get_pool()).await
+            .unwrap();
 
-//   fn delete_all(&self, id: i32) -> Result<i32, Error> {
-//     todo!()
-//   }
+        tracing::info!("query folder: {:?}", folder);
+        Ok(folder)
+    }
 
-//   fn delete_by_id(&self, id: i32) -> Result<i32, Error> {
-//     todo!()
-//   }
-// }
+    async fn insert(&self, mut folder: Folder) -> Result<i64, Error> {
+        let inserted_id = dynamic_sqlite_insert!(folder, "folders", self.inner.get_pool()).unwrap();
+        tracing::info!("Inserted folder.id: {:?}", inserted_id);
+        Ok(inserted_id)
+    }
+
+    async fn update(&self, mut folder: Folder) -> Result<i64, Error> {
+        let updated_id = dynamic_sqlite_update!(folder, "folders", self.inner.get_pool()).unwrap();
+        tracing::info!("Updated folder.id: {:?}", updated_id);
+        Ok(updated_id)
+    }
+
+    async fn delete_all(&self) -> Result<u64, Error> {
+        let delete_result = sqlx
+            ::query("DELETE FROM folders")
+            .execute(self.inner.get_pool()).await
+            .unwrap();
+
+        tracing::info!("Deleted result: {:?}", delete_result);
+        Ok(delete_result.rows_affected())
+    }
+
+    async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
+        let delete_result = sqlx
+            ::query("DELETE FROM folders WHERE id = $1")
+            .bind(id)
+            .execute(self.inner.get_pool()).await
+            .unwrap();
+
+        tracing::info!("Deleted result: {:?}", delete_result);
+        Ok(delete_result.rows_affected())
+    }
+}

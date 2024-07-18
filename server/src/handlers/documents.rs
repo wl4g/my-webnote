@@ -1,25 +1,76 @@
-// use anyhow::{Error, Ok};
-// use crate::context::state::AppState;
-// use crate::models::documents::Document;
+use std::sync::Arc;
 
-// pub struct DocumentHandler<'a> {
-//   state: &'a AppState,
-// }
+use anyhow::{ Error, Ok };
+use axum::async_trait;
+use crate::context::state::AppState;
+use crate::types::documents::{
+    DeleteDocumentRequest,
+    QueryDocumentRequest,
+    SaveDocumentRequest,
+    Document,
+};
+use crate::types::{ PageRequest, PageResponse };
 
-// impl<'a> DocumentHandler<'a> {
-//   pub fn new(state: &'a AppState) -> Self {
-//     Self { state }
-//   }
+#[async_trait]
+pub trait IDocumentHandler: Send {
+    async fn get(&self, name: Option<String>) -> Result<Option<Arc<Document>>, Error>;
 
-//   pub async fn get_documents(&self) -> Result<Vec<Document>, Error> {
-//     let mut repo = self.state.document_repo.lock().await;
-//     repo.repo(&self.state.config).select()
-//   }
+    async fn find(
+        &self,
+        param: QueryDocumentRequest,
+        page: PageRequest
+    ) -> Result<(PageResponse, Vec<Document>), Error>;
 
-//   pub async fn create_document(&self, document: Document) -> Result<Document, Error> {
-//     let mut repo = self.state.document_repo.lock().await;
-//     repo.repo(&self.state.config).insert(document)
-//   }
+    async fn save(&self, param: SaveDocumentRequest) -> Result<i64, Error>;
 
-//   // More functions ...
-// }
+    async fn delete(&self, param: DeleteDocumentRequest) -> Result<u64, Error>;
+}
+
+pub struct DocumentHandler<'a> {
+    state: &'a AppState,
+}
+
+impl<'a> DocumentHandler<'a> {
+    pub fn new(state: &'a AppState) -> Self {
+        Self { state }
+    }
+}
+
+#[async_trait]
+impl<'a> IDocumentHandler for DocumentHandler<'a> {
+    async fn get(&self, name: Option<String>) -> Result<Option<Arc<Document>>, Error> {
+        let param = QueryDocumentRequest {
+            name,
+        };
+        let res = self.find(param, PageRequest::default()).await.unwrap().1;
+        if res.len() > 0 {
+            let document = Arc::new(res.get(0).unwrap().clone());
+            return Ok(Some(document));
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn find(
+        &self,
+        param: QueryDocumentRequest,
+        page: PageRequest
+    ) -> Result<(PageResponse, Vec<Document>), Error> {
+        let repo = self.state.document_repo.lock().await;
+        repo.repo(&self.state.config).select(param.to_document(), page).await
+    }
+
+    async fn save(&self, param: SaveDocumentRequest) -> Result<i64, Error> {
+        let repo = self.state.document_repo.lock().await;
+        if param.id.is_some() {
+            repo.repo(&self.state.config).update(param.to_document()).await
+        } else {
+            repo.repo(&self.state.config).insert(param.to_document()).await
+        }
+    }
+
+    async fn delete(&self, param: DeleteDocumentRequest) -> Result<u64, Error> {
+        let repo = self.state.document_repo.lock().await;
+        repo.repo(&self.state.config).delete_by_id(param.id).await
+    }
+}

@@ -19,7 +19,7 @@ export default {
     addBoard: '新建白板',
     rename: '重命名',
     delete: '删除',
-    copyRevezoneLink: '复制 Revezone 链接',
+    copyMyWebnoteLink: '复制 MyWebnote 链接',
     giveAStar: '给个 Star 吧',
     switchLanguage: '切换语言'
   },
@@ -50,7 +50,7 @@ export default {
   text: {
     untitled: '请输入标题',
     defaultFolder: '默认文件夹',
-    alpha: '公测版'
+    beta: '公测版'
   },
   storage: {
     cloud: '云存储',
@@ -63,7 +63,7 @@ export default {
   publicBeta: {
     title: '公测公告',
     description:
-      'Revezone 目前处于公测阶段，产品可能还有少量 bug，重要数据请做好备份。如果你有任何问题或建议，欢迎提交 github issue 或者扫码添加微信反馈。'
+      'MyWebnote 目前处于公测阶段，产品可能还有少量 bug，重要数据请做好备份。如果你有任何问题或建议，欢迎提交 github issue 或者扫码添加微信反馈。'
   },
   customFont: {
     customFont: '自定义字体',

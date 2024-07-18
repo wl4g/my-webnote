@@ -68,7 +68,7 @@ pub fn is_browser(headers: &HeaderMap) -> bool {
 pub fn response_redirect_or_json(
     status: StatusCode,
     headers: &HeaderMap,
-    cookies: Option<(Cookie, Cookie)>,
+    cookies: Option<(Option<Cookie>, Option<Cookie>, Option<Cookie>)>,
     redirect_url: &str,
     message: &str,
     json: &str
@@ -88,7 +88,7 @@ pub fn response_redirect_or_json(
         //         _url.to_string()
         //     }
         //     Err(e) => {
-        //         println!("url parse error:{}", e);
+        //         tracing::info!("url parse error:{}", e);
         //         "/".to_string() // TODO: redirect to error or default?
         //     }
         // };
@@ -97,8 +97,18 @@ pub fn response_redirect_or_json(
         response = (status, json.to_string()).into_response();
         response.headers_mut().insert(header::CONTENT_TYPE, APPLICATION_JSON_HEADER_VALUE);
     }
-    if let Some(pair) = cookies {
-        add_cookies(&mut response, vec![pair.0, pair.1]);
+    if let Some(tuple3) = cookies {
+        let mut cs = Vec::new();
+        if tuple3.0.is_some() {
+            cs.push(tuple3.0.unwrap());
+        }
+        if tuple3.1.is_some() {
+            cs.push(tuple3.1.unwrap());
+        }
+        if tuple3.2.is_some() {
+            cs.push(tuple3.2.unwrap());
+        }
+        add_cookies(&mut response, cs);
     }
     response
 }

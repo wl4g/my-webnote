@@ -1,9 +1,9 @@
-.revezone-menu-container {
+.mywebnote-menu-container {
   position: relative;
   height: calc(100% - 4rem);
   margin-top: 1rem;
 
-  .os-is-macos.is-in-revezone-native-app & {
+  .os-is-macos.is-in-mywebnote-native-app & {
     margin-top: 0;
   }
 

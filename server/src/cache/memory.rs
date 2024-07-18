@@ -55,7 +55,7 @@ impl ICache<String> for StringMemoryCache {
 
   async fn set(&self, key: String, value: String, expire: Option<i32>) -> Result<bool, Error> {
     self.cache.insert(key.clone(), value).await;
-    println!("Inserted to key: {}, expire: {:?}", key, expire);
+    tracing::info!("Inserted to key: {}, expire: {:?}", key, expire);
     Ok(true)
   }
 

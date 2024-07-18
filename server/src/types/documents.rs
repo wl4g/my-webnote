@@ -1,44 +1,92 @@
+use sqlx::{ FromRow, sqlite::SqliteRow, Row };
 use serde::{ Deserialize, Serialize };
-use super::BaseBean;
+use validator::Validate;
 
-#[derive(Serialize, Deserialize, Clone)]
+use super::{ BaseBean, PageResponse };
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct Document {
-  #[serde(flatten)]
-  pub base: Option<BaseBean>,
-  pub name: String,
-  pub email: String,
-  pub password: Option<String>,
+    #[serde(flatten)]
+    pub base: BaseBean,
+    pub name: Option<String>,
 }
 
-#[derive(Deserialize)]
+impl<'r> FromRow<'r, SqliteRow> for Document {
+    fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(Document {
+            base: BaseBean::from_row(row).unwrap(),
+            name: row.try_get("name")?,
+        })
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct QueryDocumentRequest {
-  pub name: Option<String>,
-  pub email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub name: Option<String>,
 }
 
-#[derive(Serialize)]
+impl QueryDocumentRequest {
+    pub fn to_document(&self) -> Document {
+        Document {
+            base: BaseBean::new(None, None, None),
+            name: Some(self.name.clone().unwrap_or_default()),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct QueryDocumentResponse {
-  users: Vec<Document>,
+    pub page: Option<PageResponse>,
+    pub data: Option<Vec<Document>>,
 }
 
-#[derive(Deserialize)]
+impl QueryDocumentResponse {
+    pub fn new(page: PageResponse, data: Vec<Document>) -> Self {
+        QueryDocumentResponse { page: Some(page), data: Some(data) }
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema)]
 pub struct SaveDocumentRequest {
-  name: String,
-  email: String,
-  password: String,
+    pub id: Option<i64>,
+    #[validate(length(min = 1, max = 64))]
+    pub name: Option<String>,
 }
 
-#[derive(Serialize)]
+impl SaveDocumentRequest {
+    pub fn to_document(&self) -> Document {
+        Document {
+            base: BaseBean::new_default(self.id),
+            name: self.name.clone(),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct SaveDocumentResponse {
-  user: Document,
+    pub id: i64,
 }
 
-#[derive(Deserialize)]
+impl SaveDocumentResponse {
+    pub fn new(id: i64) -> Self {
+        SaveDocumentResponse { id }
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema)]
 pub struct DeleteDocumentRequest {
-  id: String,
+    pub id: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct DeleteDocumentResponse {
-  id: String,
+    pub count: u64,
+}
+
+impl DeleteDocumentResponse {
+    pub fn new(count: u64) -> Self {
+        DeleteDocumentResponse { count }
+    }
 }

@@ -45,18 +45,18 @@ pub fn execute_commands_app() -> () {
   match matches.subcommand() {
     Some((name, sub_matches)) => {
       if let Some(&(_, handler)) = subcommand_map.get(name) {
-        println!("Executing subcommand: {}", name);
+        tracing::info!("Executing subcommand: {}", name);
         handler(sub_matches);
       } else {
         panic!("Unknown subcommand: {}. Use --help for a list of available commands.", name);
       }
     }
     None => {
-      println!("No subcommand was used. Available commands are:");
+      tracing::info!("No subcommand was used. Available commands are:");
       for name in subcommand_map.keys() {
-        println!("  {}", name);
+        tracing::info!("  {}", name);
       }
-      println!("Use <command> --help for more information about a specific command.");
+      tracing::info!("Use <command> --help for more information about a specific command.");
     }
   }
 }

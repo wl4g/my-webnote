@@ -10,7 +10,7 @@ export const registerAppMenu = () => {
       label: 'Website',
       click: () => {
         const { shell } = require('electron');
-        shell.openExternal('https://revezone.com');
+        shell.openExternal('https://mywebnote.com');
       }
     }),
     new MenuItem({
@@ -24,7 +24,7 @@ export const registerAppMenu = () => {
       label: 'Github',
       click: () => {
         const { shell } = require('electron');
-        shell.openExternal('https://github.com/wl4g-collect/revezone');
+        shell.openExternal('https://github.com/wl4g-collect/mywebnote');
       }
     })
   ];

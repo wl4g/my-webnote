@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { Menu, Dropdown } from 'antd';
 import { menuIndexeddbStorage } from '@renderer/store/menuIndexeddb';
-import type { RevezoneFile, RevezoneFolder, OnFolderOrFileAddProps } from '@renderer/types/file';
+import type { MyWebnoteFile, MyWebnoteFolder, OnFolderOrFileAddProps } from '@renderer/types/file';
 import { storageAdapter } from '../../store/storage';
 import { useAtom } from 'jotai';
 import { currentFileAtom, currentFolderIdAtom } from '@renderer/store/jotai';
@@ -10,7 +10,7 @@ import { blocksuiteStorage } from '@renderer/store/blocksuite';
 // import useBlocksuitePageTitle from '@renderer/hooks/useBlocksuitePageTitle';
 import OperationBar from '../OperationBar';
 import moment from 'moment';
-import RevezoneLogo from '../RevezoneLogo';
+import MyWebnoteLogo from '../MyWebnoteLogo';
 
 import './index.css';
 import { getFileById, getFolderIdByFileId } from '@renderer/utils/file';
@@ -61,7 +61,7 @@ export default function CustomMenu({ collapsed }: Props) {
   };
 
   // Set up current storage provider state.
-  const lastStorageProvider = localStorage.getItem('revezone.storageType');
+  const lastStorageProvider = localStorage.getItem('mywebnote.storageType');
   const [currentStorageProvider, setCurrentStorageProvider] = useState(
     lastStorageProvider || 'CLOUD'
   ); // Default
@@ -151,7 +151,7 @@ export default function CustomMenu({ collapsed }: Props) {
   );
 
   const deleteFile = useCallback(
-    async (file: RevezoneFile) => {
+    async (file: MyWebnoteFile) => {
       await menuIndexeddbStorage.deleteFile(file);
       console.log('onDeletedFile :: file:', file);
 
@@ -265,7 +265,7 @@ export default function CustomMenu({ collapsed }: Props) {
   );
 
   const onFileNameChanged = useCallback(
-    async (text: string, file: RevezoneFile) => {
+    async (text: string, file: MyWebnoteFile) => {
       console.log('onFileNameChanged :: text:', text, ', file:', file);
 
       await menuIndexeddbStorage.updateFileName(file, text);
@@ -281,7 +281,7 @@ export default function CustomMenu({ collapsed }: Props) {
   );
 
   const onFolderNameChanged = useCallback(
-    (folder: RevezoneFolder, text: string) => {
+    (folder: MyWebnoteFolder, text: string) => {
       console.log('onFolderNameChanged :: text:', text, ', folder:', folder);
 
       menuIndexeddbStorage.updateFolderName(folder, text);
@@ -298,11 +298,11 @@ export default function CustomMenu({ collapsed }: Props) {
   );
 
   return (
-    <div className="revezone-menu-container">
+    <div className="mywebnote-menu-container">
       <div className="flex flex-col mb-1 pl-5 pr-8 pt-0 justify-between">
         <div className="flex items-center">
-          <RevezoneLogo size="small" onClick={() => resetMenu()} />
-          <span>&nbsp;-&nbsp;{t('text.alpha')}</span>
+          <MyWebnoteLogo size="small" onClick={() => resetMenu()} />
+          <span>&nbsp;-&nbsp;{t('text.beta')}</span>
           <PublicBetaNotice />
         </div>
         <div className="flex justify-start">

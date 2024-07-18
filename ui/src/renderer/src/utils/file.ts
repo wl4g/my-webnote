@@ -1,11 +1,11 @@
-import { FileTree, RevezoneFile } from '@renderer/types/file';
+import { FileTree, MyWebnoteFile } from '@renderer/types/file';
 
-const REVEZONE_LINK_PROTOCOL = 'revezone://';
+const REVEZONE_LINK_PROTOCOL = 'mywebnote://';
 import { DOUBLE_LINK_REGEX } from '@renderer/utils/constant';
 
 export const getFileById = (fileId: string, fileTree: FileTree) => {
   const files = fileTree.reduce(
-    (prev: RevezoneFile[], current) => [...prev, ...current.children],
+    (prev: MyWebnoteFile[], current) => [...prev, ...current.children],
     []
   );
 

@@ -1,40 +1,72 @@
-// use crate::models::settings::Settings;
-// use super::Repository;
-// use super::mongo::MongoRepository;
-// use anyhow::Error;
+use std::sync::Arc;
 
-// pub struct SettingsMongoRepository {
-//   inner: MongoRepository<Settings>,
-// }
+use anyhow::Error;
+use axum::async_trait;
 
-// impl SettingsMongoRepository {
-//   pub fn new() -> Self {
-//     SettingsMongoRepository { inner: MongoRepository::new() }
-//   }
-// }
+use mongodb::Collection;
+use mongodb::bson::doc;
 
-// impl Repository<Settings> for SettingsMongoRepository {
-//   fn select(&self) -> Result<Vec<Settings>, Error> {
-//     todo!()
-//   }
+use crate::config::config_api::DbProperties;
+use crate::types::settings::Settings;
+use crate::types::{ PageRequest, PageResponse };
+use super::AsyncRepository;
+use super::mongo::MongoRepository;
+use crate::{ dynamic_mongo_query, dynamic_mongo_insert, dynamic_mongo_update };
 
-//   fn select_by_id(&self, id: i64) -> Result<Settings, Error> {
-//     todo!()
-//   }
+pub struct SettingsMongoRepository {
+    #[allow(unused)]
+    inner: Arc<MongoRepository<Settings>>,
+    collection: Collection<Settings>,
+}
 
-//   fn insert(&self, param: Settings) -> Result<i64, Error> {
-//     todo!()
-//   }
+impl SettingsMongoRepository {
+    pub async fn new(config: &DbProperties) -> Result<Self, Error> {
+        let inner = Arc::new(MongoRepository::new(config).await?);
+        let collection = inner.get_database().collection("settings");
+        Ok(SettingsMongoRepository { inner, collection })
+    }
+}
 
-//   fn update(&self, param: Settings) -> Result<u64, Error> {
-//     todo!()
-//   }
+#[async_trait]
+impl AsyncRepository<Settings> for SettingsMongoRepository {
+    async fn select(
+        &self,
+        settings: Settings,
+        page: PageRequest
+    ) -> Result<(PageResponse, Vec<Settings>), Error> {
+        match dynamic_mongo_query!(settings, self.collection, "update_time", page, Settings) {
+            Ok(result) => {
+                tracing::info!("query settings: {:?}", result);
+                Ok((result.0, result.1))
+            }
+            Err(error) => Err(error),
+        }
+    }
 
-//   fn delete_all(&self) -> Result<u64, Error> {
-//     todo!()
-//   }
+    async fn select_by_id(&self, id: i64) -> Result<Settings, Error> {
+        let filter = doc! { "id": id };
+        let settings = self.collection
+            .find_one(filter).await?
+            .ok_or_else(|| Error::msg("Settings not found"))?;
+        Ok(settings)
+    }
 
-//   fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
-//     todo!()
-//   }
-// }
+    async fn insert(&self, mut settings: Settings) -> Result<i64, Error> {
+        dynamic_mongo_insert!(settings, self.collection)
+    }
+
+    async fn update(&self, mut settings: Settings) -> Result<i64, Error> {
+        dynamic_mongo_update!(settings, self.collection)
+    }
+
+    async fn delete_all(&self) -> Result<u64, Error> {
+        let result = self.collection.delete_many(doc! {}).await?;
+        Ok(result.deleted_count)
+    }
+
+    async fn delete_by_id(&self, id: i64) -> Result<u64, Error> {
+        let filter = doc! { "id": id };
+        let result = self.collection.delete_one(filter).await?;
+        Ok(result.deleted_count)
+    }
+}

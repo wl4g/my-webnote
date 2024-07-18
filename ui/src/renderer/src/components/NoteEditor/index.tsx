@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@blocksuite/editor';
 import '@blocksuite/editor/themes/affine.css';
-import RevezoneBlockSuiteEditor from '../RevezoneBlockSuiteEditor';
+import MyWebnoteBlockSuiteEditor from '../MyWebnoteBlockSuiteEditor';
 import { Input } from 'antd';
 import { menuIndexeddbStorage } from '@renderer/store/menuIndexeddb';
-import { RevezoneFile } from '@renderer/types/file';
+import { MyWebnoteFile } from '@renderer/types/file';
 
 import './index.css';
 import useFileTree from '@renderer/hooks/useFileTree';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
-  file: RevezoneFile;
+  file: MyWebnoteFile;
 }
 
 function NoteEditor({ file }: Props): JSX.Element | null {
@@ -35,7 +35,7 @@ function NoteEditor({ file }: Props): JSX.Element | null {
     let editor;
 
     if (editorRef.current) {
-      editor = new RevezoneBlockSuiteEditor({
+      editor = new MyWebnoteBlockSuiteEditor({
         pageId: file.id
       });
 

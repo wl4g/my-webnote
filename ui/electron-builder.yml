@@ -1,5 +1,5 @@
-appId: revezone
-productName: Revezone
+appId: mywebnote
+productName: MyWebnote
 directories:
   buildResources: build
 files:
@@ -13,7 +13,7 @@ asarUnpack:
   - resources/**
 afterSign: build/notarize.js
 win:
-  executableName: Revezone
+  executableName: MyWebnote
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -45,5 +45,5 @@ appImage:
 npmRebuild: false
 publish:
   provider: github
-  owner: revezone
-  repo: revezone
+  owner: mywebnote
+  repo: mywebnote

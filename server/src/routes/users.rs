@@ -29,9 +29,9 @@ pub fn init() -> Router<AppState> {
     path = "/sys/user/query",
     params(QueryUserRequest, PageRequest),
     responses((status = 200, description = "Getting for all users.", body = QueryUserResponse)),
-    tag = ""
+    tag = "User"
 )]
-pub async fn handle_get_users(
+async fn handle_get_users(
     State(state): State<AppState>,
     Query(param): Query<QueryUserRequest>,
     Query(page): Query<PageRequest>
@@ -50,7 +50,7 @@ pub async fn handle_get_users(
     path = "/sys/user/save",
     request_body = SaveUserRequest,
     responses((status = 200, description = "Save for user.", body = SaveUserResponse)),
-    tag = ""
+    tag = "User"
 )]
 async fn handle_save_user(
     State(state): State<AppState>,
@@ -67,7 +67,7 @@ async fn handle_save_user(
     path = "/sys/user/delete",
     request_body = DeleteUserRequest,
     responses((status = 200, description = "Delete for user.", body = DeleteUserResponse)),
-    tag = ""
+    tag = "User"
 )]
 async fn handle_delete_user(
     State(state): State<AppState>,

@@ -31,12 +31,13 @@ use crate::config::config_api::ApiProperties;
 use crate::config::swagger;
 use crate::context::state::AppState;
 use crate::monitoring::otel::create_otel_tracer;
-use crate::routes::auths::init as auth_router;
+use crate::monitoring::health::init as health_router;
 use crate::routes::auths::auth_middleware;
-// use crate::routes::documents::init as document_router;
-// use crate::routes::folders::init as folder_router;
-// use crate::routes::settings::init as settings_router;
+use crate::routes::auths::init as auth_router;
 use crate::routes::users::init as user_router;
+use crate::routes::documents::init as document_router;
+use crate::routes::folders::init as folder_router;
+use crate::routes::settings::init as settings_router;
 
 lazy_static! {
     pub static ref REGISTRY: Registry = Registry::new();
@@ -134,11 +135,16 @@ async fn start_server(config: &Arc<ApiConfig>) {
     info!("Register API server middlewares ...");
 
     let mut app = Router::new()
-        // .merge(document_router())
-        // .merge(folder_router())
-        // .merge(settings_router())
+        .merge(health_router())
         .merge(auth_router())
         .merge(user_router())
+        .merge(document_router())
+        .merge(folder_router())
+        .merge(settings_router())
+        // Notice: The settings of middlewares are in order, which will affect the priority of route matching.
+        // The later the higher the priority? For example, if auth_middleware is set at the end, it will
+        // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
+        // directly enter handle_root().
         .layer(
             ServiceBuilder::new()
                 .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth_middleware))

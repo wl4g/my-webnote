@@ -4,12 +4,12 @@ import { LitElement } from 'lit';
 import { EditorContainer } from '@blocksuite/editor';
 import { blocksuiteStorage } from '../../store/blocksuite';
 
-const CUSTOM_ELEMENT_NAME = 'revezone-block-suite-editor';
+const CUSTOM_ELEMENT_NAME = 'mywebnote-block-suite-editor';
 
 interface Props {
   pageId: string;
 }
-export default class RevezoneBlockSuiteEditor extends LitElement {
+export default class MyWebnoteBlockSuiteEditor extends LitElement {
   readonly workspace: Workspace = blocksuiteStorage.workspace;
   readonly page: Page | null = null;
 
@@ -23,7 +23,7 @@ export default class RevezoneBlockSuiteEditor extends LitElement {
     this.page = page;
 
     // @ts-ignore
-    window.workspace = RevezoneBlockSuiteEditor.workspace;
+    window.workspace = MyWebnoteBlockSuiteEditor.workspace;
 
     // @ts-ignore
     window.editor = this;
@@ -43,4 +43,4 @@ export default class RevezoneBlockSuiteEditor extends LitElement {
   }
 }
 
-customElements.define(CUSTOM_ELEMENT_NAME, RevezoneBlockSuiteEditor);
+customElements.define(CUSTOM_ELEMENT_NAME, MyWebnoteBlockSuiteEditor);

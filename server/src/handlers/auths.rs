@@ -36,7 +36,9 @@ pub trait IAuthHandler: Send {
     async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
-        user_id: &str,
+        uid: &str,
+        uname: &str,
+        email: &str,
         headers: &header::HeaderMap
     ) -> hyper::Response<axum::body::Body>;
 
@@ -96,49 +98,52 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     }
 
     async fn handle_auth_callback_oidc(&self, userinfo: CoreUserInfoClaims) -> Result<i64, Error> {
-        let oidc_user_id = userinfo.subject().as_str();
-        let oidc_user_name = userinfo.name().map(|n|
-            n
-                .get(Some(&LANG_CLAIMS_NAME_KEY))
-                .map(|u| u.to_string())
-                .unwrap_or_default()
-        );
+        let oidc_uid = userinfo.subject().as_str();
+        // let oidc_uname = userinfo.name().map(|n| n.get(Some(&LANG_CLAIMS_NAME_KEY)).map(|u| u.to_string()).unwrap_or_default());
+        let oidc_preferred_name = userinfo.preferred_username().map(|c| c.to_string());
+        let oidc_email = userinfo.email().map(|c| c.to_string());
 
         let handler = UserHandler::new(self.state);
 
-        // 1. Get user by oidc user_id
-        let user = handler.get(Some(oidc_user_id.to_string()), None, None).await.unwrap();
+        // 1. Get user by oidc uid
+        let user = handler.get(Some(oidc_uid.to_string()), None, None).await.unwrap();
 
         // 2. If user exists, update user github subject ID.
         let save_param;
         if user.is_some() {
             save_param = SaveUserRequest {
                 id: user.unwrap().base.id,
-                name: oidc_user_name.to_owned(),
+                name: oidc_preferred_name.to_owned(),
                 email: None,
                 phone: None,
                 password: None,
-                oidc_claims_sub: Some(oidc_user_id.to_string()),
-                oidc_claims_name: oidc_user_name,
+                oidc_claims_sub: Some(oidc_uid.to_string()),
+                oidc_claims_name: oidc_preferred_name,
+                oidc_claims_email: oidc_email,
                 github_claims_sub: None,
                 github_claims_name: None,
+                github_claims_email: None,
                 google_claims_sub: None,
                 google_claims_name: None,
+                google_claims_email: None,
             };
         } else {
             // 3. If user not exists, create user by github login, which auto register user.
             save_param = SaveUserRequest {
                 id: None,
-                name: oidc_user_name.to_owned(),
+                name: oidc_preferred_name.to_owned(),
                 email: None,
                 phone: None,
                 password: None,
-                oidc_claims_sub: Some(oidc_user_id.to_string()),
-                oidc_claims_name: oidc_user_name,
+                oidc_claims_sub: Some(oidc_uid.to_string()),
+                oidc_claims_name: oidc_preferred_name,
+                oidc_claims_email: oidc_email,
                 github_claims_sub: None,
                 github_claims_name: None,
+                github_claims_email: None,
                 google_claims_sub: None,
                 google_claims_name: None,
+                google_claims_email: None,
             };
         }
 
@@ -146,44 +151,51 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     }
 
     async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error> {
-        let github_user_id = userinfo.id.expect("github user_id is None");
-        let github_user_name = userinfo.login.expect("github user_name is None");
+        let github_uid = userinfo.id.expect("github uid is None");
+        let github_uname = userinfo.login.expect("github uname is None");
+        let github_email = userinfo.email.expect("github email is None");
 
         let handler = UserHandler::new(self.state);
 
-        // 1. Get user by github_user_id
-        let user = handler.get(None, Some(github_user_id.to_string()), None).await.unwrap();
+        // 1. Get user by github_uid
+        let user = handler.get(None, Some(github_uid.to_string()), None).await.unwrap();
 
         // 2. If user exists, update user github subject ID.
         let save_param;
         if user.is_some() {
             save_param = SaveUserRequest {
                 id: user.unwrap().base.id,
-                name: Some(github_user_name.to_string()),
+                name: Some(github_uname.to_string()),
                 email: None,
                 phone: None,
                 password: None,
                 oidc_claims_sub: None,
                 oidc_claims_name: None,
-                github_claims_sub: Some(github_user_id.to_string()),
-                github_claims_name: Some(github_user_name.to_string()),
+                oidc_claims_email: None,
+                github_claims_sub: Some(github_uid.to_string()),
+                github_claims_name: Some(github_uname.to_string()),
+                github_claims_email: Some(github_email.to_string()),
                 google_claims_sub: None,
                 google_claims_name: None,
+                google_claims_email: None,
             };
         } else {
             // 3. If user not exists, create user by github login, which auto register user.
             save_param = SaveUserRequest {
                 id: None,
-                name: Some(github_user_name.to_string()),
+                name: Some(github_uname.to_string()),
                 email: None,
                 phone: None,
                 password: None,
                 oidc_claims_sub: None,
                 oidc_claims_name: None,
-                github_claims_sub: Some(github_user_id.to_string()),
-                github_claims_name: Some(github_user_name.to_string()),
+                oidc_claims_email: None,
+                github_claims_sub: Some(github_uid.to_string()),
+                github_claims_name: Some(github_uname.to_string()),
+                github_claims_email: Some(github_email.to_string()),
                 google_claims_sub: None,
                 google_claims_name: None,
+                google_claims_email: None,
             };
         }
 
@@ -193,13 +205,15 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
-        user_id: &str,
+        uid: &str,
+        uname: &str,
+        email: &str,
         headers: &header::HeaderMap
     ) -> hyper::Response<axum::body::Body> {
         // TODO: 附加更多自定义 JWT 信息
         let extra_claims = HashMap::new();
-        let ak = auths::create_jwt(config, user_id, false, Some(extra_claims));
-        let rk = auths::create_jwt(config, user_id, true, None);
+        let ak = auths::create_jwt(config, uid, uname, email, false, Some(extra_claims));
+        let rk = auths::create_jwt(config, uid, uname, email, true, None);
 
         let ak_cookie = CookieBuilder::new(&config.auth_jwt_ak_name, ak)
             .path("/")
@@ -217,18 +231,13 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
             .same_site(SameSite::Strict)
             .build();
 
-        // use axum::response::{ IntoResponse, Redirect };
-        // let mut response = Redirect::to("/").into_response();
-        // utils::auths::add_cookies(&mut response, vec![ak_cookie, rk_cookie]);
-        // response
-
         utils::auths::auth_resp_redirect_or_json(
             &config,
             headers,
             config.auth.success_url.to_owned().unwrap().as_str(),
             StatusCode::OK,
             "Authenticated",
-            Some((ak_cookie, rk_cookie))
+            Some((Some(ak_cookie), Some(rk_cookie), None))
         )
     }
 

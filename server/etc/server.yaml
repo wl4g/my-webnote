@@ -46,9 +46,10 @@ auth:
   jwt-validity-rk: 86400000
   jwt-secret: "changeit"
   anonymous-paths:
+    - "/_/healthz"
+    - "/_/healthz/**"
     - "/swagger-ui/"
     - "/swagger-ui/openapi.json"
-    - "/healthz/**"
     - "/public/**"
     - "/static/**"
   oidc:

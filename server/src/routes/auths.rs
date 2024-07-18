@@ -5,7 +5,7 @@ use axum::{
     extract::{ Query, Request, State },
     http::{ header, StatusCode },
     middleware::Next,
-    response::{ Html, IntoResponse, Redirect },
+    response::{ Html, IntoResponse },
     routing::get,
     Router,
 };
@@ -19,10 +19,10 @@ use openidconnect::{
     Nonce,
 };
 
-use tower_cookies::{ cookie::{ time::{ self }, CookieBuilder }, CookieManagerLayer };
+use tower_cookies::{ cookie::{ time::{ self, Duration }, CookieBuilder }, CookieManagerLayer };
 
 use crate::{
-    config::{ config_api::{ DEFAULT_404_HTML, DEFAULT_LOGIN_HTML }, resources::handle_static },
+    config::{ config_api::DEFAULT_404_HTML, resources::handle_static },
     context::state::AppState,
     handlers::auths::{ AuthHandler, IAuthHandler },
     types::auths::{ CallbackGithubRequest, CallbackOidcRequest, GithubUserInfo, LogoutRequest },
@@ -45,9 +45,11 @@ pub const EXCLUDED_PATHS: [&str; 5] = [
     STATIC_RESOURCES_URI,
 ];
 
+pub const CSRF_TOKEN_NAME: &str = "csrf_token";
+
 pub fn init() -> Router<AppState> {
     Router::new()
-        .route(ROOT_URI, get(handle_page_root))
+        //.route(ROOT_URI, get(handle_page_root))
         .route(STATIC_RESOURCES_URI, get(handle_static))
         .route(AUTH_CONNECT_OIDC_URI, get(handle_connect_oidc))
         .route(AUTH_CONNECT_GITHUB_URI, get(handle_connect_github))
@@ -177,13 +179,16 @@ async fn validate_token(state: &AppState, ak: &str) -> (bool, Option<AuthUserCla
     }
 }
 
-async fn handle_page_root() -> impl IntoResponse {
-    handle_page_login().await
-}
-
-async fn handle_page_login() -> impl IntoResponse {
-    (StatusCode::OK, Html(DEFAULT_LOGIN_HTML))
-}
+// // Notice: The settings of middlewares are in order, which will affect the priority of route matching.
+// // The later the higher the priority? For example, if auth_middleware is set at the end, it will
+// // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
+// // directly enter handle_root().
+// async fn handle_page_root() -> impl IntoResponse {
+//     handle_page_login().await
+// }
+// async fn handle_page_login() -> impl IntoResponse {
+//     (StatusCode::OK, Html(DEFAULT_LOGIN_HTML))
+// }
 
 // /*
 //  * When unauthentication auto internal forword example:
@@ -209,7 +214,10 @@ async fn handle_page_404() -> impl IntoResponse {
     responses((status = 200, description = "Login for OIDC.")),
     tag = "Authentication"
 )]
-pub async fn handle_connect_oidc(State(state): State<AppState>) -> impl IntoResponse {
+async fn handle_connect_oidc(
+    State(state): State<AppState>,
+    headers: header::HeaderMap
+) -> impl IntoResponse {
     match &state.oidc_client {
         Some(client) => {
             let (auth_url, csrf_token, nonce) = client
@@ -235,17 +243,50 @@ pub async fn handle_connect_oidc(State(state): State<AppState>) -> impl IntoResp
                 ).await
             {
                 std::result::Result::Ok(_) => {
-                    // TODO: 此基于 cookie crsf 校验 nonce 的机制仅支持浏览器环境, 若是 Android/iOS 如何设计更优雅?移动端非web其实不需要crsf?
-                    let headers = webs::create_cookie_headers("_csrf_token", csrf_token.secret());
-                    (headers, Redirect::to(auth_url.as_str())).into_response()
+                    // crsf 校验 nonce 的机制仅支持浏览器环境, 如 Android/iOS 等 CS 客户端可忽略.
+                    let csrf_cookie = CookieBuilder::new("_csrf_token", csrf_token.secret())
+                        .path("/")
+                        .http_only(true)
+                        .secure(true)
+                        .max_age(
+                            Duration::milliseconds(
+                                state.config.auth.jwt_validity_ak.unwrap() as i64
+                            )
+                        )
+                        .build();
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        &headers,
+                        auth_url.as_str(),
+                        StatusCode::OK,
+                        "ok",
+                        Some((None, None, Some(csrf_cookie)))
+                    );
                 }
                 Err(e) => {
-                    tracing::error!("Create nonce failed: {}", e);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                    let errmsg = format!("Failed to create nonce. {:?}", e);
+                    tracing::error!(errmsg);
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        &headers,
+                        &state.config.auth.login_url.to_owned().unwrap(),
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        errmsg.as_str(),
+                        None
+                    );
                 }
             }
         }
-        None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        None => {
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                &headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("OIDC client not configured").as_str(),
+                None
+            );
+        }
     }
 }
 
@@ -255,16 +296,35 @@ pub async fn handle_connect_oidc(State(state): State<AppState>) -> impl IntoResp
     responses((status = 200, description = "Login for Github.")),
     tag = "Authentication"
 )]
-pub async fn handle_connect_github(State(state): State<AppState>) -> impl IntoResponse {
+async fn handle_connect_github(
+    State(state): State<AppState>,
+    headers: header::HeaderMap
+) -> impl IntoResponse {
     match &state.github_client {
         Some(client) => {
             let (auth_url, _) = client
                 .authorize_url(oauth2::CsrfToken::new_random)
                 .add_scope(Scope::new(state.config.auth.github.scope.clone().unwrap()))
                 .url();
-            Ok(Redirect::to(auth_url.as_str()))
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                &headers,
+                auth_url.as_str(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "ok",
+                None
+            );
         }
-        None => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        None => {
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                &headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Github oauth2 client not configured").as_str(),
+                None
+            );
+        }
     }
 }
 
@@ -274,7 +334,7 @@ pub async fn handle_connect_github(State(state): State<AppState>) -> impl IntoRe
     responses((status = 200, description = "Callback for OIDC.")),
     tag = "Authentication"
 )]
-pub async fn handle_callback_oidc(
+async fn handle_callback_oidc(
     State(state): State<AppState>,
     Query(param): Query<CallbackOidcRequest>,
     headers: header::HeaderMap
@@ -392,10 +452,20 @@ pub async fn handle_callback_oidc(
                         }
                     };
 
-                    let user_id = claims.subject().to_string();
-                    tracing::debug!("User subject: {}", user_id);
-                    tracing::debug!("User name: {:?}", userinfo.name());
-                    tracing::debug!("User email: {:?}", userinfo.email());
+                    let uid = claims.subject().to_string();
+                    let uname = userinfo
+                        .preferred_username()
+                        .map(|c| c.to_string())
+                        .unwrap_or_default();
+                    let email = userinfo
+                        .email()
+                        .map(|c| c.to_string())
+                        .unwrap_or_default();
+
+                    tracing::debug!("Received oidc user info: {:?}", userinfo);
+                    // tracing::debug!("User subject: {:?}", uid);
+                    // tracing::debug!("User name: {:?}", uname);
+                    // tracing::debug!("User email: {:?}", email);
 
                     let result = match
                         get_auth_handler(&state).handle_auth_callback_oidc(userinfo).await
@@ -404,7 +474,9 @@ pub async fn handle_callback_oidc(
                             if c > 0 {
                                 get_auth_handler(&state).handle_login_success(
                                     &state.config,
-                                    &user_id,
+                                    &uid,
+                                    &uname,
+                                    &email,
                                     &headers
                                 ).await
                             } else {
@@ -462,7 +534,7 @@ pub async fn handle_callback_oidc(
     responses((status = 200, description = "Callback for github.")),
     tag = "Authentication"
 )]
-pub async fn handle_callback_github(
+async fn handle_callback_github(
     State(state): State<AppState>,
     Query(param): Query<CallbackGithubRequest>,
     headers: HeaderMap
@@ -524,21 +596,28 @@ pub async fn handle_callback_github(
                     };
                     tracing::info!("Received github user info {:?}", user_info);
 
-                    let user_id = user_info.id.unwrap_or(-1 as i64);
+                    let github_uid = user_info.id;
+                    let github_uname = user_info.login;
+                    let github_email = user_info.email;
                     let github_user = GithubUserInfo::default(
-                        Some(user_id),
-                        Some(user_info.login.unwrap().to_string())
+                        github_uid,
+                        github_uname.to_owned(),
+                        github_email.to_owned()
                     );
 
                     // TODO: using dependency injection to get the handler
                     let result = match
-                        get_auth_handler(&state).handle_auth_callback_github(github_user).await
+                        get_auth_handler(&state).handle_auth_callback_github(
+                            github_user.clone()
+                        ).await
                     {
                         Ok(c) => {
                             if c > 0 {
                                 get_auth_handler(&state).handle_login_success(
                                     &state.config,
-                                    user_id.to_string().as_str(),
+                                    github_uid.unwrap_or(-1).to_string().as_str(),
+                                    github_uname.unwrap_or_default().as_str(),
+                                    github_email.unwrap_or_default().as_str(),
                                     &headers
                                 ).await
                             } else {
@@ -702,7 +781,7 @@ pub async fn handle_callback_github(
     responses((status = 200, description = "Logout.")),
     tag = "Authentication"
 )]
-pub async fn handle_logout(
+async fn handle_logout(
     State(state): State<AppState>,
     headers: header::HeaderMap,
     Query(param): Query<LogoutRequest>
@@ -730,7 +809,7 @@ pub async fn handle_logout(
                 &state.config.auth.login_url.to_owned().unwrap().as_str(),
                 StatusCode::OK,
                 "Bad Parameters",
-                Some((removal_ak, removal_rk))
+                Some((Some(removal_ak), Some(removal_rk), None))
             )
         }
         Err(e) => {

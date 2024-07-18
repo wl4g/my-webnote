@@ -1,35 +1,35 @@
-export interface RevezoneFolder {
+export interface MyWebnoteFolder {
   id: string;
   name: string;
   gmtCreate: string;
   gmtModified: string;
 }
 
-export interface RevezoneFolderFileMapping {
+export interface MyWebnoteFolderFileMapping {
   folderId: string;
   fileId: string;
   gmtCreate: string;
   gmtModified: string;
 }
 
-export type RevezoneFileType = 'note' | 'board';
+export type MyWebnoteFileType = 'note' | 'board';
 
-export interface RevezoneFile {
+export interface MyWebnoteFile {
   id: string;
   name: string;
-  type: RevezoneFileType;
+  type: MyWebnoteFileType;
   gmtCreate: string;
   gmtModified: string;
 }
 
-export interface RevezoneFolder {
+export interface MyWebnoteFolder {
   id: string;
   name: string;
   gmtCreate: string;
   gmtModified: string;
 }
 
-export type FileTreeItem = RevezoneFolder & { children: RevezoneFile[] };
+export type FileTreeItem = MyWebnoteFolder & { children: MyWebnoteFile[] };
 
 export type FileTree = FileTreeItem[];
 

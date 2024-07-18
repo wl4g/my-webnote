@@ -8,6 +8,8 @@ use serde::Deserialize;
 // use std::path::Path;
 use config::Config;
 
+use crate::monitoring::health::HEALTHZ_URI;
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct ApiProperties {
     #[serde(rename = "service-name")]
@@ -505,13 +507,23 @@ impl Deref for ApiConfig {
 
 impl ApiConfig {
     pub fn new(config: &ApiProperties) -> Arc<ApiConfig> {
-        let mut globset = None;
-
+        // Build to auth anonymous glob matcher.
+        let globset;
         if config.auth.anonymous_paths.is_some() {
             let mut builder = GlobSetBuilder::new();
             for path in config.auth.anonymous_paths.as_ref().unwrap() {
                 builder.add(Glob::new(path).unwrap());
             }
+            globset = Some(builder.build().unwrap());
+        } else {
+            // Add internal components routes to defaults.
+            let mut builder = GlobSetBuilder::new();
+            builder.add(Glob::new(HEALTHZ_URI).unwrap());
+            builder.add(Glob::new(format!("{}/**", HEALTHZ_URI).as_str()).unwrap());
+            builder.add(Glob::new(&config.swagger.swagger_ui_path).unwrap());
+            builder.add(Glob::new(&config.swagger.swagger_openapi_url).unwrap());
+            builder.add(Glob::new("/public/**").unwrap());
+            builder.add(Glob::new("/static/**").unwrap());
             globset = Some(builder.build().unwrap());
         }
 

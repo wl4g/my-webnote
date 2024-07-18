@@ -23,13 +23,17 @@ lazy_static! {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthUserClaims {
     pub sub: String,
+    pub uname: String,
+    pub email: String,
     pub exp: usize,
     pub ext: Option<HashMap<String, String>>,
 }
 
 pub fn create_jwt(
     config: &Arc<ApiConfig>,
-    user_id: &str,
+    uid: &str,
+    uname: &str,
+    email: &str,
     is_refresh: bool,
     extra_claims: Option<HashMap<String, String>>
 ) -> String {
@@ -47,7 +51,9 @@ pub fn create_jwt(
         .timestamp();
 
     let claims = AuthUserClaims {
-        sub: user_id.to_owned(),
+        sub: uid.to_owned(),
+        uname: uname.to_owned(),
+        email: email.to_owned(),
         exp: expiration as usize,
         ext: extra_claims,
     };
@@ -78,22 +84,23 @@ pub fn auth_resp_redirect_or_json(
     redirect_url: &str,
     status: StatusCode,
     message: &str,
-    cookies: Option<(Cookie, Cookie)>
+    cookies: Option<(Option<Cookie>, Option<Cookie>, Option<Cookie>)>
 ) -> Response<Body> {
-    let (ak, rk) = match &cookies {
-        Some(pair) => {
+    let (ak, rk, _) = match &cookies {
+        Some(triple) => {
             (
-                Some(TokenWrapper {
-                    value: pair.0.value().to_string(),
+                triple.to_owned().0.map(|c| TokenWrapper {
+                    value: c.value().to_string(),
                     expires_in: config.auth.jwt_validity_ak.unwrap(),
                 }),
-                Some(TokenWrapper {
-                    value: pair.1.value().to_string(),
+                triple.to_owned().1.map(|c| TokenWrapper {
+                    value: c.value().to_string(),
                     expires_in: config.auth.jwt_validity_rk.unwrap(),
                 }),
+                triple.2.to_owned(),
             )
         }
-        None => (None, None),
+        None => (None, None, None),
     };
 
     let json = LoggedResponse {
@@ -144,6 +151,36 @@ impl SecurityContext {
             Ok(read_guard) => read_guard.clone(),
             Err(e) => {
                 tracing::error!("Unable to acquire read lock. reason: {:?}", e);
+                None
+            }
+        }
+    }
+
+    pub async fn get_current_uid(&self) -> Option<String> {
+        match self.get().await {
+            Some(claims) => Some(claims.sub),
+            None => {
+                tracing::error!("No found current user claims sub.");
+                None
+            }
+        }
+    }
+
+    pub async fn get_current_uname(&self) -> Option<String> {
+        match self.get().await {
+            Some(claims) => Some(claims.uname),
+            None => {
+                tracing::error!("No found current user claims uname.");
+                None
+            }
+        }
+    }
+
+    pub async fn get_current_email(&self) -> Option<String> {
+        match self.get().await {
+            Some(claims) => Some(claims.email),
+            None => {
+                tracing::error!("No found current user claims email.");
                 None
             }
         }

@@ -17,10 +17,34 @@ pub struct User {
     pub password: Option<String>,
     pub oidc_claims_sub: Option<String>,
     pub oidc_claims_name: Option<String>,
+    pub oidc_claims_email: Option<String>,
     pub github_claims_sub: Option<String>,
     pub github_claims_name: Option<String>,
+    pub github_claims_email: Option<String>,
     pub google_claims_sub: Option<String>,
     pub google_claims_name: Option<String>,
+    pub google_claims_email: Option<String>,
+}
+
+impl Default for User {
+    fn default() -> Self {
+        User {
+            base: BaseBean::new_default(None),
+            name: None,
+            email: None,
+            phone: None,
+            password: None,
+            oidc_claims_sub: None,
+            oidc_claims_name: None,
+            oidc_claims_email: None,
+            github_claims_sub: None,
+            github_claims_name: None,
+            github_claims_email: None,
+            google_claims_sub: None,
+            google_claims_name: None,
+            google_claims_email: None,
+        }
+    }
 }
 
 impl<'r> FromRow<'r, SqliteRow> for User {
@@ -33,10 +57,13 @@ impl<'r> FromRow<'r, SqliteRow> for User {
             password: row.try_get("password")?,
             oidc_claims_sub: row.try_get("oidc_claims_sub")?,
             oidc_claims_name: row.try_get("oidc_claims_name")?,
+            oidc_claims_email: row.try_get("oidc_claims_email")?,
             github_claims_sub: row.try_get("github_claims_sub")?,
             github_claims_name: row.try_get("github_claims_name")?,
+            github_claims_email: row.try_get("github_claims_email")?,
             google_claims_sub: row.try_get("google_claims_sub")?,
             google_claims_name: row.try_get("google_claims_name")?,
+            google_claims_email: row.try_get("google_claims_email")?,
         })
     }
 }
@@ -69,9 +96,21 @@ pub struct QueryUserRequest {
     #[validate(length(min = 1, max = 64))]
     pub oidc_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub oidc_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub oidc_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub github_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub github_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub github_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub google_claims_sub: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub google_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub google_claims_email: Option<String>,
 }
 
 impl QueryUserRequest {
@@ -84,10 +123,13 @@ impl QueryUserRequest {
             password: None,
             oidc_claims_sub: None,
             oidc_claims_name: None,
+            oidc_claims_email: None,
             github_claims_sub: None,
             github_claims_name: None,
+            github_claims_email: None,
             google_claims_sub: None,
             google_claims_name: None,
+            google_claims_email: None,
         }
     }
 }
@@ -121,13 +163,19 @@ pub struct SaveUserRequest {
     #[validate(length(min = 1, max = 64))]
     pub oidc_claims_name: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub oidc_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub github_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
     pub github_claims_name: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub github_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub google_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
     pub google_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub google_claims_email: Option<String>,
 }
 
 impl SaveUserRequest {
@@ -141,10 +189,13 @@ impl SaveUserRequest {
             password: self.password.clone(),
             oidc_claims_sub: self.oidc_claims_sub.clone(),
             oidc_claims_name: self.oidc_claims_name.clone(),
+            oidc_claims_email: self.oidc_claims_email.clone(),
             github_claims_sub: self.github_claims_sub.clone(),
             github_claims_name: self.github_claims_name.clone(),
+            github_claims_email: self.github_claims_email.clone(),
             google_claims_sub: self.google_claims_sub.clone(),
             google_claims_name: self.google_claims_name.clone(),
+            google_claims_email: self.google_claims_email.clone(),
         }
     }
 }

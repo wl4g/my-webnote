@@ -37,7 +37,7 @@ impl AsyncRepository<User> for UserMongoRepository {
         //let result = &self.inner.select(user, page).await;
         match dynamic_mongo_query!(user, self.collection, "update_time", page, User) {
             Ok(result) => {
-                println!("query users: {:?}", result);
+                tracing::info!("query users: {:?}", result);
                 Ok((result.0, result.1))
             }
             Err(error) => Err(error),

@@ -1,10 +1,10 @@
 {
-  "name": "revezone",
+  "name": "mywebnote",
   "version": "1.0.0-alpha.7",
   "description": "A new way to use Excalidraw. A productivity tool to build your second brain.",
   "main": "./out/main/index.js",
   "author": "korbinzhao",
-  "homepage": "https://www.revezone.com",
+  "homepage": "https://www.mywebnote.com",
   "scripts": {
     "start": "npm run dev",
     "format": "prettier --write .",
@@ -79,5 +79,5 @@
     "typescript": "^5.1.3",
     "vite": "^4.3.9"
   },
-  "repository": "https://github.com/wl4g-collect/revezone"
+  "repository": "https://github.com/wl4g-collect/mywebnote"
 }

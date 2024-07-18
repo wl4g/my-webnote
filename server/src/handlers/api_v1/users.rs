@@ -53,9 +53,15 @@ impl<'a> IApiV1Handler for ApiV1Handler<'a> {
             name: None,
             email: None,
             phone: None,
-            oidc_claims_sub: oidc_claims_sub,
-            github_claims_sub: github_claims_sub,
-            google_claims_sub: google_claims_sub,
+            oidc_claims_sub,
+            oidc_claims_name: None,
+            oidc_claims_email: None,
+            github_claims_sub,
+            github_claims_name: None,
+            github_claims_email: None,
+            google_claims_sub,
+            google_claims_name: None,
+            google_claims_email: None,
         };
         let res = self.find(param, PageRequest::default()).await.unwrap().1;
         if res.len() > 0 {

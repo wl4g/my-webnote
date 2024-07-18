@@ -89,10 +89,14 @@ pub struct GithubUserInfo {
 }
 
 impl GithubUserInfo {
-    pub fn default(id: Option<i64>, login: Option<String>) -> GithubUserInfo {
+    pub fn default(
+        id: Option<i64>,
+        login: Option<String>,
+        email: Option<String>
+    ) -> GithubUserInfo {
         GithubUserInfo {
-            id: id,
-            login: login,
+            id,
+            login,
             node_id: None,
             avatar_url: None,
             gravatar_id: None,
@@ -113,7 +117,7 @@ impl GithubUserInfo {
             company: None,
             blog: None,
             location: None,
-            email: None,
+            email,
             hireable: None,
             bio: None,
             twitter_username: None,

@@ -16,9 +16,21 @@ pub struct QueryUserApiV1Request {
     #[validate(length(min = 1, max = 64))]
     pub oidc_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub oidc_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub oidc_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub github_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub github_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub github_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub google_claims_sub: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub google_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub google_claims_email: Option<String>,
 }
 
 impl QueryUserApiV1Request {
@@ -31,10 +43,13 @@ impl QueryUserApiV1Request {
             password: None,
             oidc_claims_sub: None,
             oidc_claims_name: None,
+            oidc_claims_email: None,
             github_claims_sub: None,
             github_claims_name: None,
+            github_claims_email: None,
             google_claims_sub: None,
             google_claims_name: None,
+            google_claims_email: None,
         }
     }
 }
@@ -68,13 +83,19 @@ pub struct SaveUserApiV1Request {
     #[validate(length(min = 1, max = 64))]
     pub oidc_claims_name: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub oidc_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub github_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
     pub github_claims_name: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub github_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub google_claims_sub: Option<String>,
     #[validate(length(min = 1, max = 64))]
     pub google_claims_name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub google_claims_email: Option<String>,
 }
 
 impl SaveUserApiV1Request {
@@ -87,10 +108,13 @@ impl SaveUserApiV1Request {
             password: self.password.clone(),
             oidc_claims_sub: self.oidc_claims_sub.clone(),
             oidc_claims_name: self.oidc_claims_name.clone(),
+            oidc_claims_email: self.oidc_claims_email.clone(),
             github_claims_sub: self.github_claims_sub.clone(),
             github_claims_name: self.github_claims_name.clone(),
+            github_claims_email: self.github_claims_email.clone(),
             google_claims_sub: self.google_claims_sub.clone(),
             google_claims_name: self.google_claims_name.clone(),
+            google_claims_email: self.google_claims_email.clone(),
         }
     }
 }

@@ -3,7 +3,7 @@ import { Button, Select, Switch, Popconfirm } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useUpdate } from 'ahooks';
 import { storageAdapter } from '../../store/storage';
-import { isInRevezoneApp } from '@renderer/utils/navigator';
+import { isInMyWebnoteApp } from '@renderer/utils/navigator';
 import DownloadApp from '../DownloadApp/index';
 import { Font } from '@renderer/types/file';
 import { XSquare } from 'lucide-react';
@@ -74,7 +74,7 @@ const CustomFonts = () => {
     window.api.removeCustomFont(fontPath);
   };
 
-  if (!isInRevezoneApp) {
+  if (!isInMyWebnoteApp) {
     return (
       <div className="text-gray-500 h-36 flex items-center">
         <span className="mr-2">{t('customFont.onlineVersionTip')}</span>

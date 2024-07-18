@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { FileEdit, Trash2, ClipboardCopy } from 'lucide-react';
 import { EditableTextState } from '@renderer/types/menu';
 import { useTranslation } from 'react-i18next';
-import { RevezoneFile, RevezoneFolder } from '@renderer/types/file';
+import { MyWebnoteFile, MyWebnoteFolder } from '@renderer/types/file';
 
 interface Props {
   editableTextState: EditableTextState;
@@ -11,7 +11,7 @@ interface Props {
     value: boolean,
     editableTextState: EditableTextState
   ) => void;
-  deleteFile: (file: RevezoneFile, folderId: string) => void;
+  deleteFile: (file: MyWebnoteFile, folderId: string) => void;
 }
 
 export default function useFileContextMenu(props: Props) {
@@ -19,7 +19,7 @@ export default function useFileContextMenu(props: Props) {
   const { t } = useTranslation();
 
   const getFileContextMenu = useCallback(
-    (file: RevezoneFile, folder: RevezoneFolder) => [
+    (file: MyWebnoteFile, folder: MyWebnoteFolder) => [
       {
         key: 'rename',
         label: t('operation.rename'),
@@ -40,13 +40,13 @@ export default function useFileContextMenu(props: Props) {
         }
       },
       {
-        key: 'copy_revezone_link',
-        label: t('operation.copyRevezoneLink'),
+        key: 'copy_mywebnote_link',
+        label: t('operation.copyMyWebnoteLink'),
         icon: <ClipboardCopy className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
           // for test: When use electron client.
-          //navigator.clipboard.writeText(`revezone://${file.id}`);
+          //navigator.clipboard.writeText(`mywebnote://${file.id}`);
           // TODO: copy link
         }
       }

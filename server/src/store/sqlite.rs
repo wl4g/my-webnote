@@ -27,7 +27,7 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
         let db_dir = Path::new(&dir);
         if !db_dir.exists() {
             fs::create_dir_all(db_dir).map_err(|e| {
-                eprintln!("Failed to sqlite db create directory: {:?}", e);
+                tracing::info!("Failed to sqlite db create directory: {:?}", e);
                 e
             })?;
         }
@@ -36,18 +36,18 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
         if !Sqlite::database_exists(db_url.as_str()).await.unwrap_or(false) {
             info!("Creating database {}", db_url);
             match Sqlite::create_database(db_url.as_str()).await {
-                Ok(_) => println!("Create db success"),
+                Ok(_) => tracing::info!("Create db success"),
                 Err(error) => panic!("Error to create db: {}", error),
             }
         } else {
-            println!("Database already exists and skip init migration.");
+            tracing::info!("Database already exists and skip init migration.");
         }
         // SQLite in-memory database.
         // let db_url = format!("sqlite::memory:");
 
         match SqlitePool::connect(&db_url).await {
             Ok(pool) => {
-                println!("Successfully connected to the database");
+                tracing::info!("Successfully connected to the database");
                 let pool = Self::init_migration(pool).await;
 
                 Ok(SQLiteRepository {
@@ -56,8 +56,8 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
                 })
             }
             Err(e) => {
-                eprintln!("Database sqlite connection error: {:?}", e);
-                eprintln!("Error details: {}", e);
+                tracing::info!("Database sqlite connection error: {:?}", e);
+                tracing::info!("Error details: {}", e);
                 Err(e.into())
             }
         }
@@ -75,7 +75,7 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
         // let results = sqlx::migrate::Migrator::new(migrations).await.unwrap().run(&pool).await;
         // debug!("Migration result: {:?}", results);
         // match results {
-        //   Ok(_) => println!("Migration success"),
+        //   Ok(_) => tracing::info!("Migration success"),
         //   Err(error) => {
         //     panic!("error: {}", error);
         //   }
@@ -84,7 +84,7 @@ impl<T: Any + Send + Sync> SQLiteRepository<T> {
         let results = sqlx::migrate!("./migrations").run(&pool).await;
         debug!("Migration result: {:?}", results);
         match results {
-            Ok(_) => println!("Migration success"),
+            Ok(_) => tracing::info!("Migration success"),
             Err(error) => {
                 panic!("Error migration: {}", error);
             }
@@ -192,7 +192,7 @@ macro_rules! dynamic_sqlite_insert {
     {
         use crate::utils::types::GenericValue;
 
-        let id = $bean.base.pre_insert(Some(DEFAULT_BY.to_string())); // TODO dynamic get login principal.
+        let id = $bean.base.pre_insert(None).await;
         let serialized = serde_json::to_value($bean).unwrap();
         let obj = serialized.as_object().unwrap();
 
@@ -262,7 +262,7 @@ macro_rules! dynamic_sqlite_update {
         {
             use crate::utils::types::GenericValue;
 
-            $bean.base.pre_update(Some(DEFAULT_BY.to_string())); // TODO dynamic get login principal.
+            $bean.base.pre_update(None).await;
             let id = $bean.base.id.unwrap();
             let serialized = serde_json::to_value($bean).unwrap();
             let obj = serialized.as_object().unwrap();

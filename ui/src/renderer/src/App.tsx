@@ -11,7 +11,7 @@ import enUS from 'antd/locale/en_US';
 import WelcomePage from './components/WelcomePage';
 import { ConfigProvider } from 'antd';
 import { theme } from './utils/theme';
-import { getOSName, isInRevezoneApp } from './utils/navigator';
+import { getOSName, isInMyWebnoteApp } from './utils/navigator';
 
 import './App.css';
 
@@ -46,8 +46,8 @@ function App(): JSX.Element {
   return (
     <ConfigProvider locale={getLocale()} theme={theme}>
       <div
-        className={`revezone-app-container os-is-${OS_NAME.toLowerCase()} ${
-          isInRevezoneApp ? 'is-in-revezone-native-app' : 'is-in-browser'
+        className={`mywebnote-app-container os-is-${OS_NAME.toLowerCase()} ${
+          isInMyWebnoteApp ? 'is-in-mywebnote-native-app' : 'is-in-browser'
         }`}
       >
         <CustomLayout>

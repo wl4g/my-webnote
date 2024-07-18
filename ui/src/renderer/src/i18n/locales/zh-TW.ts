@@ -19,7 +19,7 @@ export default {
     addBoard: '新建白闆',
     rename: '重命名',
     delete: '刪除',
-    copyRevezoneLink: '復制 Revezone 鏈接',
+    copyMyWebnoteLink: '復制 MyWebnote 鏈接',
     giveAStar: '給個 Star 吧',
     switchLanguage: '切換語言'
   },
@@ -50,7 +50,7 @@ export default {
   text: {
     untitled: '請輸入標題',
     defaultFolder: '默認文件夾',
-    alpha: '公測版'
+    beta: '公測版'
   },
   storage: {
     cloud: '雲存儲',
@@ -63,7 +63,7 @@ export default {
   publicBeta: {
     title: '公測公告',
     description:
-      'Revezone 目前處於公測階段，產品可能還有少量 bug，重要數據請做好備份。如果妳有任何問題或建議，歡迎提交 github issue 或者掃碼添加微信反饋。'
+      'MyWebnote 目前處於公測階段，產品可能還有少量 bug，重要數據請做好備份。如果妳有任何問題或建議，歡迎提交 github issue 或者掃碼添加微信反饋。'
   },
   customFont: {
     customFont: '自定義字體',

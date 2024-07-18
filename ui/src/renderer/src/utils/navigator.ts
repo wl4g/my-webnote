@@ -21,15 +21,15 @@ export const getOSName = () => {
   return os;
 };
 
-export const getIsInRevezoneApp = () => {
-  return navigator.userAgent.includes('revezone');
+export const getIsInMyWebnoteApp = () => {
+  return navigator.userAgent.includes('mywebnote');
 };
 
 export const getAppVersion = (): string => {
-  const regex = /revezone\/(\S+)/;
+  const regex = /mywebnote\/(\S+)/;
   return navigator.userAgent.match(regex)?.[1] || 'unkonwn';
 };
 
-export const isInRevezoneApp = getIsInRevezoneApp();
+export const isInMyWebnoteApp = getIsInMyWebnoteApp();
 export const osName = getOSName();
 export const appVersion = getAppVersion();

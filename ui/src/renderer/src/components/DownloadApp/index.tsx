@@ -1,5 +1,5 @@
 import { DownloadCloud } from 'lucide-react';
-import { isInRevezoneApp } from '@renderer/utils/navigator';
+import { isInMyWebnoteApp } from '@renderer/utils/navigator';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
@@ -13,13 +13,13 @@ export default function DownloadApp({ className = '', from }: Props) {
   return (
     <a
       className={`mr-2 flex items-center ${className}`}
-      href="https://github.com/wl4g-collect/revezone/releases"
+      href="https://github.com/wl4g-collect/mywebnote/releases"
       target="_blank"
       rel="noreferrer"
       title={t('welcome.downloadApp')}
     >
       <DownloadCloud
-        className={`w-4 h-4 ${!isInRevezoneApp ? 'animate-bounce' : null}`}
+        className={`w-4 h-4 ${!isInMyWebnoteApp ? 'animate-bounce' : null}`}
       ></DownloadCloud>
     </a>
   );

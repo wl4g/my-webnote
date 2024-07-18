@@ -1,9 +1,11 @@
 use std::any::Any;
 use std::marker::PhantomData;
+use std::time::Duration;
 
 use anyhow::Error;
 use axum::async_trait;
 
+use mongodb::options::{ ReadConcern, WriteConcern };
 use mongodb::{ Client, Database, options::ClientOptions };
 
 use super::AsyncRepository;
@@ -17,9 +19,15 @@ pub struct MongoRepository<T: Any + Send + Sync> {
 
 impl<T: Any + Send + Sync> MongoRepository<T> {
     pub async fn new(config: &DbProperties) -> Result<Self, Error> {
-        let client_options = ClientOptions::parse(
+        let mut client_options = ClientOptions::parse(
             &config.mongo.url.to_owned().expect("Mongo url missing configured")
         ).await?;
+        client_options.connect_timeout = Some(Duration::from_secs(10));
+        client_options.server_selection_timeout = Some(Duration::from_secs(30));
+        client_options.write_concern = Some(WriteConcern::majority()); // Reliable write
+        // Notice: read concern level 'snapshot' is only valid in a transaction
+        client_options.read_concern = Some(ReadConcern::local());
+
         let client = Client::with_options(client_options)?;
         let database = client.database(
             &config.mongo.database.to_owned().expect("Mongo database missing configured")
@@ -46,7 +54,7 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for MongoRepository<T> {
         //use crate::dynamic_mongo_query;
         //match dynamic_mongo_query!(param, self.database.collection("users"), "update_time", page, User) {
         //    Ok(result) => {
-        //        // println!("query users: {:?}", result);
+        //        // tracing::info!("query users: {:?}", result);
         //        Ok((result.0, result.1))
         //    }
         //    Err(error) => Err(error),
@@ -131,7 +139,7 @@ macro_rules! dynamic_mongo_query {
 macro_rules! dynamic_mongo_insert {
     ($bean:expr, $collection:expr) => {
         {
-            let id = $bean.base.pre_insert(Some(crate::types::DEFAULT_BY.to_string()));
+            let id = $bean.base.pre_insert(None).await;
             //use mongodb::bson::to_bson;
             //let serialized = to_bson(&$bean)?;
             //let obj = serialized.as_document().unwrap().clone();
@@ -153,7 +161,7 @@ macro_rules! dynamic_mongo_update {
         {
             use mongodb::bson::{doc, to_bson, Bson};
 
-            $bean.base.pre_update(Some(crate::types::DEFAULT_BY.to_string()));
+            $bean.base.pre_update(None).await;
             let id = $bean.base.id.unwrap();
             let serialized = to_bson(&$bean)?;
             let obj = serialized.as_document().unwrap().clone();

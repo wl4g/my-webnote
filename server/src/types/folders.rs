@@ -1,44 +1,92 @@
+use sqlx::{ FromRow, sqlite::SqliteRow, Row };
 use serde::{ Deserialize, Serialize };
-use super::BaseBean;
+use validator::Validate;
 
-#[derive(Serialize, Deserialize, Clone)]
+use super::{ BaseBean, PageResponse };
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct Folder {
-  #[serde(flatten)]
-  pub base: Option<BaseBean>,
-  pub name: String,
-  pub email: String,
-  pub password: Option<String>,
+    #[serde(flatten)]
+    pub base: BaseBean,
+    pub name: Option<String>,
 }
 
-#[derive(Deserialize)]
+impl<'r> FromRow<'r, SqliteRow> for Folder {
+    fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(Folder {
+            base: BaseBean::from_row(row).unwrap(),
+            name: row.try_get("name")?,
+        })
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct QueryFolderRequest {
-  pub name: Option<String>,
-  pub email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub name: Option<String>,
 }
 
-#[derive(Serialize)]
+impl QueryFolderRequest {
+    pub fn to_folder(&self) -> Folder {
+        Folder {
+            base: BaseBean::new(None, None, None),
+            name: Some(self.name.clone().unwrap_or_default()),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct QueryFolderResponse {
-  users: Vec<Folder>,
+    pub page: Option<PageResponse>,
+    pub data: Option<Vec<Folder>>,
 }
 
-#[derive(Deserialize)]
+impl QueryFolderResponse {
+    pub fn new(page: PageResponse, data: Vec<Folder>) -> Self {
+        QueryFolderResponse { page: Some(page), data: Some(data) }
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema)]
 pub struct SaveFolderRequest {
-  name: String,
-  email: String,
-  password: String,
+    pub id: Option<i64>,
+    #[validate(length(min = 1, max = 64))]
+    pub name: Option<String>,
 }
 
-#[derive(Serialize)]
+impl SaveFolderRequest {
+    pub fn to_folder(&self) -> Folder {
+        Folder {
+            base: BaseBean::new_default(self.id),
+            name: self.name.clone(),
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct SaveFolderResponse {
-  user: Folder,
+    pub id: i64,
 }
 
-#[derive(Deserialize)]
+impl SaveFolderResponse {
+    pub fn new(id: i64) -> Self {
+        SaveFolderResponse { id }
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema)]
 pub struct DeleteFolderRequest {
-  id: String,
+    pub id: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct DeleteFolderResponse {
-  id: String,
+    pub count: u64,
+}
+
+impl DeleteFolderResponse {
+    pub fn new(count: u64) -> Self {
+        DeleteFolderResponse { count }
+    }
 }

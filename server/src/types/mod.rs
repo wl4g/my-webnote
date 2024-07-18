@@ -10,7 +10,7 @@ use chrono::Utc;
 use sqlx::prelude::FromRow;
 use validator::Validate;
 
-use crate::utils::snowflake::SnowflakeIdGenerator;
+use crate::utils::{ auths::SecurityContext, snowflake::SnowflakeIdGenerator };
 // use sqlx::{ Decode, FromRow };
 
 pub static DEFAULT_BY: &'static str = "0";
@@ -41,26 +41,36 @@ impl BaseBean {
     pub fn new(id: Option<i64>, create_by: Option<String>, update_by: Option<String>) -> Self {
         let now = Utc::now().timestamp_millis();
         Self {
-            id: id,
+            id,
             status: Some(0),
-            create_by: create_by,
+            create_by,
             create_time: Some(now),
-            update_by: update_by,
+            update_by,
             update_time: Some(now),
             del_flag: Some(0),
         }
     }
 
-    pub fn pre_insert(&mut self, create_by: Option<String>) -> i64 {
+    pub async fn pre_insert(&mut self, create_by: Option<String>) -> i64 {
+        let by = create_by
+            .or(SecurityContext::get_instance().get_current_email().await)
+            .or(SecurityContext::get_instance().get_current_uname().await)
+            .or(Some(DEFAULT_BY.to_string()));
+
         self.id = Some(SnowflakeIdGenerator::default_next_jssafe());
-        self.create_by = create_by;
+        self.create_by = by;
         self.create_time = Some(Utc::now().timestamp_millis());
         self.del_flag = Some(0);
         self.id.unwrap()
     }
 
-    pub fn pre_update(&mut self, update_by: Option<String>) {
-        self.update_by = update_by;
+    pub async fn pre_update(&mut self, update_by: Option<String>) {
+        let by = update_by
+            .or(SecurityContext::get_instance().get_current_email().await)
+            .or(SecurityContext::get_instance().get_current_uname().await)
+            .or(Some(DEFAULT_BY.to_string()));
+
+        self.update_by = by;
         self.update_time = Some(Utc::now().timestamp_millis());
         self.del_flag = Some(0);
     }

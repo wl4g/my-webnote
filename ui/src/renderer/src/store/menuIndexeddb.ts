@@ -3,26 +3,26 @@ import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment-timezone';
 import { FileTree } from '../types/file';
 import {
-  RevezoneFile,
-  RevezoneFolder,
-  RevezoneFileType,
-  RevezoneFolderFileMapping
+  MyWebnoteFile,
+  MyWebnoteFolder,
+  MyWebnoteFileType,
+  MyWebnoteFolderFileMapping
 } from '../types/file';
 
 moment.tz.setDefault('Asia/Shanghai');
 
-export interface RevezoneDBSchema extends DBSchema {
+export interface MyWebnoteDBSchema extends DBSchema {
   folder: {
     key: string;
-    value: RevezoneFolder;
+    value: MyWebnoteFolder;
   };
   file: {
     key: string;
-    value: RevezoneFile;
+    value: MyWebnoteFile;
   };
   folder_file_mapping: {
     key: number;
-    value: RevezoneFolderFileMapping;
+    value: MyWebnoteFolderFileMapping;
   };
 }
 
@@ -31,7 +31,7 @@ export const INDEXEDDB_FILE_KEY = 'file';
 export const INDEXEDDB_FOLD_FILE_MAPPING_KEY = 'folder_file_mapping';
 export const LOCALSTORAGE_FIRST_FOLDER_KEY = 'first_forlder_id';
 export const LOCALSTORAGE_FIRST_FILE_KEY = 'first_file_id';
-export const INDEXEDDB_REVEZONE_MENU = 'revezone_menu';
+export const INDEXEDDB_REVEZONE_MENU = 'mywebnote_menu';
 
 class MenuIndexeddbStorage {
   constructor() {
@@ -47,14 +47,14 @@ class MenuIndexeddbStorage {
   }
 
   static instance: MenuIndexeddbStorage;
-  db: IDBPDatabase<RevezoneDBSchema> | undefined;
+  db: IDBPDatabase<MyWebnoteDBSchema> | undefined;
 
-  async initDB(): Promise<IDBPDatabase<RevezoneDBSchema>> {
+  async initDB(): Promise<IDBPDatabase<MyWebnoteDBSchema>> {
     if (this.db) {
       return this.db;
     }
 
-    const db = await openDB<RevezoneDBSchema>(INDEXEDDB_REVEZONE_MENU, 1, {
+    const db = await openDB<MyWebnoteDBSchema>(INDEXEDDB_REVEZONE_MENU, 1, {
       upgrade: async (db) => {
         await this.initFolderStore(db);
         await this.initFileStore(db);
@@ -122,26 +122,26 @@ class MenuIndexeddbStorage {
     return folderInfo;
   }
 
-  async getFolder(folderId: string): Promise<RevezoneFolder | undefined> {
+  async getFolder(folderId: string): Promise<MyWebnoteFolder | undefined> {
     await this.initDB();
     // @ts-ignore
     const value = await this.db?.get(INDEXEDDB_FOLDER_KEY, folderId);
     return value;
   }
 
-  async getFolders(): Promise<RevezoneFolder[]> {
+  async getFolders(): Promise<MyWebnoteFolder[]> {
     await this.initDB();
     const folders = await this.db?.getAll('folder');
-    const sortFn = (a: RevezoneFolder, b: RevezoneFolder) =>
+    const sortFn = (a: MyWebnoteFolder, b: MyWebnoteFolder) =>
       new Date(a.gmtCreate).getTime() < new Date(b.gmtCreate).getTime() ? 1 : -1;
     return folders?.sort(sortFn) || [];
   }
 
   async addFile(
     folderId: string,
-    type: RevezoneFileType = 'note',
+    type: MyWebnoteFileType = 'note',
     name?: string
-  ): Promise<RevezoneFile> {
+  ): Promise<MyWebnoteFile> {
     await this.initDB();
 
     const fileId = `file_${uuidv4()}`;
@@ -179,13 +179,13 @@ class MenuIndexeddbStorage {
     // await blocksuiteStorage.copyPage();
   }
 
-  async getFile(fileId: string): Promise<RevezoneFile | undefined> {
+  async getFile(fileId: string): Promise<MyWebnoteFile | undefined> {
     await this.initDB();
     const value = await this.db?.get(INDEXEDDB_FILE_KEY, fileId);
     return value;
   }
 
-  async deleteFile(file: RevezoneFile) {
+  async deleteFile(file: MyWebnoteFile) {
     await this.initDB();
 
     file && (await this.db?.delete(INDEXEDDB_FILE_KEY, file.id));
@@ -204,15 +204,15 @@ class MenuIndexeddbStorage {
     deleteFolderFileMappingPromises && (await Promise.all(deleteFolderFileMappingPromises));
   }
 
-  async getFiles(): Promise<RevezoneFile[]> {
+  async getFiles(): Promise<MyWebnoteFile[]> {
     await this.initDB();
     const files = await this.db?.getAll(INDEXEDDB_FILE_KEY);
-    const sortFn = (a: RevezoneFile, b: RevezoneFile) =>
+    const sortFn = (a: MyWebnoteFile, b: MyWebnoteFile) =>
       new Date(a.gmtCreate).getTime() < new Date(b.gmtCreate).getTime() ? 1 : -1;
     return files?.sort(sortFn) || [];
   }
 
-  async getAllFileFolderMappings(): Promise<RevezoneFolderFileMapping[]> {
+  async getAllFileFolderMappings(): Promise<MyWebnoteFolderFileMapping[]> {
     await this.initDB();
     const mappings = await this.db?.getAll(INDEXEDDB_FOLD_FILE_MAPPING_KEY);
     return mappings || [];
@@ -225,7 +225,7 @@ class MenuIndexeddbStorage {
     const mappings = await this.getAllFileFolderMappings();
 
     const tree = folders.map((folder) => {
-      const children: RevezoneFile[] = [];
+      const children: MyWebnoteFile[] = [];
 
       const mappingsCertainFolder = mappings.filter((map) => map.folderId === folder.id);
 
@@ -242,7 +242,7 @@ class MenuIndexeddbStorage {
     return tree;
   }
 
-  async getFilesInFolder(folderId: string): Promise<RevezoneFile[] | undefined> {
+  async getFilesInFolder(folderId: string): Promise<MyWebnoteFile[] | undefined> {
     await this.initDB();
 
     const mappings = await this.db?.getAllFromIndex(
@@ -262,7 +262,7 @@ class MenuIndexeddbStorage {
     return files;
   }
 
-  async updateFileName(file: RevezoneFile, name: string) {
+  async updateFileName(file: MyWebnoteFile, name: string) {
     await this.initDB();
 
     if (name === file?.name) return;
@@ -275,7 +275,7 @@ class MenuIndexeddbStorage {
       ));
   }
 
-  async updateFileGmtModified(file: RevezoneFile) {
+  async updateFileGmtModified(file: MyWebnoteFile) {
     await this.initDB();
 
     file &&
@@ -286,7 +286,7 @@ class MenuIndexeddbStorage {
       ));
   }
 
-  async updateFolderName(folder: RevezoneFolder, name: string) {
+  async updateFolderName(folder: MyWebnoteFolder, name: string) {
     await this.initDB();
     if (name === folder?.name) return;
     folder && this.db?.put(INDEXEDDB_FOLDER_KEY, { ...folder, name }, folder.id);
