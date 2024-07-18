@@ -26,7 +26,7 @@ use crate::{
     context::state::AppState,
     handlers::auths::{ AuthHandler, IAuthHandler },
     types::auths::{ CallbackGithubRequest, CallbackOidcRequest, GithubUserInfo, LogoutRequest },
-    utils::{ self, auths, webs },
+    utils::{ self, auths::{ self, AuthUserClaims, SecurityContext }, webs },
 };
 
 pub const ROOT_URI: &str = "/";
@@ -36,6 +36,14 @@ pub const AUTH_CALLBACK_OIDC_URI: &str = "/auth/callback/oidc";
 pub const AUTH_CALLBACK_GITHUB_URI: &str = "/auth/callback/github";
 pub const AUTH_LOGOUT_URI: &str = "/auth/logout";
 pub const STATIC_RESOURCES_URI: &str = "/static/*file";
+
+pub const EXCLUDED_PATHS: [&str; 5] = [
+    AUTH_CONNECT_OIDC_URI,
+    AUTH_CONNECT_GITHUB_URI,
+    AUTH_CALLBACK_OIDC_URI,
+    AUTH_CALLBACK_GITHUB_URI,
+    STATIC_RESOURCES_URI,
+];
 
 pub fn init() -> Router<AppState> {
     Router::new()
@@ -60,38 +68,37 @@ pub async fn auth_middleware(
     // 1. Exclude paths that don't require authentication.
     // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.
     // The root path is also excluded by default.
-    if
-        path == AUTH_CONNECT_OIDC_URI ||
-        path == AUTH_CONNECT_GITHUB_URI ||
-        path == AUTH_CALLBACK_OIDC_URI ||
-        path == AUTH_CALLBACK_GITHUB_URI ||
-        path == STATIC_RESOURCES_URI
-    {
+    if EXCLUDED_PATHS.contains(&path) {
         return next.run(req).await;
     }
+
     // 1.2 According to the configuration of anonymous authentication path.
-    let is_anonymous = state.config.auth_anonymous_glob_matcher
-        .as_ref()
-        .map(|glob| glob.is_match(path))
-        .unwrap_or(false);
-    if is_anonymous {
+    if
+        state.config.auth_anonymous_glob_matcher
+            .as_ref()
+            .map(|glob| glob.is_match(path))
+            .unwrap_or(false)
+    {
         // If it is an anonymous path, pass it directly.
         return next.run(req).await;
     }
 
     // 2. Verify for bearer token.
-    if let Some(auth_header) = req.headers().get("Authorization") {
-        // with Header
+    let (is_authenticated, claims) = if let Some(auth_header) = req.headers().get("Authorization") {
+        // 2.1 with Header
         if let std::result::Result::Ok(auth_str) = auth_header.to_str() {
             if auth_str.starts_with("Bearer ") {
                 let ak = &auth_str[7..];
-                if validate_token(&state, ak).await {
-                    return next.run(req).await;
-                }
+                validate_token(&state, ak).await
+            } else {
+                // for compatibility no 'Bearer' prefix.
+                validate_token(&state, auth_str).await
             }
+        } else {
+            (false, None)
         }
     } else {
-        // with Cookie
+        // 2.2 with Cookie
         let ak = req
             .headers()
             .get("Cookie")
@@ -101,23 +108,34 @@ pub async fn auth_middleware(
             })
             .unwrap_or(None);
         if ak.is_some() {
-            if validate_token(&state, ak.unwrap().as_str()).await {
-                // If logged in, and redirect to home page
-                if path == ROOT_URI {
-                    return utils::auths::auth_resp_redirect_or_json(
-                        &state.config,
-                        &req.headers(),
-                        &state.config.auth.success_url.to_owned().unwrap().as_str(),
-                        StatusCode::OK,
-                        "Logged",
-                        None
-                    );
-                }
-                return next.run(req).await;
-            }
+            validate_token(&state, ak.unwrap().as_str()).await
+        } else {
+            (false, None)
         }
+    };
+
+    if is_authenticated {
+        // 3. Bind authenticated info to context.
+        tracing::info!("Authenticated user: {:?}", claims);
+        SecurityContext::get_instance().bind(claims).await;
+
+        // If logged in, and redirect to home page
+        if path == ROOT_URI {
+            return utils::auths::auth_resp_redirect_or_json(
+                &state.config,
+                &req.headers(),
+                &state.config.auth.success_url.to_owned().unwrap().as_str(),
+                StatusCode::OK,
+                "Logged",
+                None
+            );
+        }
+
+        // 4. Pass to call next routes.
+        return next.run(req).await;
     }
 
+    // 5. Unauthenticated Response
     utils::auths::auth_resp_redirect_or_json(
         &state.config,
         &req.headers(),
@@ -128,7 +146,7 @@ pub async fn auth_middleware(
     )
 }
 
-async fn validate_token(state: &AppState, ak: &str) -> bool {
+async fn validate_token(state: &AppState, ak: &str) -> (bool, Option<AuthUserClaims>) {
     // 1. Verify the token is valid.
     match auths::validate_jwt(&state.config, ak) {
         std::result::Result::Ok(claims) => {
@@ -140,21 +158,21 @@ async fn validate_token(state: &AppState, ak: &str) -> bool {
                 match cache.get(get_auth_handler(state).build_logout_blacklist_key(ak)).await {
                     std::result::Result::Ok(logout) => {
                         tracing::warn!("Invalid the token because in blacklist for {}", ak);
-                        logout.is_none()
+                        (logout.is_none(), Some(claims))
                     }
                     Err(_) => {
                         tracing::debug!("Valid the token because not in blacklist for {}", ak);
-                        true
+                        (true, Some(claims))
                     }
                 }
             } else {
                 tracing::debug!("Valid the token for {}", ak);
-                false
+                (false, Some(claims))
             }
         }
         Err(_) => {
             tracing::warn!("Invalid the token because expired for {}", ak);
-            false
+            (false, None)
         }
     }
 }

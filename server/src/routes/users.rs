@@ -10,6 +10,7 @@ use crate::{
     context::state::AppState,
     handlers::users::IUserHandler,
     types::{ users::{ DeleteUserResponse, QueryUserResponse, SaveUserResponse }, PageRequest },
+    utils::auths::SecurityContext,
 };
 use crate::handlers::users::UserHandler;
 use crate::types::users::{ QueryUserRequest, SaveUserRequest, DeleteUserRequest };
@@ -35,6 +36,9 @@ pub async fn handle_get_users(
     Query(param): Query<QueryUserRequest>,
     Query(page): Query<PageRequest>
 ) -> impl IntoResponse {
+    let cur_user = SecurityContext::get_instance().get().await;
+    tracing::info!("current user: {:?}", cur_user);
+
     match get_user_handler(&state).find(param, page).await {
         Ok((page, data)) => Ok(Json(QueryUserResponse::new(page, data))),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),

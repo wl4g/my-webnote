@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use std::{ collections::HashMap, sync::Arc };
 
 use axum::body::Body;
@@ -6,6 +7,7 @@ use hyper::{ HeaderMap, Response, StatusCode };
 use jsonwebtoken::{ decode, encode, DecodingKey, EncodingKey, Header, Validation };
 use serde::{ Deserialize, Serialize };
 use tower_cookies::cookie::Cookie;
+use tokio::sync::RwLock;
 
 use crate::{
     config::config_api::ApiConfig,
@@ -13,8 +15,13 @@ use crate::{
     utils::webs,
 };
 
+lazy_static! {
+    // singleton instance.
+    static ref SECURITY_CONTEXT: Arc<SecurityContext> = Arc::new(SecurityContext::new());
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims {
+pub struct AuthUserClaims {
     pub sub: String,
     pub exp: usize,
     pub ext: Option<HashMap<String, String>>,
@@ -39,7 +46,7 @@ pub fn create_jwt(
         .expect("valid timestamp")
         .timestamp();
 
-    let claims = Claims {
+    let claims = AuthUserClaims {
         sub: user_id.to_owned(),
         exp: expiration as usize,
         ext: extra_claims,
@@ -55,9 +62,9 @@ pub fn create_jwt(
 pub fn validate_jwt(
     config: &Arc<ApiConfig>,
     token: &str
-) -> Result<Claims, jsonwebtoken::errors::Error> {
+) -> Result<AuthUserClaims, jsonwebtoken::errors::Error> {
     let validation = Validation::default();
-    let token_data = decode::<Claims>(
+    let token_data = decode::<AuthUserClaims>(
         token,
         &DecodingKey::from_secret(config.auth.jwt_secret.to_owned().unwrap().as_ref()),
         &validation
@@ -99,4 +106,51 @@ pub fn auth_resp_redirect_or_json(
     let json_str = serde_json::to_string(&json).unwrap();
 
     webs::response_redirect_or_json(status, headers, cookies, redirect_url, &message, &json_str)
+}
+
+#[derive(Clone, Debug)]
+pub struct SecurityContext {
+    pub current_user: Arc<RwLock<Option<AuthUserClaims>>>,
+}
+
+impl SecurityContext {
+    pub fn new() -> Self {
+        SecurityContext {
+            current_user: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn get_instance() -> Arc<SecurityContext> {
+        SECURITY_CONTEXT.clone()
+    }
+
+    pub async fn bind(&self, user: Option<AuthUserClaims>) {
+        tracing::debug!("Binding from user: {:?}", user);
+        match user {
+            Some(user) => {
+                // Notice: 必须在此函数中执行 write() 获取写锁, 若在外部 routes/auths.rs#auth_middleware() 中获取写锁,
+                // 则当在 routes/users.rs#handle_get_users() 中获取读锁时会产生死锁, 因为 RwLock 的释放机制是超出作用域自动释放,
+                // 在 auth_middleware() 中写锁的生命周期包含了 handle_get_users() 即没有释放.
+                let mut current_user = self.current_user.write().await;
+                *current_user = Some(user);
+            }
+            None => {}
+        }
+        tracing::debug!("Binded from user: {:?}", self.get().await);
+    }
+
+    pub async fn get(&self) -> Option<AuthUserClaims> {
+        match self.current_user.try_read() {
+            Ok(read_guard) => read_guard.clone(),
+            Err(e) => {
+                tracing::error!("Unable to acquire read lock. reason: {:?}", e);
+                None
+            }
+        }
+    }
+
+    pub async fn clear(&self) {
+        let mut write_guard = self.current_user.write().await;
+        *write_guard = None;
+    }
 }
