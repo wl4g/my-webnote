@@ -1,5 +1,6 @@
 use std::{ collections::HashMap, sync::Arc };
 
+use axum::async_trait;
 use hyper::{ header, StatusCode };
 use lazy_static::lazy_static;
 use anyhow::{ Error, Ok };
@@ -13,13 +14,37 @@ use crate::{
     utils::{ self, auths },
 };
 
-use super::users::UserHandler;
+use super::users::{ IUserHandler, UserHandler };
 
 pub const AUTH_NONCE_PREFIX: &'static str = "auth:nonce:";
 pub const AUTH_LOGOUT_BLACKLIST_PREFIX: &'static str = "auth:logout:blacklist:";
 
 lazy_static! {
     pub static ref LANG_CLAIMS_NAME_KEY: LanguageTag = LanguageTag::new("name".to_owned());
+}
+
+#[async_trait]
+pub trait IAuthHandler: Send {
+    async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error>;
+
+    async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error>;
+
+    async fn handle_auth_callback_oidc(&self, userinfo: CoreUserInfoClaims) -> Result<i64, Error>;
+
+    async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error>;
+
+    async fn handle_login_success(
+        &self,
+        config: &Arc<ApiConfig>,
+        user_id: &str,
+        headers: &header::HeaderMap
+    ) -> hyper::Response<axum::body::Body>;
+
+    async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error>;
+
+    fn build_auth_nonce_key(&self, nonce: &str) -> String;
+
+    fn build_logout_blacklist_key(&self, access_token: &str) -> String;
 }
 
 pub struct AuthHandler<'a> {
@@ -30,11 +55,14 @@ impl<'a> AuthHandler<'a> {
     pub fn new(state: &'a AppState) -> Self {
         Self { state }
     }
+}
 
-    pub async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error> {
+#[async_trait]
+impl<'a> IAuthHandler for AuthHandler<'a> {
+    async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error> {
         let cache = self.state.string_cache.cache(&self.state.config);
 
-        let key = Self::build_logout_blacklist_key(sid);
+        let key = self.build_logout_blacklist_key(sid);
         let value = nonce;
 
         // TODO: using expires config? To ensure safety, expire as soon as possible. 10s
@@ -50,10 +78,10 @@ impl<'a> AuthHandler<'a> {
         }
     }
 
-    pub async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error> {
+    async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error> {
         let cache = self.state.string_cache.cache(&self.state.config);
 
-        let key = Self::build_logout_blacklist_key(sid);
+        let key = self.build_logout_blacklist_key(sid);
 
         match cache.get(key).await {
             std::result::Result::Ok(nonce) => {
@@ -67,10 +95,7 @@ impl<'a> AuthHandler<'a> {
         }
     }
 
-    pub async fn handle_auth_callback_oidc(
-        &self,
-        userinfo: CoreUserInfoClaims
-    ) -> Result<i64, Error> {
+    async fn handle_auth_callback_oidc(&self, userinfo: CoreUserInfoClaims) -> Result<i64, Error> {
         let oidc_user_id = userinfo.subject().as_str();
         let oidc_user_name = userinfo.name().map(|n|
             n
@@ -120,10 +145,7 @@ impl<'a> AuthHandler<'a> {
         handler.save(save_param).await
     }
 
-    pub async fn handle_auth_callback_github(
-        &self,
-        userinfo: GithubUserInfo
-    ) -> Result<i64, Error> {
+    async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error> {
         let github_user_id = userinfo.id.expect("github user_id is None");
         let github_user_name = userinfo.login.expect("github user_name is None");
 
@@ -168,7 +190,7 @@ impl<'a> AuthHandler<'a> {
         handler.save(save_param).await
     }
 
-    pub async fn handle_login_success(
+    async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
         user_id: &str,
@@ -210,7 +232,7 @@ impl<'a> AuthHandler<'a> {
         )
     }
 
-    pub async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error> {
+    async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error> {
         let cache = self.state.string_cache.cache(&self.state.config);
 
         // Add current jwt token to cache blacklist, expiration time is less than now time - id_token issue time.
@@ -220,7 +242,7 @@ impl<'a> AuthHandler<'a> {
                 return Err(Error::msg("access_token is None"));
             }
         };
-        let key = Self::build_logout_blacklist_key(ak.as_str());
+        let key = self.build_logout_blacklist_key(ak.as_str());
         let value = Utc::now().timestamp_millis().to_string();
         match cache.set(key, value, Some(3600_000)).await {
             std::result::Result::Ok(_) => {
@@ -234,11 +256,11 @@ impl<'a> AuthHandler<'a> {
         }
     }
 
-    pub fn build_auth_nonce_key(nonce: &str) -> String {
+    fn build_auth_nonce_key(&self, nonce: &str) -> String {
         format!("{}:{}", AUTH_NONCE_PREFIX, nonce)
     }
 
-    pub fn build_logout_blacklist_key(access_token: &str) -> String {
+    fn build_logout_blacklist_key(&self, access_token: &str) -> String {
         format!("{}:{}", AUTH_LOGOUT_BLACKLIST_PREFIX, access_token)
     }
 }

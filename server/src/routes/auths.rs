@@ -5,7 +5,7 @@ use axum::{
     extract::{ Query, Request, State },
     http::{ header, StatusCode },
     middleware::Next,
-    response::{ Html, IntoResponse, Redirect, Response },
+    response::{ Html, IntoResponse, Redirect },
     routing::get,
     Router,
 };
@@ -24,9 +24,9 @@ use tower_cookies::{ cookie::{ time::{ self }, CookieBuilder }, CookieManagerLay
 use crate::{
     config::{ config_api::{ DEFAULT_404_HTML, DEFAULT_LOGIN_HTML }, resources::handle_static },
     context::state::AppState,
-    handlers::auths::AuthHandler,
+    handlers::auths::{ AuthHandler, IAuthHandler },
     types::auths::{ CallbackGithubRequest, CallbackOidcRequest, GithubUserInfo, LogoutRequest },
-    utils::{ auths, webs },
+    utils::{ self, auths, webs },
 };
 
 pub const ROOT_URI: &str = "/";
@@ -54,7 +54,7 @@ pub async fn auth_middleware(
     State(state): State<AppState>,
     req: Request<Body>,
     next: Next
-) -> Result<Response, StatusCode> {
+) -> impl IntoResponse {
     let path = req.uri().path();
 
     // 1. Exclude paths that don't require authentication.
@@ -67,7 +67,7 @@ pub async fn auth_middleware(
         path == AUTH_CALLBACK_GITHUB_URI ||
         path == STATIC_RESOURCES_URI
     {
-        return Ok(next.run(req).await);
+        return next.run(req).await;
     }
     // 1.2 According to the configuration of anonymous authentication path.
     let is_anonymous = state.config.auth_anonymous_glob_matcher
@@ -76,7 +76,7 @@ pub async fn auth_middleware(
         .unwrap_or(false);
     if is_anonymous {
         // If it is an anonymous path, pass it directly.
-        return Ok(next.run(req).await);
+        return next.run(req).await;
     }
 
     // 2. Verify for bearer token.
@@ -86,7 +86,7 @@ pub async fn auth_middleware(
             if auth_str.starts_with("Bearer ") {
                 let ak = &auth_str[7..];
                 if validate_token(&state, ak).await {
-                    return Ok(next.run(req).await);
+                    return next.run(req).await;
                 }
             }
         }
@@ -102,12 +102,30 @@ pub async fn auth_middleware(
             .unwrap_or(None);
         if ak.is_some() {
             if validate_token(&state, ak.unwrap().as_str()).await {
-                return Ok(next.run(req).await);
+                // If logged in, and redirect to home page
+                if path == ROOT_URI {
+                    return utils::auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        &req.headers(),
+                        &state.config.auth.success_url.to_owned().unwrap().as_str(),
+                        StatusCode::OK,
+                        "Logged",
+                        None
+                    );
+                }
+                return next.run(req).await;
             }
         }
     }
 
-    Err(StatusCode::UNAUTHORIZED)
+    utils::auths::auth_resp_redirect_or_json(
+        &state.config,
+        &req.headers(),
+        &state.config.auth.login_url.to_owned().unwrap().as_str(),
+        StatusCode::UNAUTHORIZED,
+        "Logout",
+        None
+    )
 }
 
 async fn validate_token(state: &AppState, ak: &str) -> bool {
@@ -119,7 +137,7 @@ async fn validate_token(state: &AppState, ak: &str) -> bool {
             if exp > now {
                 // 2. Verify whether the token is in the cancelled blacklist.
                 let cache = state.string_cache.cache(&state.config);
-                match cache.get(AuthHandler::build_logout_blacklist_key(ak)).await {
+                match cache.get(get_auth_handler(state).build_logout_blacklist_key(ak)).await {
                     std::result::Result::Ok(logout) => {
                         tracing::warn!("Invalid the token because in blacklist for {}", ak);
                         logout.is_none()
@@ -192,11 +210,8 @@ pub async fn handle_connect_oidc(State(state): State<AppState>) -> impl IntoResp
                 nonce
             );
 
-            // TODO: using dependency injection to get the handler
-            let handler: AuthHandler = AuthHandler::new(&state);
-
             match
-                handler.handle_auth_create_nonce(
+                get_auth_handler(&state).handle_auth_create_nonce(
                     csrf_token.secret(),
                     nonce.secret().to_string()
                 ).await
@@ -297,11 +312,8 @@ pub async fn handle_callback_oidc(
                         }
                     };
 
-                    // TODO: using dependency injection to get the handler
-                    let handler: AuthHandler = AuthHandler::new(&state);
-
                     let nonce_string = match
-                        handler.handle_auth_get_nonce(csrf_token.as_str()).await
+                        get_auth_handler(&state).handle_auth_get_nonce(csrf_token.as_str()).await
                     {
                         Ok(Some(nonce)) => nonce,
                         _ => {
@@ -367,12 +379,12 @@ pub async fn handle_callback_oidc(
                     tracing::debug!("User name: {:?}", userinfo.name());
                     tracing::debug!("User email: {:?}", userinfo.email());
 
-                    // TODO: using dependency injection to get the handler
-                    let handler = AuthHandler::new(&state);
-                    let result = match handler.handle_auth_callback_oidc(userinfo).await {
+                    let result = match
+                        get_auth_handler(&state).handle_auth_callback_oidc(userinfo).await
+                    {
                         Ok(c) => {
                             if c > 0 {
-                                handler.handle_login_success(
+                                get_auth_handler(&state).handle_login_success(
                                     &state.config,
                                     &user_id,
                                     &headers
@@ -501,11 +513,12 @@ pub async fn handle_callback_github(
                     );
 
                     // TODO: using dependency injection to get the handler
-                    let handler = AuthHandler::new(&state);
-                    let result = match handler.handle_auth_callback_github(github_user).await {
+                    let result = match
+                        get_auth_handler(&state).handle_auth_callback_github(github_user).await
+                    {
                         Ok(c) => {
                             if c > 0 {
-                                handler.handle_login_success(
+                                get_auth_handler(&state).handle_login_success(
                                     &state.config,
                                     user_id.to_string().as_str(),
                                     &headers
@@ -625,8 +638,7 @@ pub async fn handle_callback_github(
 //         refresh_token: param.refresh_token.or_else(|| cookie_rk),
 //     };
 
-//     let handler = AuthHandler::new(&state);
-//     match handler.handle_logout(logout).await {
+//     match get_auth_handler(&state).handle_logout(logout).await {
 //         Ok(_) => {
 //             let removal_ak = CookieBuilder::new(state.config.auth_jwt_ak_name.to_string(), "_")
 //                 .removal()
@@ -685,8 +697,7 @@ pub async fn handle_logout(
         refresh_token: param.refresh_token.or_else(|| cookie_rk),
     };
 
-    let handler = AuthHandler::new(&state);
-    match handler.handle_logout(logout).await {
+    match get_auth_handler(&state).handle_logout(logout).await {
         Ok(_) => {
             let removal_ak = CookieBuilder::new(state.config.auth_jwt_ak_name.to_string(), "_")
                 .removal()
@@ -699,7 +710,7 @@ pub async fn handle_logout(
                 &state.config,
                 &headers,
                 &state.config.auth.login_url.to_owned().unwrap().as_str(),
-                StatusCode::BAD_REQUEST,
+                StatusCode::OK,
                 "Bad Parameters",
                 Some((removal_ak, removal_rk))
             )
@@ -716,4 +727,9 @@ pub async fn handle_logout(
             );
         }
     }
+}
+
+fn get_auth_handler(state: &AppState) -> Box<dyn IAuthHandler + '_> {
+    // TODO: using dependency injection to get the handler
+    Box::new(AuthHandler::new(state))
 }

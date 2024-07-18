@@ -1,3 +1,4 @@
+pub mod api_v1;
 pub mod auths;
 pub mod documents;
 pub mod folders;

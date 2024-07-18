@@ -11,7 +11,19 @@ use crate::routes::auths::{
     __path_handle_callback_oidc,
     __path_handle_logout,
 };
-use crate::routes::users::{ __path_get_users, __path_save_user, __path_delete_user };
+use crate::routes::users::{
+    __path_handle_get_users,
+    __path_handle_save_user,
+    __path_handle_delete_user,
+};
+use crate::types::api_v1::users::{
+    QueryUserApiV1Request,
+    QueryUserApiV1Response,
+    SaveUserApiV1Request,
+    SaveUserApiV1Response,
+    DeleteUserApiV1Request,
+    DeleteUserApiV1Response,
+};
 use crate::types::{ BaseBean, PageRequest, PageResponse };
 use crate::types::users::{
     User,
@@ -45,9 +57,9 @@ use crate::types::auths::{ CallbackGithubRequest, CallbackOidcRequest, LogoutReq
         handle_callback_github,
         handle_callback_oidc,
         handle_logout,
-        get_users,
-        save_user,
-        delete_user
+        handle_get_users,
+        handle_save_user,
+        handle_delete_user
     ),
     components(
         schemas(
@@ -63,7 +75,13 @@ use crate::types::auths::{ CallbackGithubRequest, CallbackOidcRequest, LogoutReq
             SaveUserRequest,
             SaveUserResponse,
             DeleteUserRequest,
-            DeleteUserResponse
+            DeleteUserResponse,
+            QueryUserApiV1Request,
+            QueryUserApiV1Response,
+            SaveUserApiV1Request,
+            SaveUserApiV1Response,
+            DeleteUserApiV1Request,
+            DeleteUserApiV1Response
         )
     )
 )]

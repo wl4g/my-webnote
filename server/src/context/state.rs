@@ -91,6 +91,10 @@ impl AppState {
             default_http_client: Arc::new(http_client),
         };
 
+        // Build DI container.
+        // let mut di_container = syrette::DIContainer::new();
+        // di_container.bind::<dyn IUserHandler>().to::<UserHandler>()?;
+
         app_state
     }
 }

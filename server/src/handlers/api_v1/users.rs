@@ -3,11 +3,16 @@ use std::sync::Arc;
 use anyhow::{ Error, Ok };
 use axum::async_trait;
 use crate::context::state::AppState;
-use crate::types::users::{ DeleteUserRequest, QueryUserRequest, SaveUserRequest, User };
+use crate::types::api_v1::users::{
+    DeleteUserApiV1Request,
+    QueryUserApiV1Request,
+    SaveUserApiV1Request,
+};
+use crate::types::users::User;
 use crate::types::{ PageRequest, PageResponse };
 
 #[async_trait]
-pub trait IUserHandler: Send {
+pub trait IApiV1Handler: Send {
     async fn get(
         &self,
         oidc_claims_sub: Option<String>,
@@ -17,34 +22,34 @@ pub trait IUserHandler: Send {
 
     async fn find(
         &self,
-        param: QueryUserRequest,
+        param: QueryUserApiV1Request,
         page: PageRequest
     ) -> Result<(PageResponse, Vec<User>), Error>;
 
-    async fn save(&self, param: SaveUserRequest) -> Result<i64, Error>;
+    async fn save(&self, param: SaveUserApiV1Request) -> Result<i64, Error>;
 
-    async fn delete(&self, param: DeleteUserRequest) -> Result<u64, Error>;
+    async fn delete(&self, param: DeleteUserApiV1Request) -> Result<u64, Error>;
 }
 
-pub struct UserHandler<'a> {
+pub struct ApiV1Handler<'a> {
     state: &'a AppState,
 }
 
-impl<'a> UserHandler<'a> {
+impl<'a> ApiV1Handler<'a> {
     pub fn new(state: &'a AppState) -> Self {
         Self { state }
     }
 }
 
 #[async_trait]
-impl<'a> IUserHandler for UserHandler<'a> {
+impl<'a> IApiV1Handler for ApiV1Handler<'a> {
     async fn get(
         &self,
         oidc_claims_sub: Option<String>,
         github_claims_sub: Option<String>,
         google_claims_sub: Option<String>
     ) -> Result<Option<Arc<User>>, Error> {
-        let param = QueryUserRequest {
+        let param = QueryUserApiV1Request {
             name: None,
             email: None,
             phone: None,
@@ -54,8 +59,6 @@ impl<'a> IUserHandler for UserHandler<'a> {
         };
         let res = self.find(param, PageRequest::default()).await.unwrap().1;
         if res.len() > 0 {
-            // Notice: Fuck, I don't know why?
-            // 如果这里使用 Rc 包装而不是 Arc，那么在 routes/auths.rs中 fn init() { Router::new().route("/auth/callback/github", get(callback_github)) } 会报错泛型参数匹配错误.
             let user = Arc::new(res.get(0).unwrap().clone());
             return Ok(Some(user));
         } else {
@@ -65,15 +68,14 @@ impl<'a> IUserHandler for UserHandler<'a> {
 
     async fn find(
         &self,
-        param: QueryUserRequest,
+        param: QueryUserApiV1Request,
         page: PageRequest
     ) -> Result<(PageResponse, Vec<User>), Error> {
         let repo = self.state.user_repo.lock().await;
         repo.repo(&self.state.config).select(param.to_user(), page).await
     }
 
-    //#[common_log_macro::biz_log("创建/更新了用户信息: id: {param.base.id}, name: {param.name}")]
-    async fn save(&self, param: SaveUserRequest) -> Result<i64, Error> {
+    async fn save(&self, param: SaveUserApiV1Request) -> Result<i64, Error> {
         let repo = self.state.user_repo.lock().await;
         if param.id.is_some() {
             repo.repo(&self.state.config).update(param.to_user()).await
@@ -82,7 +84,7 @@ impl<'a> IUserHandler for UserHandler<'a> {
         }
     }
 
-    async fn delete(&self, param: DeleteUserRequest) -> Result<u64, Error> {
+    async fn delete(&self, param: DeleteUserApiV1Request) -> Result<u64, Error> {
         let repo = self.state.user_repo.lock().await;
         repo.repo(&self.state.config).delete_by_id(param.id).await
     }

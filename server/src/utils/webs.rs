@@ -7,6 +7,8 @@ use axum::{
 use hyper::StatusCode;
 use tower_cookies::{ cookie::{ time::Duration, CookieBuilder, SameSite }, Cookie };
 
+pub const APPLICATION_JSON_HEADER_VALUE: HeaderValue = HeaderValue::from_static("application/json");
+
 pub fn create_cookie_headers(key: &str, value: &str) -> header::HeaderMap {
     let cookie = CookieBuilder::new(key, value)
         .path("/")
@@ -73,10 +75,16 @@ pub fn response_redirect_or_json(
 ) -> Response<Body> {
     let mut response;
     if is_browser(headers) {
+        let mut _url;
+        if status == StatusCode::OK {
+            _url = redirect_url.to_owned();
+        } else {
+            _url = format!("{}#help-troubleshooting-is-{}", redirect_url, message).to_string();
+        }
         // Refer to github authorization troubleshooting reason tips.
         // let url = match url::Url::parse(redirect_url).as_mut() {
         //     Ok(_url) => {
-        //         _url.set_fragment(Some(format!("help-troubleshooting-is-{}", message).as_str()));
+        //         _url.set_fragment(Some(_url.as_str()));
         //         _url.to_string()
         //     }
         //     Err(e) => {
@@ -84,11 +92,10 @@ pub fn response_redirect_or_json(
         //         "/".to_string() // TODO: redirect to error or default?
         //     }
         // };
-        let url = format!("{}#help-troubleshooting-is-{}", redirect_url, message);
-        // Make a redirect response.
-        response = Redirect::to(url.as_str()).into_response();
+        response = Redirect::to(_url.as_str()).into_response();
     } else {
         response = (status, json.to_string()).into_response();
+        response.headers_mut().insert(header::CONTENT_TYPE, APPLICATION_JSON_HEADER_VALUE);
     }
     if let Some(pair) = cookies {
         add_cookies(&mut response, vec![pair.0, pair.1]);
