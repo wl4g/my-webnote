@@ -22,14 +22,14 @@ use super::ValidatedJson;
 
 pub fn init() -> Router<AppState> {
     Router::new()
-        .route("/modules/settings/query", get(handle_get_settings))
-        .route("/modules/settings/save", post(handle_save_settings))
-        .route("/modules/settings/delete", post(handle_delete_settings))
+        .route("/sys/settings/query", get(handle_query_settings))
+        .route("/sys/settings/save", post(handle_save_settings))
+        .route("/sys/settings/delete", post(handle_delete_settings))
 }
 
 #[utoipa::path(
     get,
-    path = "/modules/settings/query",
+    path = "/sys/settings/query",
     params(QuerySettingsRequest, PageRequest),
     responses((
         status = 200,
@@ -38,7 +38,7 @@ pub fn init() -> Router<AppState> {
     )),
     tag = "Settings"
 )]
-pub async fn handle_get_settings(
+pub async fn handle_query_settings(
     State(state): State<AppState>,
     Query(param): Query<QuerySettingsRequest>,
     Query(page): Query<PageRequest>
@@ -54,7 +54,7 @@ pub async fn handle_get_settings(
 
 #[utoipa::path(
     post,
-    path = "/modules/settings/save",
+    path = "/sys/settings/save",
     request_body = SaveSettingsRequest,
     responses((status = 200, description = "Save for settings.", body = SaveSettingsResponse)),
     tag = "Settings"
@@ -71,7 +71,7 @@ async fn handle_save_settings(
 
 #[utoipa::path(
     post,
-    path = "/modules/settings/delete",
+    path = "/sys/settings/delete",
     request_body = DeleteSettingsRequest,
     responses((status = 200, description = "Delete for settings.", body = DeleteSettingsResponse)),
     tag = "Settings"

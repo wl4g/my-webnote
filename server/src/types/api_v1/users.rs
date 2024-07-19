@@ -50,6 +50,7 @@ impl QueryUserApiV1Request {
             google_claims_sub: None,
             google_claims_name: None,
             google_claims_email: None,
+            lang: None,
         }
     }
 }
@@ -96,6 +97,8 @@ pub struct SaveUserApiV1Request {
     pub google_claims_name: Option<String>,
     #[validate(length(min = 1, max = 64))]
     pub google_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub lang: Option<String>,
 }
 
 impl SaveUserApiV1Request {
@@ -115,6 +118,7 @@ impl SaveUserApiV1Request {
             google_claims_sub: self.google_claims_sub.clone(),
             google_claims_name: self.google_claims_name.clone(),
             google_claims_email: self.google_claims_email.clone(),
+            lang: self.lang.clone(),
         }
     }
 }

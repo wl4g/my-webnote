@@ -133,7 +133,12 @@ impl<T: Any + Send + Sync> AsyncRepository<T> for SQLiteRepository<T> {
 macro_rules! dynamic_sqlite_query {
     ($bean:expr, $table:expr, $pool:expr, $order_by:expr, $page:expr, $($t:ty),+) => {
           {
-              let serialized = serde_json::to_value($bean).unwrap();
+              // Notice:
+              // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
+              // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
+              // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
+              // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
+              let serialized = serde_json::to_value(&$bean).unwrap();
               let obj = serialized.as_object().unwrap();
 
               let mut fields = Vec::new();
@@ -143,9 +148,13 @@ macro_rules! dynamic_sqlite_query {
                     let v = value.as_str().unwrap_or("");
                     if !v.is_empty() {
                         fields.push(format!("{} = ?", key));
-                        params.push(value.as_str().unwrap());
+                        params.push(v.to_string());
                     }
                   }
+              }
+              if let Some(id) = $bean.base.id {
+                  fields.push("id = ?".to_string());
+                  params.push(id.to_string());
               }
               let where_clause = if fields.is_empty() {
                   "1=1".to_string()
@@ -189,71 +198,76 @@ macro_rules! dynamic_sqlite_query {
 
 macro_rules! dynamic_sqlite_insert {
     ($bean:expr, $table:expr, $pool:expr) => {
-    {
-        use crate::utils::types::GenericValue;
+        {
+            use crate::utils::types::GenericValue;
 
-        let id = $bean.base.pre_insert(None).await;
-        let serialized = serde_json::to_value($bean).unwrap();
-        let obj = serialized.as_object().unwrap();
+            // Notice:
+            // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
+            // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
+            // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
+            // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
+            $bean.base.pre_insert(None).await;
+            let serialized = serde_json::to_value($bean).unwrap();
+            let obj = serialized.as_object().unwrap();
 
-        let mut fields = Vec::new();
-        let mut values = Vec::new();
-        let mut params = Vec::new();
-        for (key, value) in obj {
-            if !value.is_null() {
-                if value.is_boolean() {
-                    let v = value.as_bool().unwrap();
-                    fields.push(key.as_str());
-                    values.push("?");
-                    params.push(GenericValue::Bool(v));
-                } else if value.is_number() {
-                    let v = value.as_i64().unwrap();
-                    fields.push(key.as_str());
-                    values.push("?");
-                    params.push(GenericValue::Int64(v));
-                } else if value.is_string() {
-                    let v = value.as_str().unwrap_or("");
-                    if !v.is_empty() {
+            let mut fields = Vec::new();
+            let mut values = Vec::new();
+            let mut params = Vec::new();
+            for (key, value) in obj {
+                if !value.is_null() {
+                    if value.is_boolean() {
+                        let v = value.as_bool().unwrap();
                         fields.push(key.as_str());
                         values.push("?");
-                        params.push(GenericValue::String(v.to_string()));
+                        params.push(GenericValue::Bool(v));
+                    } else if value.is_number() {
+                        let v = value.as_i64().unwrap();
+                        fields.push(key.as_str());
+                        values.push("?");
+                        params.push(GenericValue::Int64(v));
+                    } else if value.is_string() {
+                        let v = value.as_str().unwrap_or("");
+                        if !v.is_empty() {
+                            fields.push(key.as_str());
+                            values.push("?");
+                            params.push(GenericValue::String(v.to_string()));
+                        }
                     }
                 }
             }
-        }
-        if fields.is_empty() {
-            return Ok(-1);
-        }
+            if fields.is_empty() {
+                return Ok(-1);
+            }
 
-        // let fields_str = fields
-        //  .iter()
-        //  .map(|s| s.as_str())
-        //  .collect::<Vec<&str>>()
-        //  .join(",");
-        let query = format!("INSERT INTO {} ({}) VALUES ({})", $table, fields.join(","), values.join(","));
+            // let fields_str = fields
+            //  .iter()
+            //  .map(|s| s.as_str())
+            //  .collect::<Vec<&str>>()
+            //  .join(",");
+            let query = format!("INSERT INTO {} ({}) VALUES ({})", $table, fields.join(","), values.join(","));
 
-        let mut operator = sqlx::query(&query);
-        for param in params.iter() {
-            if let GenericValue::Bool(v) = param {
-                operator = operator.bind(v);
-            } else if let GenericValue::Int64(v) = param {
-                operator = operator.bind(v);
-            } else if let GenericValue::String(v) = param {
-                operator = operator.bind(v);
+            let mut operator = sqlx::query(&query);
+            for param in params.iter() {
+                if let GenericValue::Bool(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::Int64(v) = param {
+                    operator = operator.bind(v);
+                } else if let GenericValue::String(v) = param {
+                    operator = operator.bind(v);
+                }
+            }
+
+            match operator.execute($pool).await {
+                std::result::Result::Ok(result) => {
+                    if result.rows_affected() > 0 {
+                        return Ok(result.last_insert_rowid());
+                    } else {
+                        return Ok(-1);
+                    }
+                },
+                Err(e) => Err(Error::from(e)),
             }
         }
-
-        match operator.execute($pool).await {
-            std::result::Result::Ok(result) => {
-                if result.rows_affected() > 0 {
-                    return Ok(id);
-                } else {
-                    return Ok(-1);
-                }
-            },
-            Err(e) => Err(Error::from(e)),
-        }
-    }
     };
 }
 
@@ -263,6 +277,12 @@ macro_rules! dynamic_sqlite_update {
             use crate::utils::types::GenericValue;
 
             $bean.base.pre_update(None).await;
+
+            // Notice:
+            // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
+            // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
+            // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
+            // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
             let id = $bean.base.id.unwrap();
             let serialized = serde_json::to_value($bean).unwrap();
             let obj = serialized.as_object().unwrap();

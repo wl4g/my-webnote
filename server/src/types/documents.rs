@@ -8,14 +8,47 @@ use super::{ BaseBean, PageResponse };
 pub struct Document {
     #[serde(flatten)]
     pub base: BaseBean,
+    pub key: Option<String>,
     pub name: Option<String>,
+    pub folder_key: Option<String>,
+    // Notice:
+    // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
+    // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
+    // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
+    // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
+    #[serde(rename = "type")]
+    pub doc_type: Option<DocumentType>,
+    pub content: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
+pub enum DocumentType {
+    Board,
+    Note,
+}
+
+// The Beautiful transformation from string to enum
+impl TryFrom<String> for DocumentType {
+    type Error = sqlx::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "board" => Ok(DocumentType::Board),
+            "note" => Ok(DocumentType::Note),
+            _ => Err(sqlx::Error::ColumnNotFound("Invalid document type".into())),
+        }
+    }
 }
 
 impl<'r> FromRow<'r, SqliteRow> for Document {
     fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
         Ok(Document {
             base: BaseBean::from_row(row).unwrap(),
+            key: row.try_get("key")?,
             name: row.try_get("name")?,
+            folder_key: row.try_get("folder_key")?,
+            doc_type: Some(DocumentType::try_from(row.try_get::<String, _>("type")?)?),
+            content: row.try_get("content")?,
         })
     }
 }
@@ -24,14 +57,25 @@ impl<'r> FromRow<'r, SqliteRow> for Document {
 #[into_params(parameter_in = Query)]
 pub struct QueryDocumentRequest {
     #[validate(length(min = 1, max = 64))]
+    pub key: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub folder_key: Option<String>,
+    #[serde(rename = "type")]
+    pub doc_type: Option<DocumentType>,
+    pub content: Option<String>,
 }
 
 impl QueryDocumentRequest {
     pub fn to_document(&self) -> Document {
         Document {
             base: BaseBean::new(None, None, None),
-            name: Some(self.name.clone().unwrap_or_default()),
+            key: Some(self.key.to_owned().unwrap_or_default()),
+            name: Some(self.name.to_owned().unwrap_or_default()),
+            folder_key: Some(self.folder_key.to_owned().unwrap_or_default()),
+            doc_type: self.doc_type.to_owned(),
+            content: Some(self.content.to_owned().unwrap_or_default()),
         }
     }
 }
@@ -52,14 +96,26 @@ impl QueryDocumentResponse {
 pub struct SaveDocumentRequest {
     pub id: Option<i64>,
     #[validate(length(min = 1, max = 64))]
+    pub key: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub name: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    #[serde(rename = "folderKey")]
+    pub folder_key: Option<String>,
+    #[serde(rename = "type")]
+    pub doc_type: Option<DocumentType>,
+    pub content: Option<String>,
 }
 
 impl SaveDocumentRequest {
     pub fn to_document(&self) -> Document {
         Document {
             base: BaseBean::new_default(self.id),
-            name: self.name.clone(),
+            key: self.key.to_owned(),
+            name: self.name.to_owned(),
+            folder_key: self.folder_key.to_owned(),
+            doc_type: self.doc_type.to_owned(),
+            content: self.content.to_owned(),
         }
     }
 }

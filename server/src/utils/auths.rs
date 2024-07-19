@@ -22,7 +22,7 @@ lazy_static! {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthUserClaims {
-    pub sub: String,
+    pub uid: i64,
     pub uname: String,
     pub email: String,
     pub exp: usize,
@@ -31,7 +31,7 @@ pub struct AuthUserClaims {
 
 pub fn create_jwt(
     config: &Arc<ApiConfig>,
-    uid: &str,
+    uid: i64,
     uname: &str,
     email: &str,
     is_refresh: bool,
@@ -51,7 +51,7 @@ pub fn create_jwt(
         .timestamp();
 
     let claims = AuthUserClaims {
-        sub: uid.to_owned(),
+        uid: uid.to_owned(),
         uname: uname.to_owned(),
         email: email.to_owned(),
         exp: expiration as usize,
@@ -115,6 +115,17 @@ pub fn auth_resp_redirect_or_json(
     webs::response_redirect_or_json(status, headers, cookies, redirect_url, &message, &json_str)
 }
 
+// Time-constant safety message comparison.
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    a
+        .iter()
+        .zip(b.iter())
+        .fold(0, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
 #[derive(Clone, Debug)]
 pub struct SecurityContext {
     pub current_user: Arc<RwLock<Option<AuthUserClaims>>>,
@@ -136,8 +147,8 @@ impl SecurityContext {
         match user {
             Some(user) => {
                 // Notice: 必须在此函数中执行 write() 获取写锁, 若在外部 routes/auths.rs#auth_middleware() 中获取写锁,
-                // 则当在 routes/users.rs#handle_get_users() 中获取读锁时会产生死锁, 因为 RwLock 的释放机制是超出作用域自动释放,
-                // 在 auth_middleware() 中写锁的生命周期包含了 handle_get_users() 即没有释放.
+                // 则当在 routes/users.rs#handle_query_users() 中获取读锁时会产生死锁, 因为 RwLock 的释放机制是超出作用域自动释放,
+                // 在 auth_middleware() 中写锁的生命周期包含了 handle_query_users() 即没有释放.
                 let mut current_user = self.current_user.write().await;
                 *current_user = Some(user);
             }
@@ -156,9 +167,9 @@ impl SecurityContext {
         }
     }
 
-    pub async fn get_current_uid(&self) -> Option<String> {
+    pub async fn get_current_uid(&self) -> Option<i64> {
         match self.get().await {
-            Some(claims) => Some(claims.sub),
+            Some(claims) => Some(claims.uid),
             None => {
                 tracing::error!("No found current user claims sub.");
                 None

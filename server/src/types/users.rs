@@ -1,9 +1,10 @@
+use common_makestruct_macro::MakeStructWith;
+// use common_smartcpy_macro::SmartCopy; // TODO: compile error
 use sqlx::{ FromRow, sqlite::SqliteRow, Row };
 use serde::{ Deserialize, Serialize };
 use validator::Validate;
 
 use super::{ BaseBean, PageResponse };
-// use common_page_macro::PageableQueryRequest;
 
 // Manual impl for decode.
 // #[derive(Serialize, Deserialize, Clone, Debug, sqlx::sqlite::FromRow, sqlx::sqlite::Decode)]
@@ -24,6 +25,7 @@ pub struct User {
     pub google_claims_sub: Option<String>,
     pub google_claims_name: Option<String>,
     pub google_claims_email: Option<String>,
+    pub lang: Option<String>,
 }
 
 impl Default for User {
@@ -43,6 +45,7 @@ impl Default for User {
             google_claims_sub: None,
             google_claims_name: None,
             google_claims_email: None,
+            lang: None,
         }
     }
 }
@@ -64,6 +67,7 @@ impl<'r> FromRow<'r, SqliteRow> for User {
             google_claims_sub: row.try_get("google_claims_sub")?,
             google_claims_name: row.try_get("google_claims_name")?,
             google_claims_email: row.try_get("google_claims_email")?,
+            lang: row.try_get("lang")?,
         })
     }
 }
@@ -130,6 +134,7 @@ impl QueryUserRequest {
             google_claims_sub: None,
             google_claims_name: None,
             google_claims_email: None,
+            lang: None,
         }
     }
 }
@@ -146,7 +151,18 @@ impl QueryUserResponse {
     }
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema)]
+#[derive(
+    Deserialize,
+    Clone,
+    Debug,
+    PartialEq,
+    Validate,
+    utoipa::ToSchema,
+    MakeStructWith
+    // SmartCopy
+)]
+#[excludes(id)]
+// #[smart_copy(target = "SaveUserRequestWith")]
 pub struct SaveUserRequest {
     pub id: Option<i64>,
     #[validate(length(min = 1, max = 64))]
@@ -176,14 +192,15 @@ pub struct SaveUserRequest {
     pub google_claims_name: Option<String>,
     #[validate(length(min = 1, max = 64))]
     pub google_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub lang: Option<String>,
 }
 
 impl SaveUserRequest {
     pub fn to_user(&self) -> User {
         User {
             base: BaseBean::new_default(self.id),
-            // name: self.name.as_ref().map(|n| n.to_string()),
-            name: self.name.clone(),
+            name: self.name.clone(), // self.name.as_ref().map(|n| n.to_string())
             email: self.email.clone(),
             phone: self.phone.clone(),
             password: self.password.clone(),
@@ -196,6 +213,7 @@ impl SaveUserRequest {
             google_claims_sub: self.google_claims_sub.clone(),
             google_claims_name: self.google_claims_name.clone(),
             google_claims_email: self.google_claims_email.clone(),
+            lang: self.lang.clone(),
         }
     }
 }

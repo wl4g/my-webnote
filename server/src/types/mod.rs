@@ -5,6 +5,8 @@ pub mod folders;
 pub mod settings;
 pub mod users;
 
+use anyhow::Error;
+use hyper::StatusCode;
 use serde::{ Deserialize, Serialize };
 use chrono::Utc;
 use sqlx::prelude::FromRow;
@@ -17,16 +19,22 @@ pub static DEFAULT_BY: &'static str = "0";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, FromRow, utoipa::ToSchema)]
 pub struct BaseBean {
+    #[schema(rename = "id")]
     pub id: Option<i64>,
+    #[schema(rename = "status")]
     pub status: Option<i8>,
-    #[schema(read_only)]
+    #[sqlx(rename = "create_by")]
+    #[schema(read_only = true)]
+    // Notice: Since we are currently using serde serialization to implement custom ORM, 
+    // the #[serde(rename=xx)] rename will not only take effect on the restful APIs but 
+    // also on the DB, so for simplicity, we will unifed use underscores.
+    //#[serde(rename = "createBy")]
     pub create_by: Option<String>,
-    #[sqlx(rename = "create_time")]
-    #[schema(read_only)]
+    #[schema(read_only = true)]
     pub create_time: Option<i64>,
-    #[schema(read_only)]
+    #[schema(read_only = true)]
     pub update_by: Option<String>,
-    #[schema(read_only)]
+    #[schema(read_only = true)]
     pub update_time: Option<i64>,
     #[serde(skip)]
     pub del_flag: Option<i32>,
@@ -134,5 +142,39 @@ impl PageResponse {
             num: num,
             limit,
         }
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema, utoipa::IntoParams)]
+pub(crate) struct RespBase {
+    pub(crate) errcode: Option<i8>,
+    pub(crate) errmsg: Option<String>,
+}
+
+impl RespBase {
+    pub(crate) fn success() -> Self {
+        Self {
+            errcode: Some(0),
+            errmsg: Some("ok".to_string()),
+        }
+    }
+
+    pub(crate) fn error(e: Error) -> Self {
+        Self {
+            errcode: Some(StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i8),
+            errmsg: Some(e.to_string()),
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn errmsg(errmsg: &str) -> Self {
+        Self {
+            errcode: Some(StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i8),
+            errmsg: Some(errmsg.to_owned()),
+        }
+    }
+
+    pub(crate) fn to_json(&self) -> String {
+        serde_json::to_string(&self).unwrap()
     }
 }

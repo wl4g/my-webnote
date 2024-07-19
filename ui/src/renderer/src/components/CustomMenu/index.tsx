@@ -7,7 +7,6 @@ import { useAtom } from 'jotai';
 import { currentFileAtom, currentFolderIdAtom } from '@renderer/store/jotai';
 import EditableText from '../EditableText';
 import { blocksuiteStorage } from '@renderer/store/blocksuite';
-// import useBlocksuitePageTitle from '@renderer/hooks/useBlocksuitePageTitle';
 import OperationBar from '../OperationBar';
 import moment from 'moment';
 import MyWebnoteLogo from '../MyWebnoteLogo';
@@ -31,50 +30,10 @@ interface Props {
 export default function CustomMenu({ collapsed }: Props) {
   const { t } = useTranslation();
 
-  // --- Storage class switch. ---
-  const handleChangeStorageProvider = (type: string) => {
-    console.debug('Using storage provider :', type);
-    storageAdapter.setupStorageType(type);
-    setCurrentStorageProvider(type);
-  };
-
-  const storageProviderItems = [
-    {
-      key: 'CLOUD',
-      icon: <UploadCloud className="w-4 mr-1"></UploadCloud>,
-      label: t('storage.cloud'),
-      disabled: false,
-      onClick: () => handleChangeStorageProvider('CLOUD')
-    },
-    {
-      key: 'LOCAL',
-      icon: <HardDrive className="w-4 mr-1"></HardDrive>,
-      label: t('storage.local'),
-      disabled: false,
-      onClick: () => handleChangeStorageProvider('LOCAL')
-    }
-  ];
-
-  const storageProviderTextMap = {
-    CLOUD: t('storage.cloud'),
-    LOCAL: t('storage.local')
-  };
-
-  // Set up current storage provider state.
-  const lastStorageProvider = localStorage.getItem('mywebnote.storageType');
   const [currentStorageProvider, setCurrentStorageProvider] = useState(
-    lastStorageProvider || 'CLOUD'
-  ); // Default
-
+    localStorage.getItem('mywebnote.storageType') || 'CLOUD'
+  );
   const [openFileNames, setOpenFileNames] = useState<string[]>([]);
-  useEffect(() => {
-    const asyncSetOpenFileNames = async () => {
-      const docs = await storageAdapter.searchFileNames();
-      setOpenFileNames(docs);
-    };
-    asyncSetOpenFileNames();
-  }, []);
-
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [currentFile, setCurrentFile] = useAtom(currentFileAtom);
   const [currentFolderId, setCurrentFolderId] = useAtom(currentFolderIdAtom);
@@ -82,56 +41,18 @@ export default function CustomMenu({ collapsed }: Props) {
   const firstRenderRef = useRef(false);
   const { fileTree, getFileTree } = useFileTree();
 
-  const onFolderOrFileAdd = useCallback(
-    ({ fileId, folderId, type }: OnFolderOrFileAddProps) => {
-      console.log('onFolderOrFileAdd :: fileId:', fileId, ', folderId:', folderId, ', type:', type);
+  const handleChangeStorageProvider = async (type: string) => {
+    console.debug('Using storage provider :', type);
+    await storageAdapter.setupStorageType(type);
+    setCurrentStorageProvider(type);
+    localStorage.setItem('mywebnote.storageType', type);
+  };
 
-      setOpenFileNames([...openFileNames, folderId]);
-      updateEditableTextState(fileId || folderId, false, editableTextState);
-      if (type === 'file') {
-        addSelectedKeys(fileId ? [fileId] : []);
-      } else if (type === 'folder') {
-        resetMenu();
-        setCurrentFile(undefined);
-        setSelectedKeys([folderId]);
-      }
-    },
-    [openFileNames, editableTextState]
-  );
-
-  const [addFile] = useAddFile({ onAdd: onFolderOrFileAdd });
-  // const [pageTitle] = useBlocksuitePageTitle({ getFileTree });
-
-  useEffect(() => {
-    !collapsed && getFileTree();
-  }, [menuIndexeddbStorage, collapsed]);
-
-  useEffect(() => {
-    if (firstRenderRef.current === true || !fileTree?.length) return;
-    firstRenderRef.current = true;
-
-    // const file = currentFileId ? getFileById(currentFileId, fileTree) : undefined;
-    // setCurrentFile(file);
-    const currentFileId = storageAdapter.loadCurrentFile();
-    currentFileId.then((res) => {
-      if (!res) return;
-      setCurrentFile(getFileById(res, fileTree));
-    });
-  }, [fileTree]);
-
-  useEffect(() => {
-    if (firstRenderRef.current === false) return;
-    storageAdapter.saveCurrentFile(currentFile?.id);
-    setSelectedKeys(currentFile?.id ? [currentFile.id] : []);
-  }, [currentFile?.id]);
-
-  useEffect(() => {
-    if (!currentFile) {
-      return;
-    }
-    const folderId = getFolderIdByFileId(currentFile.id, fileTree);
-    setCurrentFolderId(folderId);
-  }, [currentFile, fileTree]);
+  const resetMenu = useCallback(() => {
+    setCurrentFile(undefined);
+    setCurrentFolderId(undefined);
+    setSelectedKeys([]);
+  }, [setCurrentFile, setCurrentFolderId]);
 
   const addSelectedKeys = useCallback(
     (keys: string[] | undefined) => {
@@ -150,6 +71,79 @@ export default function CustomMenu({ collapsed }: Props) {
     [selectedKeys]
   );
 
+  const onFolderOrFileAdd = useCallback(
+    ({ fileId, folderId, type }: OnFolderOrFileAddProps) => {
+      console.log('onFolderOrFileAdd :: fileId:', fileId, ', folderId:', folderId, ', type:', type);
+
+      setOpenFileNames((prev) => [...prev, folderId]);
+      updateEditableTextState(fileId || folderId, false);
+      if (type === 'file') {
+        addSelectedKeys(fileId ? [fileId] : []);
+      } else if (type === 'folder') {
+        resetMenu();
+        setCurrentFile(undefined);
+        setSelectedKeys([folderId]);
+      }
+    },
+    [openFileNames, addSelectedKeys, resetMenu, setCurrentFile]
+  );
+
+  const [addFile] = useAddFile({ onAdd: onFolderOrFileAdd });
+
+  useEffect(() => {
+    const fetchOpenFileNames = async () => {
+      try {
+        const docs = await storageAdapter.searchFileNames();
+        setOpenFileNames(docs);
+      } catch (error) {
+        console.error('Error fetching open file names:', error);
+      }
+    };
+    fetchOpenFileNames();
+  }, []);
+
+  useEffect(() => {
+    if (!collapsed) {
+      getFileTree();
+    }
+  }, [menuIndexeddbStorage, collapsed, getFileTree]);
+
+  useEffect(() => {
+    if (firstRenderRef.current === true || !fileTree?.length) return;
+    firstRenderRef.current = true;
+
+    const fetchCurrentFile = async () => {
+      try {
+        const currentFileId = await storageAdapter.loadCurrentFile();
+        if (currentFileId) {
+          setCurrentFile(getFileById(currentFileId, fileTree));
+        }
+      } catch (error) {
+        console.error('Error loading current file:', error);
+      }
+    };
+    fetchCurrentFile();
+  }, [fileTree, setCurrentFile]);
+
+  useEffect(() => {
+    if (firstRenderRef.current === false) return;
+    const saveCurrentFile = async () => {
+      try {
+        await storageAdapter.saveCurrentFile(currentFile?.id);
+        setSelectedKeys(currentFile?.id ? [currentFile.id] : []);
+      } catch (error) {
+        console.error('Error saving current file:', error);
+      }
+    };
+    saveCurrentFile();
+  }, [currentFile?.id]);
+
+  useEffect(() => {
+    if (!currentFile) return;
+    const folderId = getFolderIdByFileId(currentFile.id, fileTree);
+    setCurrentFolderId(folderId);
+  }, [currentFile, fileTree, setCurrentFolderId]);
+
   const deleteFile = useCallback(
     async (file: MyWebnoteFile) => {
       await menuIndexeddbStorage.deleteFile(file);
@@ -166,13 +160,11 @@ export default function CustomMenu({ collapsed }: Props) {
       setCurrentFile(undefined);
       await getFileTree();
     },
-    [menuIndexeddbStorage, currentFile]
+    [menuIndexeddbStorage, setCurrentFile, getFileTree]
   );
 
-  const updateEditableTextState = useCallback((id: string, value: boolean, editableTextState) => {
-    const newEditableTextState = { ...editableTextState };
-    newEditableTextState[id] = value;
-    setEditableTextState(newEditableTextState);
+  const updateEditableTextState = useCallback((id: string, value: boolean) => {
+    setEditableTextState((prev) => ({ ...prev, [id]: value }));
   }, []);
 
   const deleteFolder = useCallback(
@@ -181,7 +173,7 @@ export default function CustomMenu({ collapsed }: Props) {
       await getFileTree();
       console.log('onDeletedFolder :: folderId:', folderId);
     },
-    [menuIndexeddbStorage]
+    [menuIndexeddbStorage, getFileTree]
   );
 
   const [getFileContextMenu] = useFileContextMenu({
@@ -198,14 +190,8 @@ export default function CustomMenu({ collapsed }: Props) {
     deleteFolder
   });
 
-  const resetMenu = useCallback(() => {
-    setCurrentFile(undefined);
-    setCurrentFolderId(undefined);
-    setSelectedKeys([]);
-  }, []);
-
   const onOpenFolderChanged = useCallback(
-    (keys) => {
+    async (keys: string[]) => {
       const folderKeys = keys.filter((key) => key.startsWith('folder_'));
       const openFolderKeys = openFileNames.filter((key) => key.startsWith('folder_'));
       const diffNum = folderKeys?.length - openFolderKeys.length;
@@ -232,23 +218,22 @@ export default function CustomMenu({ collapsed }: Props) {
       );
 
       setOpenFileNames(keys);
-      storageAdapter.saveOpenFileNames(keys);
+      await storageAdapter.saveOpenFileNames(keys);
 
-      // only while openFileNames increase
       if (changeType === 'expand') {
         const folderId = keys?.length ? keys[keys.length - 1] : undefined;
-        if (currentFolderId !== folderId) {
+        if (currentFolderId !== folderId && folderId) {
           resetMenu();
           setCurrentFolderId(folderId);
           setSelectedKeys([folderId]);
         }
       }
     },
-    [openFileNames, currentFolderId]
+    [openFileNames, currentFolderId, resetMenu, setCurrentFolderId]
   );
 
   const onSelectedFile = useCallback(
-    ({ key }) => {
+    ({ key }: { key: string }) => {
       const fileId = key?.startsWith('file_') ? key : undefined;
       console.log('onSelectedFile :: fileId:', fileId, ', key:', key);
 
@@ -261,7 +246,7 @@ export default function CustomMenu({ collapsed }: Props) {
       setCurrentFolderId(folderId);
       addSelectedKeys([key, folderId]);
     },
-    [fileTree]
+    [fileTree, resetMenu, setCurrentFile, setCurrentFolderId, addSelectedKeys]
   );
 
   const onFileNameChanged = useCallback(
@@ -269,33 +254,47 @@ export default function CustomMenu({ collapsed }: Props) {
       console.log('onFileNameChanged :: text:', text, ', file:', file);
 
       await menuIndexeddbStorage.updateFileName(file, text);
-      updateEditableTextState(file.id, true, editableTextState);
+      updateEditableTextState(file.id, true);
 
       setSelectedKeys([file.id]);
-
       setCurrentFile({ ...file, name: text });
-
       await getFileTree();
     },
-    [editableTextState]
+    [setCurrentFile, getFileTree]
   );
 
-  const onFolderNameChanged = useCallback(
-    (folder: MyWebnoteFolder, text: string) => {
-      console.log('onFolderNameChanged :: text:', text, ', folder:', folder);
+  const onFolderNameChanged = useCallback(async (folder: MyWebnoteFolder, text: string) => {
+    console.log('onFolderNameChanged :: text:', text, ', folder:', folder);
 
-      menuIndexeddbStorage.updateFolderName(folder, text);
-      updateEditableTextState(folder.id, true, editableTextState);
+    await menuIndexeddbStorage.updateFolderName(folder, text);
+    updateEditableTextState(folder.id, true);
+  }, []);
+
+  const onEditableTextEdit = useCallback((id: string) => {
+    updateEditableTextState(id, false);
+  }, []);
+
+  const storageProviderItems = [
+    {
+      key: 'CLOUD',
+      icon: <UploadCloud className="w-4 mr-1"></UploadCloud>,
+      label: t('storage.cloud'),
+      disabled: false,
+      onClick: () => handleChangeStorageProvider('CLOUD')
     },
-    [editableTextState]
-  );
+    {
+      key: 'LOCAL',
+      icon: <HardDrive className="w-4 mr-1"></HardDrive>,
+      label: t('storage.local'),
+      disabled: false,
+      onClick: () => handleChangeStorageProvider('LOCAL')
+    }
+  ];
 
-  const onEditableTextEdit = useCallback(
-    (id: string) => {
-      updateEditableTextState(id, false, editableTextState);
-    },
-    [editableTextState]
-  );
+  const storageProviderTextMap = {
+    CLOUD: t('storage.cloud'),
+    LOCAL: t('storage.local')
+  };
 
   return (
     <div className="mywebnote-menu-container">
@@ -346,32 +345,30 @@ export default function CustomMenu({ collapsed }: Props) {
                 </div>
               </Dropdown>
             ),
-            children: folder?.children?.map((file) => {
-              return {
-                key: file.id,
-                label: (
-                  <Dropdown
-                    menu={{ items: getFileContextMenu(file, folder) }}
-                    trigger={['contextMenu']}
+            children: folder?.children?.map((file) => ({
+              key: file.id,
+              label: (
+                <Dropdown
+                  menu={{ items: getFileContextMenu(file, folder) }}
+                  trigger={['contextMenu']}
+                >
+                  <div
+                    className="flex items-center justify-between"
+                    key={`${file.id}_${file.name}`}
                   >
-                    <div
-                      className="flex items-center justify-between"
-                      key={`${file.id}_${file.name}`}
-                    >
-                      <EditableText
-                        isPreview={editableTextState[file.id]}
-                        type={file.type}
-                        text={file.name}
-                        extraText={moment(file.gmtModified).format('YYYY-MM-DD HH:mm:ss')}
-                        defaultText="Untitled"
-                        onSave={(text) => onFileNameChanged(text, file)}
-                        onEdit={() => onEditableTextEdit(file.id)}
-                      />
-                    </div>
-                  </Dropdown>
-                )
-              };
-            })
+                    <EditableText
+                      isPreview={editableTextState[file.id]}
+                      type={file.type}
+                      text={file.name}
+                      extraText={moment(file.gmtModified).format('YYYY-MM-DD HH:mm:ss')}
+                      defaultText="Untitled"
+                      onSave={(text) => onFileNameChanged(text, file)}
+                      onEdit={() => onEditableTextEdit(file.id)}
+                    />
+                  </div>
+                </Dropdown>
+              )
+            }))
           }))}
         />
       </div>

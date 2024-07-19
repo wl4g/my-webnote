@@ -520,8 +520,9 @@ impl ApiConfig {
             let mut builder = GlobSetBuilder::new();
             builder.add(Glob::new(HEALTHZ_URI).unwrap());
             builder.add(Glob::new(format!("{}/**", HEALTHZ_URI).as_str()).unwrap());
-            builder.add(Glob::new(&config.swagger.swagger_ui_path).unwrap());
-            builder.add(Glob::new(&config.swagger.swagger_openapi_url).unwrap());
+            // The default accessing to swagger ui required authentication.
+            //builder.add(Glob::new(&config.swagger.swagger_ui_path).unwrap());
+            //builder.add(Glob::new(&config.swagger.swagger_openapi_url).unwrap());
             builder.add(Glob::new("/public/**").unwrap());
             builder.add(Glob::new("/static/**").unwrap());
             globset = Some(builder.build().unwrap());

@@ -129,11 +129,11 @@ async fn start_mgmt_server(
     })
 }
 
-#[allow(unused)]
 async fn start_server(config: &Arc<ApiConfig>) {
     let app_state = AppState::new(&config).await;
-    info!("Register API server middlewares ...");
+    tracing::info!("Register API server middlewares ...");
 
+    // 1. Add internal and bussiness modules router.
     let mut app = Router::new()
         .merge(health_router())
         .merge(auth_router())
@@ -141,40 +141,43 @@ async fn start_server(config: &Arc<ApiConfig>) {
         .merge(document_router())
         .merge(folder_router())
         .merge(settings_router())
-        // Notice: The settings of middlewares are in order, which will affect the priority of route matching.
-        // The later the higher the priority? For example, if auth_middleware is set at the end, it will
-        // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
-        // directly enter handle_root().
-        .layer(
-            ServiceBuilder::new()
-                .layer(axum::middleware::from_fn_with_state(app_state.clone(), auth_middleware))
-                // Optional: add logs to tracing.
-                .layer(
-                    TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
-                        tracing::info_span!(
-                            "http_request",
-                            method = %request.method(),
-                            uri = %request.uri(),
-                        )
-                    })
-                )
-        )
-        .with_state(app_state);
-    //.route_layer(axum::Extension(app_state));
+        .with_state(app_state.clone()); // TODO: remove clone
 
+    // 2. Add swagger router.
     if config.swagger.enabled {
         app = app.merge(swagger::init_swagger(&config));
     }
 
+    // 3. Finally add the (auth) middlewares.
+    // Notice: The settings of middlewares are in order, which will affect the priority of route matching.
+    // The later the higher the priority? For example, if auth_middleware is set at the end, it will
+    // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
+    // directly enter handle_root().
+    app = app.layer(
+        ServiceBuilder::new()
+            .layer(axum::middleware::from_fn_with_state(app_state, auth_middleware))
+            // Optional: add logs to tracing.
+            .layer(
+                TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
+                    tracing::info_span!(
+                            "http_request",
+                            method = %request.method(),
+                            uri = %request.uri(),
+                        )
+                })
+            )
+    );
+    //.route_layer(axum::Extension(app_state));
+
     let bind_addr = &config.server.bind;
-    info!("Starting API server on {}", bind_addr);
+    tracing::info!("Starting API server on {}", bind_addr);
 
     axum::serve(
         TcpListener::bind(&bind_addr).await.unwrap(),
         app.into_make_service()
     ).await.unwrap_or_else(|e| panic!("Error starting API server: {}", e));
 
-    info!("API server is ready");
+    tracing::info!("API server is ready");
 }
 
 fn load_config(path: String) -> Result<ApiProperties, anyhow::Error> {

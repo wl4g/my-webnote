@@ -8,69 +8,69 @@ export class CloudStorageService implements IStorageService {
 
   async searchFileNames(): Promise<string[]> {
     const data = {};
-    return this.doRequest('GET', '/document/list', data).then((res) => {
+    return this.doRequest('GET', '/modules/document/list', data).then((res) => {
       return [res];
     });
   }
 
-  saveOpenFileNames(docNames: string[]): void {
+  async saveOpenFileNames(docNames: string[]): Promise<void> {
     const data = {
       docNames: docNames
     };
     this.doRequest('POST', '/document/save', data);
   }
 
-  saveCurrentFile(fileId: string | undefined | null): void {
+  async saveCurrentFile(fileId: string | undefined | null): Promise<void> {
     const data = {
       fileId: fileId
     };
     this.doRequest('POST', '/document/current-save', data);
   }
 
-  loadCurrentFile(): Promise<string | null> {
+  async loadCurrentFile(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/document/current-get', data);
   }
 
-  loadBoardCustomFont(): Promise<string | null> {
+  async loadBoardCustomFont(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/board/custom-font/get', data);
   }
 
-  saveBoardCustomFont(fontName: string | null): void {
+  async saveBoardCustomFont(fontName: string | null): Promise<void> {
     const data = {
       fontName: fontName
     };
     this.doRequest('POST', '/board/custom-font/save', data);
   }
 
-  addBoardCustomFont(fontFamilyName: string): void {
+  async addBoardCustomFont(fontFamilyName: string): Promise<void> {
     const data = {
       fontFamilyName: fontFamilyName
     };
     this.doRequest('POST', '/board/custom-font/add', data);
   }
 
-  loadBoardCustomFontSwitch(): Promise<string | null> {
+  async loadBoardCustomFontSwitch(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/board/custom-font-switch/get', data);
   }
 
-  saveBoardCustomFontSwitch(boardCustomFont: boolean): void {
+  async saveBoardCustomFontSwitch(boardCustomFont: boolean): Promise<void> {
     const data = {
       boardCustomFont: boardCustomFont
     };
     this.doRequest('POST', '/board/custom-font-switch/save', data);
   }
 
-  saveLangCode(langCode: string): void {
+  async saveLangCode(langCode: string): Promise<void> {
     const data = {
       langCode: langCode
     };
     this.doRequest('POST', '/setting/lang/save', data);
   }
 
-  loadLangCode(): Promise<string | null> {
+  async loadLangCode(): Promise<string | null> {
     const data = {};
     return this.doRequest('GET', '/settings/lang/get', data);
   }

@@ -35,6 +35,8 @@ impl<'a> FolderHandler<'a> {
 impl<'a> IFolderHandler for FolderHandler<'a> {
     async fn get(&self, name: Option<String>) -> Result<Option<Arc<Folder>>, Error> {
         let param = QueryFolderRequest {
+            pid: None,
+            key: None,
             name,
         };
         let res = self.find(param, PageRequest::default()).await.unwrap().1;

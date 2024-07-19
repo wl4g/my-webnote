@@ -19,10 +19,10 @@ export class StorageAdapter implements IStorageService {
   private delegate: IStorageService;
 
   constructor() {
-    this.delegate = localStorageService;
+    this.delegate = cloudStorageService;
   }
 
-  setupStorageType(storageType: string) {
+  async setupStorageType(storageType: string) {
     if (storageType == 'LOCAL') {
       this.delegate = localStorageService;
     } else {
@@ -30,47 +30,47 @@ export class StorageAdapter implements IStorageService {
     }
   }
 
-  searchFileNames(): Promise<string[]> {
+  async searchFileNames(): Promise<string[]> {
     return this.delegate.searchFileNames();
   }
 
-  saveOpenFileNames(docNames: string[]): void {
+  async saveOpenFileNames(docNames: string[]): Promise<void> {
     this.delegate.saveOpenFileNames(docNames);
   }
 
-  saveCurrentFile(fileId: string | undefined | null): void {
+  async saveCurrentFile(fileId: string | undefined | null): Promise<void> {
     this.delegate.saveCurrentFile(fileId);
   }
 
-  loadCurrentFile(): Promise<string | null> {
+  async loadCurrentFile(): Promise<string | null> {
     return this.delegate.loadCurrentFile();
   }
 
-  loadBoardCustomFont(): Promise<string | null> {
+  async loadBoardCustomFont(): Promise<string | null> {
     return this.delegate.loadBoardCustomFont();
   }
 
-  saveBoardCustomFont(fontName: string | null): void {
+  async saveBoardCustomFont(fontName: string | null): Promise<void> {
     this.delegate.saveBoardCustomFont(fontName);
   }
 
-  addBoardCustomFont(fontFamilyName: string): void {
+  async addBoardCustomFont(fontFamilyName: string): Promise<void> {
     this.delegate.addBoardCustomFont(fontFamilyName);
   }
 
-  saveLangCode(langCode: string): void {
+  async saveLangCode(langCode: string): Promise<void> {
     this.delegate.saveLangCode(langCode);
   }
 
-  loadLangCode(): Promise<string | null> {
+  async loadLangCode(): Promise<string | null> {
     return this.delegate.loadLangCode();
   }
 
-  loadBoardCustomFontSwitch(): Promise<string | null> {
+  async loadBoardCustomFontSwitch(): Promise<string | null> {
     return this.delegate.loadBoardCustomFontSwitch();
   }
 
-  saveBoardCustomFontSwitch(boardCustomFont: boolean): void {
+  async saveBoardCustomFontSwitch(boardCustomFont: boolean): Promise<void> {
     this.delegate.saveBoardCustomFontSwitch(boardCustomFont);
   }
 }

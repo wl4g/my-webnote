@@ -1,9 +1,18 @@
 use serde::{ Deserialize, Serialize };
+use validator::Validate;
+
+// --------------------------------------
+// OIDC types.
+// --------------------------------------
 
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct CallbackOidcRequest {
     pub code: Option<String>,
 }
+
+// --------------------------------------
+// Github OAuth2 types.
+// --------------------------------------
 
 #[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
 pub struct CallbackGithubRequest {
@@ -131,6 +140,10 @@ impl GithubUserInfo {
     }
 }
 
+// --------------------------------------
+// Logged types.
+// --------------------------------------
+
 #[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
 pub struct LoggedResponse {
     #[serde(rename = "errcode")]
@@ -158,4 +171,29 @@ pub struct TokenWrapper {
 pub struct LogoutRequest {
     pub access_token: Option<String>,
     pub refresh_token: Option<String>,
+}
+
+// --------------------------------------
+// Password login types.
+// --------------------------------------
+
+#[derive(Deserialize, Clone, Debug, Validate, utoipa::ToSchema, utoipa::IntoParams)]
+pub struct GetPubKeyRequest {
+    #[serde(rename = "fingerprintToken")]
+    #[validate(length(min = 1, max = 128))]
+    pub fingerprint_token: String, // User agent machine fingerprint token.
+}
+
+#[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
+pub struct GetPubKeyResponse {
+    pub pubkey: String,
+}
+
+#[derive(Deserialize, Clone, Debug, utoipa::ToSchema)]
+pub struct PasswordLoginRequest {
+    pub username: String,
+    pub password: String,
+    #[serde(rename = "fingerprintToken")]
+    pub fingerprint_token: String,
+    //pub seccode: Option<String>, // TODO: SMS/Email security code.
 }

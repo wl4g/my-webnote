@@ -90,7 +90,7 @@ macro_rules! dynamic_mongo_query {
             use mongodb::bson::{doc, Document};
             use futures::stream::TryStreamExt;
 
-            let serialized = serde_json::to_value($bean).unwrap();
+            let serialized = serde_json::to_value(&$bean).unwrap();
             let obj = serialized.as_object().unwrap();
 
             let mut filter = Document::new();
@@ -101,6 +101,9 @@ macro_rules! dynamic_mongo_query {
                         filter.insert(key, v);
                     }
                 }
+            }
+            if let Some(id) = $bean.base.id {
+                filter.insert("id", id);
             }
 
             let options = mongodb::options::FindOptions::builder()
@@ -144,12 +147,18 @@ macro_rules! dynamic_mongo_insert {
             //let serialized = to_bson(&$bean)?;
             //let obj = serialized.as_document().unwrap().clone();
 
+            // Notice:
+            // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
+            // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
+            // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
+            // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
             let result = $collection.insert_one(&$bean).await?;
 
-            if let Some(inserted_id) = result.inserted_id.as_i64() {
-                Ok(inserted_id)
-            } else {
+            if let Some(inserted_id) = result.inserted_id.as_object_id() {
+                tracing::debug!("inserted_id: {}", inserted_id);
                 Ok(id)
+            } else {
+                Ok(-1)
             }
         }
     };
@@ -162,6 +171,12 @@ macro_rules! dynamic_mongo_update {
             use mongodb::bson::{doc, to_bson, Bson};
 
             $bean.base.pre_update(None).await;
+
+            // Notice:
+            // 1. (SQLite) Because the ORM library is not used for the time being, the fields are dynamically
+            // parsed based on serde_json, so the #[serde(rename="xx")] annotation is effective.
+            // 2. (MongoDB) The underlying BSON serialization is also based on serde, so using #[serde(rename="xx")] is also valid
+            // TODO: It is recommended to use an ORM framework, see: https://github.com/diesel-rs/diesel
             let id = $bean.base.id.unwrap();
             let serialized = to_bson(&$bean)?;
             let obj = serialized.as_document().unwrap().clone();

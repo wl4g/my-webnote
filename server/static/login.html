@@ -114,18 +114,93 @@
         onclick="window.location.href='/auth/connect/github'"
         class="oauth-button github"
       >
-        <img
-          src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
-          alt="GitHub logo"
-        />
+        <!-- https://github.githubassets.com/images/modules/logos_page/github-mark.png -->
+        <img src="/static/img/github-mark.png" alt="GitHub logo" />
         Signin with GitHub
       </button>
       <div class="or-divider">OR</div>
-      <form>
-        <input type="text" placeholder="Username" required />
-        <input type="password" placeholder="Password" required />
+      <form id="login_form">
+        <input type="text" placeholder="Username" required id="username" />
+        <input type="password" placeholder="Password" required id="password" />
         <button type="submit">Signin</button>
       </form>
     </div>
+    <script src="/static/js/jquery-3.6.0.min.js"></script>
+    <script src="/static/js/fp-3.4.2.min.js"></script>
+    <script src="/static/js/crypto-js-4.1.1.min.js"></script>
+    <script src="/static/js/jsencrypt-3.2.1.min.js"></script>
+    <script>
+      $(document).ready(function () {
+        $("#login_form").submit(function (e) {
+          e.preventDefault();
+
+          // 1. Getting the device fingerprint.
+          (async () => {
+            const fp = await FingerprintJS.load();
+            const result = await fp.get();
+            const visitorId = result.visitorId;
+            console.log("This device fingerprint visitorId:", visitorId);
+
+            // 2. Getting the public key.
+            $.ajax({
+              url: "/auth/login/pubkey",
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              data: JSON.stringify({
+                fingerprintToken: visitorId,
+              }),
+              success: function (res1) {
+                // Transforming the base64 decode to public key.
+                const pubkey = atob(JSON.parse(res1).pubkey);
+                const username = $("#username").val();
+                const password = $("#password").val();
+
+                // 3. Hashing to hex from password plaintext.
+                //  DEBUG: echo -n "string" | openssl dgst -sha256 -binary | base64
+                // OUTPUT: RzKH+CmNunFjqJeQiVj3wOrnM+JdLgJ5kuou3JvtL6g=
+                const base64HashedPassword = CryptoJS.SHA256(password).toString(
+                  CryptoJS.enc.Base64
+                );
+
+                // 4. Use RSA to encrypt the hash sign of the password.
+                const encrypt = new JSEncrypt();
+                encrypt.setPublicKey(pubkey);
+                const base64CipherPassword = encrypt.encrypt(base64HashedPassword);
+
+                // 5. Submission to the login.
+                $.ajax({
+                  url: "/auth/login/verify",
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  data: JSON.stringify({
+                    username: username,
+                    password: base64CipherPassword,
+                    fingerprintToken: visitorId, // 再次传递设备指纹
+                  }),
+                  success: function (res2) {
+                    console.info("Login successful", res2);
+                    window.location.href = "/";
+                  },
+                  error: function (xhr, status, error) {
+                    console.error("Login failed", error);
+                    alert("Login failed");
+                    //window.location.reload();
+                  },
+                });
+              },
+              error: function (xhr, status, error) {
+                console.error("Failed to get pubkey.", error);
+                alert("Failed to get pubkey!");
+                //window.location.reload();
+              },
+            });
+          })();
+        });
+      });
+    </script>
   </body>
 </html>

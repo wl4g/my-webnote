@@ -22,7 +22,7 @@ use super::ValidatedJson;
 
 pub fn init() -> Router<AppState> {
     Router::new()
-        .route("/modules/folder/query", get(handle_get_folders))
+        .route("/modules/folder/query", get(handle_query_folders))
         .route("/modules/folder/save", post(handle_save_folder))
         .route("/modules/folder/delete", post(handle_delete_folder))
 }
@@ -34,7 +34,7 @@ pub fn init() -> Router<AppState> {
     responses((status = 200, description = "Getting for all folders.", body = QueryFolderResponse)),
     tag = "Folder"
 )]
-pub async fn handle_get_folders(
+pub async fn handle_query_folders(
     State(state): State<AppState>,
     Query(param): Query<QueryFolderRequest>,
     Query(page): Query<PageRequest>

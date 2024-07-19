@@ -6,7 +6,7 @@ use axum::{
     http::{ header, StatusCode },
     middleware::Next,
     response::{ Html, IntoResponse },
-    routing::get,
+    routing::{ get, post },
     Router,
 };
 
@@ -25,9 +25,22 @@ use crate::{
     config::{ config_api::DEFAULT_404_HTML, resources::handle_static },
     context::state::AppState,
     handlers::auths::{ AuthHandler, IAuthHandler },
-    types::auths::{ CallbackGithubRequest, CallbackOidcRequest, GithubUserInfo, LogoutRequest },
+    types::{
+        auths::{
+            CallbackGithubRequest,
+            CallbackOidcRequest,
+            GetPubKeyRequest,
+            GetPubKeyResponse,
+            GithubUserInfo,
+            LogoutRequest,
+            PasswordLoginRequest,
+        },
+        RespBase,
+    },
     utils::{ self, auths::{ self, AuthUserClaims, SecurityContext }, webs },
 };
+
+use super::ValidatedJson;
 
 pub const ROOT_URI: &str = "/";
 pub const AUTH_CONNECT_OIDC_URI: &str = "/auth/connect/oidc";
@@ -35,13 +48,17 @@ pub const AUTH_CONNECT_GITHUB_URI: &str = "/auth/connect/github";
 pub const AUTH_CALLBACK_OIDC_URI: &str = "/auth/callback/oidc";
 pub const AUTH_CALLBACK_GITHUB_URI: &str = "/auth/callback/github";
 pub const AUTH_LOGOUT_URI: &str = "/auth/logout";
+pub const AUTH_LOGIN_PUBKEY_URI: &str = "/auth/login/pubkey";
+pub const AUTH_LOGIN_VERIFY_URI: &str = "/auth/login/verify";
 pub const STATIC_RESOURCES_URI: &str = "/static/*file";
 
-pub const EXCLUDED_PATHS: [&str; 5] = [
+pub const EXCLUDED_PATHS: [&str; 7] = [
     AUTH_CONNECT_OIDC_URI,
     AUTH_CONNECT_GITHUB_URI,
     AUTH_CALLBACK_OIDC_URI,
     AUTH_CALLBACK_GITHUB_URI,
+    AUTH_LOGIN_PUBKEY_URI,
+    AUTH_LOGIN_VERIFY_URI,
     STATIC_RESOURCES_URI,
 ];
 
@@ -56,9 +73,15 @@ pub fn init() -> Router<AppState> {
         .route(AUTH_CALLBACK_OIDC_URI, get(handle_callback_oidc))
         .route(AUTH_CALLBACK_GITHUB_URI, get(handle_callback_github))
         .route(AUTH_LOGOUT_URI, get(handle_logout))
+        .route(AUTH_LOGIN_PUBKEY_URI, post(handle_login_pubkey))
+        .route(AUTH_LOGIN_VERIFY_URI, post(handle_login_verify))
         .fallback(handle_page_404) // Global auto internal forwarding when not found.
         .layer(CookieManagerLayer::new())
 }
+
+// --------------------------------------
+// Global Authentication interceptors.
+// --------------------------------------
 
 pub async fn auth_middleware(
     State(state): State<AppState>,
@@ -207,6 +230,10 @@ async fn validate_token(state: &AppState, ak: &str) -> (bool, Option<AuthUserCla
 async fn handle_page_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, Html(DEFAULT_404_HTML))
 }
+
+// --------------------------------------
+// OIDC/Github OAuth2 login.
+// --------------------------------------
 
 #[utoipa::path(
     get,
@@ -361,65 +388,63 @@ async fn handle_callback_oidc(
 
             match token_result {
                 Ok(token_response) => {
-                    let id_token = match token_response.extra_fields().id_token() {
-                        Some(token) => token,
-                        None => {
-                            return auths::auth_resp_redirect_or_json(
-                                &state.config,
-                                &headers,
-                                &state.config.auth.login_url.to_owned().unwrap(),
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("No ID token found").as_str(),
-                                None
-                            );
-                        }
-                    };
-
-                    // TODO: 此基于 cookie crsf 校验 nonce 的机制仅支持浏览器环境, 若是 Android/iOS 如何设计更优雅?移动端非web其实不需要crsf?
-                    let csrf_token = match webs::get_cookie_from_headers("_csrf_token", &headers) {
-                        Some(token) => token,
-                        None => {
-                            return auths::auth_resp_redirect_or_json(
-                                &state.config,
-                                &headers,
-                                &state.config.auth.login_url.to_owned().unwrap(),
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("No csrf token found").as_str(),
-                                None
-                            );
-                        }
-                    };
-
-                    let nonce_string = match
-                        get_auth_handler(&state).handle_auth_get_nonce(csrf_token.as_str()).await
-                    {
-                        Ok(Some(nonce)) => nonce,
-                        _ => {
-                            return auths::auth_resp_redirect_or_json(
-                                &state.config,
-                                &headers,
-                                &state.config.auth.login_url.to_owned().unwrap(),
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("failed to get oidc authing nonce").as_str(),
-                                None
-                            );
-                        }
-                    };
-                    let nonce = openidconnect::Nonce::new(nonce_string);
-
-                    let claims = match id_token.claims(&client.id_token_verifier(), &nonce) {
-                        Ok(claims) => claims,
-                        Err(e) => {
-                            return auths::auth_resp_redirect_or_json(
-                                &state.config,
-                                &headers,
-                                &state.config.auth.login_url.to_owned().unwrap(),
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("failed to verify ID token: {:?}", e).as_str(),
-                                None
-                            );
-                        }
-                    };
+                    // 已直接获取 userinfo 信息更全, 因此 ID TOKEN 等暂无用途.
+                    // let id_token = match token_response.extra_fields().id_token() {
+                    //     Some(token) => token,
+                    //     None => {
+                    //         return auths::auth_resp_redirect_or_json(
+                    //             &state.config,
+                    //             &headers,
+                    //             &state.config.auth.login_url.to_owned().unwrap(),
+                    //             StatusCode::INTERNAL_SERVER_ERROR,
+                    //             format!("No ID token found").as_str(),
+                    //             None
+                    //         );
+                    //     }
+                    // };
+                    // // TODO: 此基于 cookie crsf 校验 nonce 的机制仅支持浏览器环境, 若是 Android/iOS 如何设计更优雅?移动端非web其实不需要crsf?
+                    // let csrf_token = match webs::get_cookie_from_headers("_csrf_token", &headers) {
+                    //     Some(token) => token,
+                    //     None => {
+                    //         return auths::auth_resp_redirect_or_json(
+                    //             &state.config,
+                    //             &headers,
+                    //             &state.config.auth.login_url.to_owned().unwrap(),
+                    //             StatusCode::INTERNAL_SERVER_ERROR,
+                    //             format!("No csrf token found").as_str(),
+                    //             None
+                    //         );
+                    //     }
+                    // };
+                    // let nonce_string = match
+                    //     get_auth_handler(&state).handle_auth_get_nonce(csrf_token.as_str()).await
+                    // {
+                    //     Ok(Some(nonce)) => nonce,
+                    //     _ => {
+                    //         return auths::auth_resp_redirect_or_json(
+                    //             &state.config,
+                    //             &headers,
+                    //             &state.config.auth.login_url.to_owned().unwrap(),
+                    //             StatusCode::INTERNAL_SERVER_ERROR,
+                    //             format!("failed to get oidc authing nonce").as_str(),
+                    //             None
+                    //         );
+                    //     }
+                    // };
+                    // let nonce = openidconnect::Nonce::new(nonce_string);
+                    // let claims = match id_token.claims(&client.id_token_verifier(), &nonce) {
+                    //     Ok(claims) => claims,
+                    //     Err(e) => {
+                    //         return auths::auth_resp_redirect_or_json(
+                    //             &state.config,
+                    //             &headers,
+                    //             &state.config.auth.login_url.to_owned().unwrap(),
+                    //             StatusCode::INTERNAL_SERVER_ERROR,
+                    //             format!("failed to verify ID token: {:?}", e).as_str(),
+                    //             None
+                    //         );
+                    //     }
+                    // };
 
                     let access_token = token_response.access_token().clone();
                     let userinfo_request = match client.user_info(access_token, None) {
@@ -452,31 +477,31 @@ async fn handle_callback_oidc(
                         }
                     };
 
-                    let uid = claims.subject().to_string();
-                    let uname = userinfo
+                    //let oidc_sub = claims.subject().to_string();
+                    let oidc_name = userinfo
                         .preferred_username()
                         .map(|c| c.to_string())
                         .unwrap_or_default();
-                    let email = userinfo
+                    let oidc_email = userinfo
                         .email()
                         .map(|c| c.to_string())
                         .unwrap_or_default();
 
                     tracing::debug!("Received oidc user info: {:?}", userinfo);
-                    // tracing::debug!("User subject: {:?}", uid);
-                    // tracing::debug!("User name: {:?}", uname);
-                    // tracing::debug!("User email: {:?}", email);
+                    // tracing::debug!("User oidc subject: {:?}", oidc_name);
+                    // tracing::debug!("User oidc name: {:?}", oidc_name);
+                    // tracing::debug!("User oidc email: {:?}", oidc_email);
 
                     let result = match
                         get_auth_handler(&state).handle_auth_callback_oidc(userinfo).await
                     {
-                        Ok(c) => {
-                            if c > 0 {
+                        Ok(uid) => {
+                            if uid > 0 {
                                 get_auth_handler(&state).handle_login_success(
                                     &state.config,
-                                    &uid,
-                                    &uname,
-                                    &email,
+                                    uid,
+                                    &oidc_name,
+                                    &oidc_email,
                                     &headers
                                 ).await
                             } else {
@@ -596,11 +621,11 @@ async fn handle_callback_github(
                     };
                     tracing::info!("Received github user info {:?}", user_info);
 
-                    let github_uid = user_info.id;
+                    let github_sub = user_info.id;
                     let github_uname = user_info.login;
                     let github_email = user_info.email;
                     let github_user = GithubUserInfo::default(
-                        github_uid,
+                        github_sub,
                         github_uname.to_owned(),
                         github_email.to_owned()
                     );
@@ -611,11 +636,11 @@ async fn handle_callback_github(
                             github_user.clone()
                         ).await
                     {
-                        Ok(c) => {
-                            if c > 0 {
+                        Ok(uid) => {
+                            if uid > 0 {
                                 get_auth_handler(&state).handle_login_success(
                                     &state.config,
-                                    github_uid.unwrap_or(-1).to_string().as_str(),
+                                    uid,
                                     github_uname.unwrap_or_default().as_str(),
                                     github_email.unwrap_or_default().as_str(),
                                     &headers
@@ -678,101 +703,100 @@ async fn handle_callback_github(
     }
 }
 
-// #[utoipa::path(
-//     post,
-//     path = AUTH_LOGOUT_URI,
-//     request_body(
-//         content = Option<LogoutRequest>,
-//         description = "Optional logout request parameters",
-//         content_type = "application/json",
-//         example = json!({"access_token": null, "refresh_token": null}),
-//     ),
-//     responses((status = 200, description = "Logout.")),
-//     tag = "Authentication"
-// )]
-// pub async fn handle_logout(
-//     State(state): State<AppState>,
-//     request: axum::extract::Request<Body>
-// ) -> impl IntoResponse {
-//     let headers = &request.headers().clone();
-//     let body = request.into_body();
+// --------------------------------------
+// Password Login.
+// --------------------------------------
 
-//     let cookie_ak = webs::get_cookie_from_headers(&state.config.auth_jwt_ak_name, headers);
-//     let cookie_rk = webs::get_cookie_from_headers(&state.config.auth_jwt_rk_name, headers);
+#[utoipa::path(
+    post,
+    path = AUTH_LOGIN_PUBKEY_URI,
+    request_body = GetPubKeyRequest,
+    responses((status = 200, description = "Login pubkey.")),
+    tag = "Authentication"
+)]
+#[allow(unused)]
+async fn handle_login_pubkey(
+    State(state): State<AppState>,
+    ValidatedJson(param): ValidatedJson<GetPubKeyRequest>
+) -> impl IntoResponse {
+    let base64_pubkey = get_auth_handler(&state).handle_login_pubkey(param).await.ok();
+    let result = serde_json
+        ::to_string(&(GetPubKeyResponse { pubkey: base64_pubkey.unwrap() }))
+        .unwrap();
+    (StatusCode::OK, result.to_string()).into_response()
+}
 
-//     let param: LogoutRequest = match
-//         serde_json::from_slice(
-//             &(match axum::body::to_bytes(body, usize::MAX).await {
-//                 Ok(bytes) => bytes,
-//                 Err(_) => {
-//                     return auths::auth_resp_redirect_or_json(
-//                         &state.config,
-//                         headers,
-//                         &state.config.auth.login_url.to_owned().unwrap(),
-//                         StatusCode::BAD_REQUEST,
-//                         "Read request body failed",
-//                         None
-//                     );
-//                 }
-//             })
-//         )
-//     {
-//         Ok(param) => param,
-//         Err(_) => {
-//             return auths::auth_resp_redirect_or_json(
-//                 &state.config,
-//                 headers,
-//                 &state.config.auth.login_url.to_owned().unwrap(),
-//                 StatusCode::BAD_REQUEST,
-//                 "Invalid parameter json",
-//                 None
-//             );
-//         }
-//     };
+#[utoipa::path(
+    post,
+    path = AUTH_LOGIN_VERIFY_URI,
+    request_body(
+        content = Option<PasswordLoginRequest>,
+        description = "Password login request parameters",
+        content_type = "application/json",
+        example = json!({"username": null, "password": null, "fingerprint_token": null}),
+    ),
+    responses((status = 200, description = "Password login.")),
+    tag = "Authentication"
+)]
+pub async fn handle_login_verify(
+    State(state): State<AppState>,
+    request: axum::extract::Request<Body>
+) -> impl IntoResponse {
+    let headers = &request.headers().clone();
+    let body = request.into_body();
 
-//     let logout = LogoutRequest {
-//         access_token: param.access_token.or_else(|| cookie_ak),
-//         refresh_token: param.refresh_token.or_else(|| cookie_rk),
-//     };
+    let param: PasswordLoginRequest = match
+        serde_json::from_slice(
+            &(match axum::body::to_bytes(body, usize::MAX).await {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    tracing::warn!("Unable to read password login request failed. reason: {:?}", e);
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        headers,
+                        &state.config.auth.login_url.to_owned().unwrap(),
+                        StatusCode::BAD_REQUEST,
+                        "Unable to read password login request failed",
+                        None
+                    );
+                }
+            })
+        )
+    {
+        Ok(param) => param,
+        Err(e) => {
+            tracing::warn!("Invalid password login parameter json. reason: {:?}", e);
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
+                StatusCode::BAD_REQUEST,
+                "Invalid password login parameter json",
+                None
+            );
+        }
+    };
 
-//     match get_auth_handler(&state).handle_logout(logout).await {
-//         Ok(_) => {
-//             let removal_ak = CookieBuilder::new(state.config.auth_jwt_ak_name.to_string(), "_")
-//                 .removal()
-//                 .build();
-//             let removal_rk = CookieBuilder::new(state.config.auth_jwt_rk_name.to_string(), "_")
-//                 .removal()
-//                 .build();
+    match get_auth_handler(&state).handle_login_verify(param).await {
+        Ok(user) => {
+            get_auth_handler(&state).handle_login_success(
+                &state.config,
+                user.base.id.unwrap(),
+                &user.name.to_owned().unwrap_or_default().to_string(),
+                &user.email.to_owned().unwrap_or_default().to_string(),
+                &headers
+            ).await
+        }
+        Err(e) => {
+            let errmsg = format!("Failed to login. {:?}", e.to_string());
+            tracing::warn!("{}", errmsg);
+            let result = RespBase::errmsg(errmsg.as_str());
+            (StatusCode::OK, serde_json::to_string(&result).unwrap()).into_response()
+        }
+    }
+}
 
-//             // Response::builder()
-//             //     .status(StatusCode::FOUND)
-//             //     .header(header::LOCATION, "/")
-//             //     .header(header::SET_COOKIE, removal_ak.to_string())
-//             //     .header(header::SET_COOKIE, removal_rk.to_string())
-//             //     .body(axum::body::Body::empty())
-//             //     .unwrap()
-//             auths::auth_resp_redirect_or_json(
-//                 &state.config,
-//                 headers,
-//                 &state.config.auth.login_url.to_owned().unwrap().as_str(),
-//                 StatusCode::BAD_REQUEST,
-//                 "Bad Parameters",
-//                 Some((removal_ak, removal_rk))
-//             )
-//         }
-//         Err(e) => {
-//             tracing::error!("Failed to logout. {:?}", e);
-//             return auths::auth_resp_redirect_or_json(
-//                 &state.config,
-//                 headers,
-//                 &state.config.auth.login_url.to_owned().unwrap(),
-//                 StatusCode::BAD_REQUEST,
-//                 e.to_string().as_str(),
-//                 None
-//             );
-//         }
-//     }
-// }
+// ----- Logout -----
 
 #[utoipa::path(
     get,

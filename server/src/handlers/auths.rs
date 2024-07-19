@@ -3,21 +3,25 @@ use std::{ collections::HashMap, sync::Arc };
 use axum::async_trait;
 use hyper::{ header, StatusCode };
 use lazy_static::lazy_static;
-use anyhow::{ Error, Ok };
+use anyhow::{ anyhow, Error, Ok };
 use chrono::Utc;
 use openidconnect::{ core::CoreUserInfoClaims, LanguageTag };
 use tower_cookies::cookie::{ time::Duration, CookieBuilder, SameSite };
 use crate::{
     config::config_api::ApiConfig,
     context::state::AppState,
-    types::{ auths::{ GithubUserInfo, LogoutRequest }, users::SaveUserRequest },
-    utils::{ self, auths },
+    types::{
+        auths::{ GetPubKeyRequest, GithubUserInfo, LogoutRequest, PasswordLoginRequest },
+        users::{ SaveUserRequest, User },
+    },
+    utils::{ self, auths, rsa_ciphers::RSACipher },
 };
 
 use super::users::{ IUserHandler, UserHandler };
 
 pub const AUTH_NONCE_PREFIX: &'static str = "auth:nonce:";
-pub const AUTH_LOGOUT_BLACKLIST_PREFIX: &'static str = "auth:logout:blacklist:";
+pub const LOGIN_PRIVATE_KEY_PREFIX: &'static str = "login:privatekey:";
+pub const LOGOUT_BLACKLIST_PREFIX: &'static str = "logout:blacklist:";
 
 lazy_static! {
     pub static ref LANG_CLAIMS_NAME_KEY: LanguageTag = LanguageTag::new("name".to_owned());
@@ -33,10 +37,14 @@ pub trait IAuthHandler: Send {
 
     async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error>;
 
+    async fn handle_login_pubkey(&self, param: GetPubKeyRequest) -> Result<String, Error>;
+
+    async fn handle_login_verify(&self, param: PasswordLoginRequest) -> Result<Arc<User>, Error>;
+
     async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
-        uid: &str,
+        uid: i64,
         uname: &str,
         email: &str,
         headers: &header::HeaderMap
@@ -45,6 +53,8 @@ pub trait IAuthHandler: Send {
     async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error>;
 
     fn build_auth_nonce_key(&self, nonce: &str) -> String;
+
+    fn build_login_private_key(&self, fingerprint_token: &str) -> String;
 
     fn build_logout_blacklist_key(&self, access_token: &str) -> String;
 }
@@ -98,7 +108,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     }
 
     async fn handle_auth_callback_oidc(&self, userinfo: CoreUserInfoClaims) -> Result<i64, Error> {
-        let oidc_uid = userinfo.subject().as_str();
+        let oidc_sub = userinfo.subject().as_str();
         // let oidc_uname = userinfo.name().map(|n| n.get(Some(&LANG_CLAIMS_NAME_KEY)).map(|u| u.to_string()).unwrap_or_default());
         let oidc_preferred_name = userinfo.preferred_username().map(|c| c.to_string());
         let oidc_email = userinfo.email().map(|c| c.to_string());
@@ -106,7 +116,9 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         let handler = UserHandler::new(self.state);
 
         // 1. Get user by oidc uid
-        let user = handler.get(Some(oidc_uid.to_string()), None, None).await.unwrap();
+        let user = handler
+            .get(None, None, None, None, Some(oidc_sub.to_string()), None, None).await
+            .unwrap();
 
         // 2. If user exists, update user github subject ID.
         let save_param;
@@ -117,7 +129,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                 email: None,
                 phone: None,
                 password: None,
-                oidc_claims_sub: Some(oidc_uid.to_string()),
+                oidc_claims_sub: Some(oidc_sub.to_string()),
                 oidc_claims_name: oidc_preferred_name,
                 oidc_claims_email: oidc_email,
                 github_claims_sub: None,
@@ -126,6 +138,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                 google_claims_sub: None,
                 google_claims_name: None,
                 google_claims_email: None,
+                lang: None,
             };
         } else {
             // 3. If user not exists, create user by github login, which auto register user.
@@ -135,7 +148,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                 email: None,
                 phone: None,
                 password: None,
-                oidc_claims_sub: Some(oidc_uid.to_string()),
+                oidc_claims_sub: Some(oidc_sub.to_string()),
                 oidc_claims_name: oidc_preferred_name,
                 oidc_claims_email: oidc_email,
                 github_claims_sub: None,
@@ -144,21 +157,27 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                 google_claims_sub: None,
                 google_claims_name: None,
                 google_claims_email: None,
+                lang: None,
             };
         }
 
-        handler.save(save_param).await
+        match handler.save(save_param).await {
+            std::result::Result::Ok(uid) => Ok(uid),
+            Err(e) => Err(e),
+        }
     }
 
     async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error> {
-        let github_uid = userinfo.id.expect("github uid is None");
+        let github_sub = userinfo.id.expect("github uid is None");
         let github_uname = userinfo.login.expect("github uname is None");
-        let github_email = userinfo.email.expect("github email is None");
+        let github_email = userinfo.email;
 
         let handler = UserHandler::new(self.state);
 
         // 1. Get user by github_uid
-        let user = handler.get(None, Some(github_uid.to_string()), None).await.unwrap();
+        let user = handler
+            .get(None, None, None, None, None, Some(github_sub.to_string()), None).await
+            .unwrap();
 
         // 2. If user exists, update user github subject ID.
         let save_param;
@@ -172,12 +191,13 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                 oidc_claims_sub: None,
                 oidc_claims_name: None,
                 oidc_claims_email: None,
-                github_claims_sub: Some(github_uid.to_string()),
+                github_claims_sub: Some(github_sub.to_string()),
                 github_claims_name: Some(github_uname.to_string()),
-                github_claims_email: Some(github_email.to_string()),
+                github_claims_email: github_email,
                 google_claims_sub: None,
                 google_claims_name: None,
                 google_claims_email: None,
+                lang: None,
             };
         } else {
             // 3. If user not exists, create user by github login, which auto register user.
@@ -190,22 +210,124 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                 oidc_claims_sub: None,
                 oidc_claims_name: None,
                 oidc_claims_email: None,
-                github_claims_sub: Some(github_uid.to_string()),
+                github_claims_sub: Some(github_sub.to_string()),
                 github_claims_name: Some(github_uname.to_string()),
-                github_claims_email: Some(github_email.to_string()),
+                github_claims_email: github_email,
                 google_claims_sub: None,
                 google_claims_name: None,
                 google_claims_email: None,
+                lang: None,
             };
         }
 
-        handler.save(save_param).await
+        match handler.save(save_param).await {
+            std::result::Result::Ok(uid) => Ok(uid),
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn handle_login_pubkey(&self, param: GetPubKeyRequest) -> Result<String, Error> {
+        let pair = RSACipher::new(2048).unwrap();
+        // Storage private key to cache.
+        let cache = self.state.string_cache.cache(&self.state.config);
+        let key = self.build_login_private_key(&param.fingerprint_token);
+        let value = pair.get_base64_private_key().unwrap();
+        match cache.set(key, value, Some(30_000)).await {
+            std::result::Result::Ok(_) => {
+                tracing::info!("Got login pubkey for: {:?}", param);
+                Ok(pair.get_base64_public_key().unwrap())
+            }
+            Err(e) => {
+                tracing::error!("Failed to got login pubkey. {:?}, cause: {}", param, e);
+                Err(e)
+            }
+        }
+    }
+
+    async fn handle_login_verify(&self, param: PasswordLoginRequest) -> Result<Arc<User>, Error> {
+        let cache = self.state.string_cache.cache(&self.state.config);
+        let key = self.build_login_private_key(&param.fingerprint_token);
+
+        // Getting private key from cache.
+        match cache.get(key).await {
+            std::result::Result::Ok(value) => {
+                match value {
+                    Some(base64_private_key) => {
+                        tracing::debug!("Got login private key for: {:?}", param);
+                        let pair = RSACipher::from_base64(&base64_private_key).unwrap();
+                        let hashed_password: Vec<u8> = match
+                            pair.decrypt_from_base64(&param.password)
+                        {
+                            std::result::Result::Ok(p) => p,
+                            Err(e) => {
+                                return Err(
+                                    anyhow!(
+                                        format!("Unable decryption password. {:?}", e.to_string())
+                                    )
+                                );
+                            }
+                        };
+
+                        // Getting user from database.
+                        let handler = UserHandler::new(self.state);
+                        match handler.get(None, None, None, None, None, None, None).await {
+                            std::result::Result::Ok(user) => {
+                                match user {
+                                    Some(user) => {
+                                        let store_hashed_password = user.password
+                                            .clone()
+                                            .unwrap_or_default()
+                                            .into_bytes();
+                                        if
+                                            utils::auths::constant_time_eq(
+                                                &hashed_password,
+                                                &store_hashed_password
+                                            )
+                                        {
+                                            tracing::debug!("Login success for: {:?}", param);
+                                            Ok(user)
+                                        } else {
+                                            tracing::error!("Login failed for: {:?}", param);
+                                            Err(anyhow!("Invalid password"))
+                                        }
+                                    }
+                                    None => {
+                                        let errmsg = format!(
+                                            "No login user, Please confirm that the login account is correct. {:?}",
+                                            param
+                                        );
+                                        tracing::error!(errmsg);
+                                        Err(anyhow!(errmsg))
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to get user. {:?}, cause: {}", param, e);
+                                Err(e.into())
+                            }
+                        }
+                    }
+                    None => {
+                        let errmsg = format!(
+                            "No login private key, The operation takes too long? Please refresh and log in again. {:?}",
+                            param
+                        );
+                        tracing::error!(errmsg);
+                        Err(anyhow!(errmsg))
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to get login private key. {:?}, cause: {}", param, e);
+                Err(e)
+            }
+        }
     }
 
     async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
-        uid: &str,
+        uid: i64,
         uname: &str,
         email: &str,
         headers: &header::HeaderMap
@@ -269,7 +391,11 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         format!("{}:{}", AUTH_NONCE_PREFIX, nonce)
     }
 
+    fn build_login_private_key(&self, fingerprint_token: &str) -> String {
+        format!("{}:{}", LOGIN_PRIVATE_KEY_PREFIX, fingerprint_token)
+    }
+
     fn build_logout_blacklist_key(&self, access_token: &str) -> String {
-        format!("{}:{}", AUTH_LOGOUT_BLACKLIST_PREFIX, access_token)
+        format!("{}:{}", LOGOUT_BLACKLIST_PREFIX, access_token)
     }
 }

@@ -22,7 +22,7 @@ use super::ValidatedJson;
 
 pub fn init() -> Router<AppState> {
     Router::new()
-        .route("/modules/document/query", get(handle_get_documents))
+        .route("/modules/document/query", get(handle_query_documents))
         .route("/modules/document/save", post(handle_save_document))
         .route("/modules/document/delete", post(handle_delete_document))
 }
@@ -38,7 +38,7 @@ pub fn init() -> Router<AppState> {
     )),
     tag = "Document"
 )]
-pub async fn handle_get_documents(
+pub async fn handle_query_documents(
     State(state): State<AppState>,
     Query(param): Query<QueryDocumentRequest>,
     Query(page): Query<PageRequest>

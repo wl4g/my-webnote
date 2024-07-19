@@ -40,7 +40,11 @@ impl<'a> DocumentHandler<'a> {
 impl<'a> IDocumentHandler for DocumentHandler<'a> {
     async fn get(&self, name: Option<String>) -> Result<Option<Arc<Document>>, Error> {
         let param = QueryDocumentRequest {
+            key: None,
             name,
+            folder_key: None,
+            doc_type: None,
+            content: None,
         };
         let res = self.find(param, PageRequest::default()).await.unwrap().1;
         if res.len() > 0 {
