@@ -21,6 +21,7 @@ base64 = "0.22.1"
 hex = "0.4.3"
 #rand = "0.8.5"
 # syrette = "0.5.1"
+mimalloc = { version = "0.1.43", default-features = false }
 #
 # Config libs.
 config = "0.14.0"
