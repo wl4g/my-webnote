@@ -1,3 +1,25 @@
+/*
+ * SPDX-License-Identifier: GNU GENERAL PUBLIC LICENSE Version 3
+ *
+ * Copyleft (c) 2024 James Wong. This file is part of James Wong.
+ * is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * James Wong is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with James Wong.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * IMPORTANT: Any software that fully or partially contains or uses materials
+ * covered by this license must also be released under the GNU GPL license.
+ * This includes modifications and derived works.
+ */
+
 use anyhow::{ Error, Ok };
 use axum::async_trait;
 use moka::policy::EvictionPolicy;
@@ -12,55 +34,55 @@ use crate::config::config_api::MemoryProperties;
 use super::ICache;
 
 pub struct StringMemoryCache {
-  cache: Arc<Cache<String, String>>,
+    cache: Arc<Cache<String, String>>,
 }
 
 impl StringMemoryCache {
-  pub fn new(config: &MemoryProperties) -> Self {
-    let mut builder = Cache::builder();
-    if config.initial_capacity.is_some() {
-      builder = builder.initial_capacity(config.initial_capacity.clone().unwrap() as usize);
-    }
-    if config.max_capacity.is_some() {
-      builder = builder.max_capacity(config.max_capacity.clone().unwrap());
-    }
-    if config.ttl.is_some() {
-      builder = builder.time_to_live(Duration::from_millis(config.ttl.clone().unwrap()));
-    }
-    if config.eviction_policy.is_some() {
-      match config.eviction_policy.to_owned().unwrap().to_uppercase().as_str() {
-        "LRU" => {
-          builder = builder.eviction_policy(EvictionPolicy::lru());
+    pub fn new(config: &MemoryProperties) -> Self {
+        let mut builder = Cache::builder();
+        if config.initial_capacity.is_some() {
+            builder = builder.initial_capacity(config.initial_capacity.clone().unwrap() as usize);
         }
-        "LFU" | "TINY_LFU" => {
-          builder = builder.eviction_policy(EvictionPolicy::tiny_lfu());
+        if config.max_capacity.is_some() {
+            builder = builder.max_capacity(config.max_capacity.clone().unwrap());
         }
-        _ => {
-          builder = builder.eviction_policy(EvictionPolicy::default());
+        if config.ttl.is_some() {
+            builder = builder.time_to_live(Duration::from_millis(config.ttl.clone().unwrap()));
         }
-      }
+        if config.eviction_policy.is_some() {
+            match config.eviction_policy.to_owned().unwrap().to_uppercase().as_str() {
+                "LRU" => {
+                    builder = builder.eviction_policy(EvictionPolicy::lru());
+                }
+                "LFU" | "TINY_LFU" => {
+                    builder = builder.eviction_policy(EvictionPolicy::tiny_lfu());
+                }
+                _ => {
+                    builder = builder.eviction_policy(EvictionPolicy::default());
+                }
+            }
+        }
+        StringMemoryCache {
+            cache: Arc::new(builder.build()),
+        }
     }
-    StringMemoryCache {
-      cache: Arc::new(builder.build()),
-    }
-  }
 }
 
 #[allow(unused)]
 #[async_trait]
 impl ICache<String> for StringMemoryCache {
-  async fn get(&self, key: String) -> Result<Option<String>, Error> {
-    Ok(self.cache.get(&key).await)
-  }
+    async fn get(&self, key: String) -> Result<Option<String>, Error> {
+        Ok(self.cache.get(&key).await)
+    }
 
-  async fn set(&self, key: String, value: String, expire: Option<i32>) -> Result<bool, Error> {
-    self.cache.insert(key.clone(), value).await;
-    tracing::info!("Inserted to key: {}, expire: {:?}", key, expire);
-    Ok(true)
-  }
+    async fn set(&self, key: String, value: String, expire: Option<i32>) -> Result<bool, Error> {
+        self.cache.insert(key.clone(), value).await;
+        tracing::info!("Inserted to key: {}, expire: {:?}", key, expire);
+        Ok(true)
+    }
 
-  async fn delete(&self, key: String) -> Result<bool, Error> {
-    self.cache.invalidate(&key).await;
-    Ok(true)
-  }
+    async fn delete(&self, key: String) -> Result<bool, Error> {
+        self.cache.invalidate(&key).await;
+        Ok(true)
+    }
 }

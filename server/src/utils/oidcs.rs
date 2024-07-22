@@ -1,10 +1,32 @@
+/*
+ * SPDX-License-Identifier: GNU GENERAL PUBLIC LICENSE Version 3
+ *
+ * Copyleft (c) 2024 James Wong. This file is part of James Wong.
+ * is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * James Wong is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with James Wong.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * IMPORTANT: Any software that fully or partially contains or uses materials
+ * covered by this license must also be released under the GNU GPL license.
+ * This includes modifications and derived works.
+ */
+
 use openidconnect::{
-  core::{ CoreClient, CoreProviderMetadata },
-  reqwest::async_http_client,
-  ClientId,
-  ClientSecret,
-  IssuerUrl,
-  RedirectUrl,
+    core::{ CoreClient, CoreProviderMetadata },
+    reqwest::async_http_client,
+    ClientId,
+    ClientSecret,
+    IssuerUrl,
+    RedirectUrl,
 };
 
 use crate::config::config_api::OidcProperties;
@@ -303,36 +325,36 @@ curl 'https://keycloak.example.com/realms/master/.well-known/openid-configuratio
 }
 */
 pub async fn create_oidc_client(oidc_config: &OidcProperties) -> Option<CoreClient> {
-  if oidc_config.enabled.unwrap_or(false) {
-    let issuer_url = IssuerUrl::new(
-      oidc_config.issue_url.to_owned().expect("Missing 'issue_url' configured")
-    ).expect("Invalid 'issue_url' configured");
+    if oidc_config.enabled.unwrap_or(false) {
+        let issuer_url = IssuerUrl::new(
+            oidc_config.issue_url.to_owned().expect("Missing 'issue_url' configured")
+        ).expect("Invalid 'issue_url' configured");
 
-    let client_id = ClientId::new(
-      oidc_config.client_id.to_owned().expect("Missing 'client_id' configured")
-    );
+        let client_id = ClientId::new(
+            oidc_config.client_id.to_owned().expect("Missing 'client_id' configured")
+        );
 
-    let client_secret = ClientSecret::new(
-      oidc_config.client_secret.to_owned().expect("Missing 'client_id' configured")
-    );
+        let client_secret = ClientSecret::new(
+            oidc_config.client_secret.to_owned().expect("Missing 'client_id' configured")
+        );
 
-    let redirect_url = RedirectUrl::new(
-      oidc_config.redirect_url.to_owned().expect("Missing 'redirect_url' configured")
-    ).expect("Invalid 'redirect_url' configured");
+        let redirect_url = RedirectUrl::new(
+            oidc_config.redirect_url.to_owned().expect("Missing 'redirect_url' configured")
+        ).expect("Invalid 'redirect_url' configured");
 
-    let provider_metadata = CoreProviderMetadata::discover_async(
-      issuer_url,
-      async_http_client
-    ).await.expect("Failed to discover provider metadata");
+        let provider_metadata = CoreProviderMetadata::discover_async(
+            issuer_url,
+            async_http_client
+        ).await.expect("Failed to discover provider metadata");
 
-    let client = CoreClient::from_provider_metadata(
-      provider_metadata,
-      client_id,
-      Some(client_secret)
-    ).set_redirect_uri(redirect_url);
+        let client = CoreClient::from_provider_metadata(
+            provider_metadata,
+            client_id,
+            Some(client_secret)
+        ).set_redirect_uri(redirect_url);
 
-    Some(client)
-  } else {
-    None
-  }
+        Some(client)
+    } else {
+        None
+    }
 }

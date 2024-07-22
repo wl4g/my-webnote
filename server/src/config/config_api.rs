@@ -1,3 +1,25 @@
+/*
+ * SPDX-License-Identifier: GNU GENERAL PUBLIC LICENSE Version 3
+ *
+ * Copyleft (c) 2024 James Wong. This file is part of James Wong.
+ * is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * James Wong is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with James Wong.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * IMPORTANT: Any software that fully or partially contains or uses materials
+ * covered by this license must also be released under the GNU GPL license.
+ * This includes modifications and derived works.
+ */
+
 use std::{ ops::Deref, sync::Arc, time::Duration };
 
 use anyhow::Ok;
@@ -7,12 +29,14 @@ use serde::Deserialize;
 // use std::io::Read;
 // use std::path::Path;
 use config::Config;
+use validator::Validate;
 
 use crate::monitoring::health::HEALTHZ_URI;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Validate)]
 pub struct ApiProperties {
     #[serde(rename = "service-name")]
+    #[validate(length(min = 1, max = 32))]
     pub service_name: String,
     #[serde(default = "ServerProperties::default")]
     pub server: ServerProperties,
@@ -244,41 +268,7 @@ impl ApiProperties {
     }
 
     pub fn validate(self) -> Result<ApiProperties, anyhow::Error> {
-        // // Validate server configuration
-        // if let server = &self.server {
-        //   if let thread_max_pool = server.thread_max_pool {
-        //     if thread_max_pool == 0 {
-        //       anyhow::bail!("thread-max-pool must be greater than 0");
-        //     }
-        //   }
-        // }
-
-        // // Validate database configuration
-        // if let mywebnote = &self.mywebnote {
-        //   if let db = &mywebnote.db {
-        //     if let db_type = &db.db_type {
-        //       match db_type {
-        //         DbType::Sqlite => {
-        //           if db.sqlite.is_none() {
-        //             anyhow::bail!("SQLite configuration is missing");
-        //           }
-        //         }
-        //         DbType::Mongo => {
-        //           if db.mongo {
-        //             anyhow::bail!("MongoDB configuration is missing");
-        //           }
-        //         }
-        //       }
-        //     } else {
-        //       anyhow::bail!("Database type is not specified");
-        //     }
-        //   } else {
-        //     anyhow::bail!("Database configuration is missing");
-        //   }
-        // } else {
-        //   anyhow::bail!("MyWebnote configuration is missing");
-        // }
-
+        //self.validate();
         Ok(self)
     }
 
