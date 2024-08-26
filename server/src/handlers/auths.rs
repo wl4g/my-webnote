@@ -370,18 +370,11 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         match result {
             std::result::Result::Ok(recovered_address) => {
                 if recovered_address.eq(&address) {
+                    let uname = param.address;
+
                     let handler = UserHandler::new(self.state);
                     let user = handler
-                        .get(
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            Some(address.to_string())
-                        ).await
+                        .get(None, None, None, None, None, None, None, Some(uname.to_owned())).await
                         .unwrap();
 
                     // 3. If user exists, update user github subject ID.
@@ -389,7 +382,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                     if user.is_some() {
                         save_param = SaveUserRequest {
                             id: user.unwrap().base.id,
-                            name: Some(address.to_string()),
+                            name: Some(uname.to_owned()),
                             email: None,
                             phone: None,
                             password: None,
@@ -402,14 +395,14 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                             google_claims_sub: None,
                             google_claims_name: None,
                             google_claims_email: None,
-                            ethers_address: Some(address.to_string()),
+                            ethers_address: Some(uname),
                             lang: None,
                         };
                     } else {
                         // 4. If user not exists, create user by github login, which auto register user.
                         save_param = SaveUserRequest {
                             id: None,
-                            name: Some(address.to_string()),
+                            name: Some(uname.to_owned()),
                             email: None,
                             phone: None,
                             password: None,
@@ -422,7 +415,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
                             google_claims_sub: None,
                             google_claims_name: None,
                             google_claims_email: None,
-                            ethers_address: Some(address.to_string()),
+                            ethers_address: Some(uname),
                             lang: None,
                         };
                     }
