@@ -81,9 +81,14 @@ pub fn get_cookie_from_str(cookie_str: &str, key: &str) -> Option<String> {
 
 pub fn is_browser(headers: &HeaderMap) -> bool {
     let user_agent = headers
-        .get("User-Agent")
+        .get("X-Accpet-Type")
         .and_then(|value| value.to_str().ok())
-        .unwrap_or("");
+        .unwrap_or(
+            headers
+                .get("User-Agent")
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("")
+        );
     user_agent.contains("Mozilla")
 }
 

@@ -152,6 +152,7 @@
               url: "/auth/password/pubkey",
               method: "POST",
               headers: {
+                "X-Accpet-Type": "json",
                 "Content-Type": "application/json",
               },
               data: JSON.stringify({
@@ -190,7 +191,7 @@
                   }),
                   success: function (res2) {
                     console.info("Login successful", res2);
-                    //window.location.href = res2.redirect_url;
+                    //window.location.href = res2.redirectUrl;
                     window.location.href = "/";
                   },
                   error: function (xhr, status, error) {
@@ -241,17 +242,20 @@
                 const response = await fetch("/auth/wallet/ethers/verify", {
                   method: "POST",
                   headers: {
+                    "X-Accpet-Type": "json",
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({ address, message, signature }),
                 });
                 if (response.ok) {
-                  const { res } = await response.json();
+                  const res = JSON.parse(await response.text());
                   console.log("Login successful");
+
                   // save the success tokens.
                   //localStorage.setItem("token", token);
+
                   // redirect to the home page.
-                  window.location.href = res.redirect_url;
+                  window.location.href = res.redirectUrl;
                 } else {
                   console.error("Login failed");
                 }

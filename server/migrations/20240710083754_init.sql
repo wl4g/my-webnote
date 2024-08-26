@@ -23,6 +23,8 @@ create table if not exists users (
     name varchar(64) null, -- "账号昵称"
     email varchar(64) null, -- "邮箱, 可用于登录需唯一"
     phone varchar(64) null, -- "手机号, 可用于登录需唯一"
+    -- [ DEBUG]: echo -n "string" | openssl dgst -sha256 -binary | base64
+    -- [OUTPUT]: RzKH+CmNunFjqJeQiVj3wOrnM+JdLgJ5kuou3JvtL6g=
     password varchar(256) null, -- "静态密码"
     oidc_claims_sub varchar(64) null, -- '标准 OIDC IdP 授权服务(如:Keycloak)返回的 claims sub 用于绑定唯一标识用户'
     oidc_claims_name varchar(64) null, -- '标准 OIDC IdP 授权服务(如:Keycloak)返回的 chiams name/preferer_name'
@@ -33,6 +35,7 @@ create table if not exists users (
     google_claims_sub varchar(64) null, -- 'Google IdP 授权服务返回的 sub claim 用于绑定唯一标识用户'
     google_claims_name varchar(64) null, -- 'Google IdP 授权服务返回的 claims name/preferer_name'
     google_claims_email varchar(64) null, -- 'Google IdP 授权服务返回的 claims email'
+    ethers_address varchar(64) null, -- 'Ethers Wallet 地址, 来自签名认证'
     lang varchar(64) null,
     status integer null default 0,
     create_by varchar(64) null,
