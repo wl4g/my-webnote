@@ -62,6 +62,7 @@ impl<'a> IApiV1Handler for ApiV1Handler<'a> {
             google_claims_sub,
             google_claims_name: None,
             google_claims_email: None,
+            ethers_address: None,
         };
         let res = self.find(param, PageRequest::default()).await.unwrap().1;
         if res.len() > 0 {

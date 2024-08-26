@@ -33,6 +33,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     config::config_api::ApiConfig,
+    handlers::auths::PrincipalType,
     types::auths::{ LoggedResponse, TokenWrapper },
     utils::webs,
 };
@@ -44,6 +45,7 @@ lazy_static! {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthUserClaims {
+    pub ptype: PrincipalType,
     pub uid: i64,
     pub uname: String,
     pub email: String,
@@ -53,6 +55,7 @@ pub struct AuthUserClaims {
 
 pub fn create_jwt(
     config: &Arc<ApiConfig>,
+    ptype: &PrincipalType,
     uid: i64,
     uname: &str,
     email: &str,
@@ -73,6 +76,7 @@ pub fn create_jwt(
         .timestamp();
 
     let claims = AuthUserClaims {
+        ptype: ptype.to_owned(),
         uid: uid.to_owned(),
         uname: uname.to_owned(),
         email: email.to_owned(),

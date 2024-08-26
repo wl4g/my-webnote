@@ -50,12 +50,12 @@
       button:hover {
         background-color: #2980b9;
       }
-      .oauth-button {
+      .federation-btn {
         display: flex;
         align-items: center;
         justify-content: center;
       }
-      .oauth-button img {
+      .federation-btn img {
         width: 20px;
         height: 20px;
         margin-right: 10px;
@@ -105,18 +105,23 @@
       <h1>Welcome back!</h1>
       <button
         onclick="window.location.href='/auth/connect/oidc'"
-        class="oauth-button oidc"
+        class="federation-btn oidc"
       >
         <img src="/static/img/openid-logo.jpg" alt="OIDC logo" />
-        Signin using OIDC
+        Signin for OIDC
       </button>
       <button
         onclick="window.location.href='/auth/connect/github'"
-        class="oauth-button github"
+        class="federation-btn github"
       >
         <!-- https://github.githubassets.com/images/modules/logos_page/github-mark.png -->
         <img src="/static/img/github-mark.png" alt="GitHub logo" />
-        Signin with GitHub
+        Signin for GitHub
+      </button>
+      <button id="ethers_wallet_btn" class="federation-btn ethers-wallet">
+        <img src="/static/img/metamask-logo.png" alt="MetaMask Wallet logo" />
+        <img src="/static/img/phantom-logo.png" alt="Phantom Wallet logo" />
+        Signin for Ethers Wallet
       </button>
       <div class="or-divider">OR</div>
       <form id="login_form">
@@ -131,6 +136,7 @@
     <script src="/static/js/jsencrypt-3.2.1.min.js"></script>
     <script>
       $(document).ready(function () {
+        // Password login.
         $("#login_form").submit(function (e) {
           e.preventDefault();
 
@@ -143,13 +149,13 @@
 
             // 2. Getting the public key.
             $.ajax({
-              url: "/auth/login/pubkey",
+              url: "/auth/password/pubkey",
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               data: JSON.stringify({
-                fingerprintToken: visitorId,
+                fpToken: visitorId,
               }),
               success: function (res1) {
                 // Transforming the base64 decode to public key.
@@ -167,11 +173,12 @@
                 // 4. Use RSA to encrypt the hash sign of the password.
                 const encrypt = new JSEncrypt();
                 encrypt.setPublicKey(pubkey);
-                const base64CipherPassword = encrypt.encrypt(base64HashedPassword);
+                const base64CipherPassword =
+                  encrypt.encrypt(base64HashedPassword);
 
                 // 5. Submission to the login.
                 $.ajax({
-                  url: "/auth/login/verify",
+                  url: "/auth/password/verify",
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
@@ -179,10 +186,11 @@
                   data: JSON.stringify({
                     username: username,
                     password: base64CipherPassword,
-                    fingerprintToken: visitorId, // 再次传递设备指纹
+                    fpToken: visitorId, // 再次传递设备指纹
                   }),
                   success: function (res2) {
                     console.info("Login successful", res2);
+                    //window.location.href = res2.redirect_url;
                     window.location.href = "/";
                   },
                   error: function (xhr, status, error) {
@@ -198,6 +206,61 @@
                 //window.location.reload();
               },
             });
+          })();
+        });
+      });
+    </script>
+    <script type="module">
+      import { ethers } from "/static/js/ethers-5.2.esm.min.js";
+      $(document).ready(function () {
+        // Ethers wallet login.
+        $("#ethers_wallet_btn").click(function () {
+          (async () => {
+            console.info("Connecting to ethers wallet ...");
+
+            if (typeof window.ethereum !== "undefined") {
+              try {
+                // Wakeup user broswer wallet extension.
+                await window.ethereum.request({
+                  method: "eth_requestAccounts",
+                });
+                const provider = new ethers.providers.Web3Provider(
+                  window.ethereum
+                );
+                const signer = provider.getSigner();
+                // Getting user wallet pubkey.
+                const address = await signer.getAddress();
+                // Generate random message.
+                const message =
+                  "Login to our dApp: " +
+                  Math.random().toString(36).substring(2, 15);
+                // Signature the message.
+                const signature = await signer.signMessage(message);
+
+                // Sending the signature to the server verify.
+                const response = await fetch("/auth/wallet/ethers/verify", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ address, message, signature }),
+                });
+                if (response.ok) {
+                  const { res } = await response.json();
+                  console.log("Login successful");
+                  // save the success tokens.
+                  //localStorage.setItem("token", token);
+                  // redirect to the home page.
+                  window.location.href = res.redirect_url;
+                } else {
+                  console.error("Login failed");
+                }
+              } catch (error) {
+                console.error("Error:", error);
+              }
+            } else {
+              console.log("Please install MetaMask!");
+            }
           })();
         });
       });

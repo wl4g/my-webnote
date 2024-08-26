@@ -63,7 +63,9 @@ async fn handle_get_current_user(State(state): State<AppState>) -> impl IntoResp
     tracing::info!("Getting for current user: {:?}", cur_user);
 
     let cur_user_uid = cur_user.map(|u| u.uid);
-    match get_user_handler(&state).get(cur_user_uid, None, None, None, None, None, None).await {
+    match
+        get_user_handler(&state).get(cur_user_uid, None, None, None, None, None, None, None).await
+    {
         Ok(result) => {
             match result {
                 Some(user) => Ok(Json(user)),
@@ -90,7 +92,17 @@ async fn handle_post_current_user(
 
     let cur_user_uid = cur_user.map(|u| u.uid);
     match
-        get_user_handler(&state).set(cur_user_uid, None, None, None, None, None, None, param).await
+        get_user_handler(&state).set(
+            cur_user_uid,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            param
+        ).await
     {
         Ok(_) => (StatusCode::OK, RespBase::success().to_json()).into_response(),
         Err(e) => (StatusCode::OK, RespBase::error(e).to_json()).into_response(),

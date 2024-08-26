@@ -1,4 +1,4 @@
-use std::{ collections::HashMap, sync::Arc };
+use std::{ collections::HashMap, sync::Arc, str::FromStr };
 
 use axum::async_trait;
 use hyper::{ header, StatusCode };
@@ -6,12 +6,22 @@ use lazy_static::lazy_static;
 use anyhow::{ anyhow, Error, Ok };
 use chrono::Utc;
 use openidconnect::{ core::CoreUserInfoClaims, LanguageTag };
+use serde::{ Deserialize, Serialize };
 use tower_cookies::cookie::{ time::Duration, CookieBuilder, SameSite };
+
+use ethers::types::{ Address, Signature };
+
 use crate::{
     config::config_api::ApiConfig,
     context::state::AppState,
     types::{
-        auths::{ GetPubKeyRequest, GithubUserInfo, LogoutRequest, PasswordLoginRequest },
+        auths::{
+            EthersWalletLoginRequest,
+            GithubUserInfo,
+            LogoutRequest,
+            PasswordLoginRequest,
+            PasswordPubKeyRequest,
+        },
         users::{ SaveUserRequest, User },
     },
     utils::{ self, auths, rsa_ciphers::RSACipher },
@@ -27,8 +37,20 @@ lazy_static! {
     pub static ref LANG_CLAIMS_NAME_KEY: LanguageTag = LanguageTag::new("name".to_owned());
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PrincipalType {
+    Password,
+    OIDC,
+    Github,
+    EtherWallet,
+}
+
 #[async_trait]
 pub trait IAuthHandler: Send {
+    async fn handle_password_pubkey(&self, param: PasswordPubKeyRequest) -> Result<String, Error>;
+
+    async fn handle_password_verify(&self, param: PasswordLoginRequest) -> Result<Arc<User>, Error>;
+
     async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error>;
 
     async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error>;
@@ -37,13 +59,15 @@ pub trait IAuthHandler: Send {
 
     async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error>;
 
-    async fn handle_login_pubkey(&self, param: GetPubKeyRequest) -> Result<String, Error>;
-
-    async fn handle_login_verify(&self, param: PasswordLoginRequest) -> Result<Arc<User>, Error>;
+    async fn handle_wallet_verify_ethers(
+        &self,
+        param: EthersWalletLoginRequest
+    ) -> Result<i64, Error>;
 
     async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
+        ptype: PrincipalType,
         uid: i64,
         uname: &str,
         email: &str,
@@ -71,162 +95,7 @@ impl<'a> AuthHandler<'a> {
 
 #[async_trait]
 impl<'a> IAuthHandler for AuthHandler<'a> {
-    async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error> {
-        let cache = self.state.string_cache.cache(&self.state.config);
-
-        let key = self.build_logout_blacklist_key(sid);
-        let value = nonce;
-
-        // TODO: using expires config? To ensure safety, expire as soon as possible. 10s
-        match cache.set(key, value, Some(10_000)).await {
-            std::result::Result::Ok(_) => {
-                tracing::info!("Created auth nonce for {}", sid);
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("Created auth nonce failed for {}, cause: {}", sid, e);
-                Err(e)
-            }
-        }
-    }
-
-    async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error> {
-        let cache = self.state.string_cache.cache(&self.state.config);
-
-        let key = self.build_logout_blacklist_key(sid);
-
-        match cache.get(key).await {
-            std::result::Result::Ok(nonce) => {
-                tracing::info!("Got auth nonce for {}", sid);
-                Ok(nonce)
-            }
-            Err(e) => {
-                tracing::error!("Get auth nonce failed for {}, cause: {}", sid, e);
-                Err(e)
-            }
-        }
-    }
-
-    async fn handle_auth_callback_oidc(&self, userinfo: CoreUserInfoClaims) -> Result<i64, Error> {
-        let oidc_sub = userinfo.subject().as_str();
-        // let oidc_uname = userinfo.name().map(|n| n.get(Some(&LANG_CLAIMS_NAME_KEY)).map(|u| u.to_string()).unwrap_or_default());
-        let oidc_preferred_name = userinfo.preferred_username().map(|c| c.to_string());
-        let oidc_email = userinfo.email().map(|c| c.to_string());
-
-        let handler = UserHandler::new(self.state);
-
-        // 1. Get user by oidc uid
-        let user = handler
-            .get(None, None, None, None, Some(oidc_sub.to_string()), None, None).await
-            .unwrap();
-
-        // 2. If user exists, update user github subject ID.
-        let save_param;
-        if user.is_some() {
-            save_param = SaveUserRequest {
-                id: user.unwrap().base.id,
-                name: oidc_preferred_name.to_owned(),
-                email: None,
-                phone: None,
-                password: None,
-                oidc_claims_sub: Some(oidc_sub.to_string()),
-                oidc_claims_name: oidc_preferred_name,
-                oidc_claims_email: oidc_email,
-                github_claims_sub: None,
-                github_claims_name: None,
-                github_claims_email: None,
-                google_claims_sub: None,
-                google_claims_name: None,
-                google_claims_email: None,
-                lang: None,
-            };
-        } else {
-            // 3. If user not exists, create user by github login, which auto register user.
-            save_param = SaveUserRequest {
-                id: None,
-                name: oidc_preferred_name.to_owned(),
-                email: None,
-                phone: None,
-                password: None,
-                oidc_claims_sub: Some(oidc_sub.to_string()),
-                oidc_claims_name: oidc_preferred_name,
-                oidc_claims_email: oidc_email,
-                github_claims_sub: None,
-                github_claims_name: None,
-                github_claims_email: None,
-                google_claims_sub: None,
-                google_claims_name: None,
-                google_claims_email: None,
-                lang: None,
-            };
-        }
-
-        match handler.save(save_param).await {
-            std::result::Result::Ok(uid) => Ok(uid),
-            Err(e) => Err(e),
-        }
-    }
-
-    async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error> {
-        let github_sub = userinfo.id.expect("github uid is None");
-        let github_uname = userinfo.login.expect("github uname is None");
-        let github_email = userinfo.email;
-
-        let handler = UserHandler::new(self.state);
-
-        // 1. Get user by github_uid
-        let user = handler
-            .get(None, None, None, None, None, Some(github_sub.to_string()), None).await
-            .unwrap();
-
-        // 2. If user exists, update user github subject ID.
-        let save_param;
-        if user.is_some() {
-            save_param = SaveUserRequest {
-                id: user.unwrap().base.id,
-                name: Some(github_uname.to_string()),
-                email: None,
-                phone: None,
-                password: None,
-                oidc_claims_sub: None,
-                oidc_claims_name: None,
-                oidc_claims_email: None,
-                github_claims_sub: Some(github_sub.to_string()),
-                github_claims_name: Some(github_uname.to_string()),
-                github_claims_email: github_email,
-                google_claims_sub: None,
-                google_claims_name: None,
-                google_claims_email: None,
-                lang: None,
-            };
-        } else {
-            // 3. If user not exists, create user by github login, which auto register user.
-            save_param = SaveUserRequest {
-                id: None,
-                name: Some(github_uname.to_string()),
-                email: None,
-                phone: None,
-                password: None,
-                oidc_claims_sub: None,
-                oidc_claims_name: None,
-                oidc_claims_email: None,
-                github_claims_sub: Some(github_sub.to_string()),
-                github_claims_name: Some(github_uname.to_string()),
-                github_claims_email: github_email,
-                google_claims_sub: None,
-                google_claims_name: None,
-                google_claims_email: None,
-                lang: None,
-            };
-        }
-
-        match handler.save(save_param).await {
-            std::result::Result::Ok(uid) => Ok(uid),
-            Err(e) => Err(e),
-        }
-    }
-
-    async fn handle_login_pubkey(&self, param: GetPubKeyRequest) -> Result<String, Error> {
+    async fn handle_password_pubkey(&self, param: PasswordPubKeyRequest) -> Result<String, Error> {
         let pair = RSACipher::new(2048).unwrap();
         // Storage private key to cache.
         let cache = self.state.string_cache.cache(&self.state.config);
@@ -244,7 +113,10 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         }
     }
 
-    async fn handle_login_verify(&self, param: PasswordLoginRequest) -> Result<Arc<User>, Error> {
+    async fn handle_password_verify(
+        &self,
+        param: PasswordLoginRequest
+    ) -> Result<Arc<User>, Error> {
         let cache = self.state.string_cache.cache(&self.state.config);
         let key = self.build_login_private_key(&param.fingerprint_token);
 
@@ -270,7 +142,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
 
                         // Getting user from database.
                         let handler = UserHandler::new(self.state);
-                        match handler.get(None, None, None, None, None, None, None).await {
+                        match handler.get(None, None, None, None, None, None, None, None).await {
                             std::result::Result::Ok(user) => {
                                 match user {
                                     Some(user) => {
@@ -324,9 +196,258 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         }
     }
 
+    async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error> {
+        let cache = self.state.string_cache.cache(&self.state.config);
+
+        let key = self.build_logout_blacklist_key(sid);
+        let value = nonce;
+
+        // TODO: using expires config? To ensure safety, expire as soon as possible. 10s
+        match cache.set(key, value, Some(10_000)).await {
+            std::result::Result::Ok(_) => {
+                tracing::info!("Created auth nonce for {}", sid);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("Created auth nonce failed for {}, cause: {}", sid, e);
+                Err(e)
+            }
+        }
+    }
+
+    async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error> {
+        let cache = self.state.string_cache.cache(&self.state.config);
+
+        let key = self.build_logout_blacklist_key(sid);
+
+        match cache.get(key).await {
+            std::result::Result::Ok(nonce) => {
+                tracing::info!("Got auth nonce for {}", sid);
+                Ok(nonce)
+            }
+            Err(e) => {
+                tracing::error!("Get auth nonce failed for {}, cause: {}", sid, e);
+                Err(e)
+            }
+        }
+    }
+
+    async fn handle_auth_callback_oidc(&self, userinfo: CoreUserInfoClaims) -> Result<i64, Error> {
+        let oidc_sub = userinfo.subject().as_str();
+        // let oidc_uname = userinfo.name().map(|n| n.get(Some(&LANG_CLAIMS_NAME_KEY)).map(|u| u.to_string()).unwrap_or_default());
+        let oidc_preferred_name = userinfo.preferred_username().map(|c| c.to_string());
+        let oidc_email = userinfo.email().map(|c| c.to_string());
+
+        let handler = UserHandler::new(self.state);
+
+        // 1. Get user by oidc uid
+        let user = handler
+            .get(None, None, None, None, None, Some(oidc_sub.to_string()), None, None).await
+            .unwrap();
+
+        // 2. If user exists, update user github subject ID.
+        let save_param;
+        if user.is_some() {
+            save_param = SaveUserRequest {
+                id: user.unwrap().base.id,
+                name: oidc_preferred_name.to_owned(),
+                email: None,
+                phone: None,
+                password: None,
+                oidc_claims_sub: Some(oidc_sub.to_string()),
+                oidc_claims_name: oidc_preferred_name,
+                oidc_claims_email: oidc_email,
+                github_claims_sub: None,
+                github_claims_name: None,
+                github_claims_email: None,
+                google_claims_sub: None,
+                google_claims_name: None,
+                google_claims_email: None,
+                ethers_address: None,
+                lang: None,
+            };
+        } else {
+            // 3. If user not exists, create user by github login, which auto register user.
+            save_param = SaveUserRequest {
+                id: None,
+                name: oidc_preferred_name.to_owned(),
+                email: None,
+                phone: None,
+                password: None,
+                oidc_claims_sub: Some(oidc_sub.to_string()),
+                oidc_claims_name: oidc_preferred_name,
+                oidc_claims_email: oidc_email,
+                github_claims_sub: None,
+                github_claims_name: None,
+                github_claims_email: None,
+                google_claims_sub: None,
+                google_claims_name: None,
+                google_claims_email: None,
+                ethers_address: None,
+                lang: None,
+            };
+        }
+
+        match handler.save(save_param).await {
+            std::result::Result::Ok(uid) => Ok(uid),
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn handle_auth_callback_github(&self, userinfo: GithubUserInfo) -> Result<i64, Error> {
+        let github_sub = userinfo.id.expect("github uid is None");
+        let github_uname = userinfo.login.expect("github uname is None");
+        let github_email = userinfo.email;
+
+        let handler = UserHandler::new(self.state);
+
+        // 1. Get user by github_uid
+        let user = handler
+            .get(None, None, None, None, None, None, Some(github_sub.to_string()), None).await
+            .unwrap();
+
+        // 2. If user exists, update user github subject ID.
+        let save_param;
+        if user.is_some() {
+            save_param = SaveUserRequest {
+                id: user.unwrap().base.id,
+                name: Some(github_uname.to_string()),
+                email: None,
+                phone: None,
+                password: None,
+                oidc_claims_sub: None,
+                oidc_claims_name: None,
+                oidc_claims_email: None,
+                github_claims_sub: Some(github_sub.to_string()),
+                github_claims_name: Some(github_uname.to_string()),
+                github_claims_email: github_email,
+                google_claims_sub: None,
+                google_claims_name: None,
+                google_claims_email: None,
+                ethers_address: None,
+                lang: None,
+            };
+        } else {
+            // 3. If user not exists, create user by github login, which auto register user.
+            save_param = SaveUserRequest {
+                id: None,
+                name: Some(github_uname.to_string()),
+                email: None,
+                phone: None,
+                password: None,
+                oidc_claims_sub: None,
+                oidc_claims_name: None,
+                oidc_claims_email: None,
+                github_claims_sub: Some(github_sub.to_string()),
+                github_claims_name: Some(github_uname.to_string()),
+                github_claims_email: github_email,
+                google_claims_sub: None,
+                google_claims_name: None,
+                google_claims_email: None,
+                ethers_address: None,
+                lang: None,
+            };
+        }
+
+        match handler.save(save_param).await {
+            std::result::Result::Ok(uid) => Ok(uid),
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn handle_wallet_verify_ethers(
+        &self,
+        param: EthersWalletLoginRequest
+    ) -> Result<i64, Error> {
+        // 1. Convert to Address, Signature.
+        let address = Address::from_str(&param.address).map_err(|_| anyhow!("Invalid address"))?;
+        let signature = Signature::from_str(&param.signature).map_err(|_|
+            anyhow!("Invalid signature")
+        )?;
+
+        // 2. Verify the signature.
+        let result = signature.recover(param.message).map_err(|_| StatusCode::UNAUTHORIZED);
+        match result {
+            std::result::Result::Ok(recovered_address) => {
+                if recovered_address.eq(&address) {
+                    let handler = UserHandler::new(self.state);
+                    let user = handler
+                        .get(
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            Some(address.to_string())
+                        ).await
+                        .unwrap();
+
+                    // 3. If user exists, update user github subject ID.
+                    let save_param;
+                    if user.is_some() {
+                        save_param = SaveUserRequest {
+                            id: user.unwrap().base.id,
+                            name: Some(address.to_string()),
+                            email: None,
+                            phone: None,
+                            password: None,
+                            oidc_claims_sub: None,
+                            oidc_claims_name: None,
+                            oidc_claims_email: None,
+                            github_claims_sub: None,
+                            github_claims_name: None,
+                            github_claims_email: None,
+                            google_claims_sub: None,
+                            google_claims_name: None,
+                            google_claims_email: None,
+                            ethers_address: Some(address.to_string()),
+                            lang: None,
+                        };
+                    } else {
+                        // 4. If user not exists, create user by github login, which auto register user.
+                        save_param = SaveUserRequest {
+                            id: None,
+                            name: Some(address.to_string()),
+                            email: None,
+                            phone: None,
+                            password: None,
+                            oidc_claims_sub: None,
+                            oidc_claims_name: None,
+                            oidc_claims_email: None,
+                            github_claims_sub: None,
+                            github_claims_name: None,
+                            github_claims_email: None,
+                            google_claims_sub: None,
+                            google_claims_name: None,
+                            google_claims_email: None,
+                            ethers_address: Some(address.to_string()),
+                            lang: None,
+                        };
+                    }
+
+                    // 5. save user info
+                    match handler.save(save_param).await {
+                        std::result::Result::Ok(uid) => Ok(uid),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    tracing::error!("Failed to verify wallet signature.");
+                    Err(anyhow!(StatusCode::UNAUTHORIZED))
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to verify wallet signature. cause: {}", e);
+                Err(anyhow!(e))
+            }
+        }
+    }
+
     async fn handle_login_success(
         &self,
         config: &Arc<ApiConfig>,
+        ptype: PrincipalType,
         uid: i64,
         uname: &str,
         email: &str,
@@ -334,8 +455,8 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     ) -> hyper::Response<axum::body::Body> {
         // TODO: 附加更多自定义 JWT 信息
         let extra_claims = HashMap::new();
-        let ak = auths::create_jwt(config, uid, uname, email, false, Some(extra_claims));
-        let rk = auths::create_jwt(config, uid, uname, email, true, None);
+        let ak = auths::create_jwt(config, &ptype, uid, uname, email, false, Some(extra_claims));
+        let rk = auths::create_jwt(config, &ptype, uid, uname, email, true, None);
 
         let ak_cookie = CookieBuilder::new(&config.auth_jwt_ak_name, ak)
             .path("/")

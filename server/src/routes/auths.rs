@@ -46,16 +46,17 @@ use tower_cookies::{ cookie::{ time::{ self, Duration }, CookieBuilder }, Cookie
 use crate::{
     config::{ config_api::DEFAULT_404_HTML, resources::handle_static },
     context::state::AppState,
-    handlers::auths::{ AuthHandler, IAuthHandler },
+    handlers::auths::{ AuthHandler, IAuthHandler, PrincipalType },
     types::{
         auths::{
             CallbackGithubRequest,
             CallbackOidcRequest,
-            GetPubKeyRequest,
-            GetPubKeyResponse,
+            EthersWalletLoginRequest,
             GithubUserInfo,
             LogoutRequest,
             PasswordLoginRequest,
+            PasswordPubKeyRequest,
+            PasswordPubKeyResponse,
         },
         RespBase,
     },
@@ -65,22 +66,24 @@ use crate::{
 use super::ValidatedJson;
 
 pub const ROOT_URI: &str = "/";
+pub const AUTH_PASSWORD_PUBKEY_URI: &str = "/auth/password/pubkey";
+pub const AUTH_PASSWORD_VERIFY_URI: &str = "/auth/password/verify";
 pub const AUTH_CONNECT_OIDC_URI: &str = "/auth/connect/oidc";
 pub const AUTH_CONNECT_GITHUB_URI: &str = "/auth/connect/github";
 pub const AUTH_CALLBACK_OIDC_URI: &str = "/auth/callback/oidc";
 pub const AUTH_CALLBACK_GITHUB_URI: &str = "/auth/callback/github";
+pub const AUTH_WALLET_ETHERS_VERIFY_URI: &str = "/auth/wallet/ethers/verify";
 pub const AUTH_LOGOUT_URI: &str = "/auth/logout";
-pub const AUTH_LOGIN_PUBKEY_URI: &str = "/auth/login/pubkey";
-pub const AUTH_LOGIN_VERIFY_URI: &str = "/auth/login/verify";
 pub const STATIC_RESOURCES_URI: &str = "/static/*file";
 
-pub const EXCLUDED_PATHS: [&str; 7] = [
+pub const EXCLUDED_PATHS: [&str; 8] = [
+    AUTH_PASSWORD_PUBKEY_URI,
+    AUTH_PASSWORD_VERIFY_URI,
     AUTH_CONNECT_OIDC_URI,
     AUTH_CONNECT_GITHUB_URI,
     AUTH_CALLBACK_OIDC_URI,
     AUTH_CALLBACK_GITHUB_URI,
-    AUTH_LOGIN_PUBKEY_URI,
-    AUTH_LOGIN_VERIFY_URI,
+    AUTH_WALLET_ETHERS_VERIFY_URI,
     STATIC_RESOURCES_URI,
 ];
 
@@ -89,21 +92,20 @@ pub const CSRF_TOKEN_NAME: &str = "csrf_token";
 pub fn init() -> Router<AppState> {
     Router::new()
         //.route(ROOT_URI, get(handle_page_root))
-        .route(STATIC_RESOURCES_URI, get(handle_static))
+        .route(AUTH_PASSWORD_PUBKEY_URI, post(handle_password_pubkey))
+        .route(AUTH_PASSWORD_VERIFY_URI, post(handle_password_verify))
         .route(AUTH_CONNECT_OIDC_URI, get(handle_connect_oidc))
         .route(AUTH_CONNECT_GITHUB_URI, get(handle_connect_github))
         .route(AUTH_CALLBACK_OIDC_URI, get(handle_callback_oidc))
         .route(AUTH_CALLBACK_GITHUB_URI, get(handle_callback_github))
+        .route(AUTH_WALLET_ETHERS_VERIFY_URI, post(handle_wallet_ethers_verify))
         .route(AUTH_LOGOUT_URI, get(handle_logout))
-        .route(AUTH_LOGIN_PUBKEY_URI, post(handle_login_pubkey))
-        .route(AUTH_LOGIN_VERIFY_URI, post(handle_login_verify))
+        .route(STATIC_RESOURCES_URI, get(handle_static))
         .fallback(handle_page_404) // Global auto internal forwarding when not found.
         .layer(CookieManagerLayer::new())
 }
 
-// --------------------------------------
-// Global Authentication interceptors.
-// --------------------------------------
+// ----- Global Authentication interceptors. -----
 
 pub async fn auth_middleware(
     State(state): State<AppState>,
@@ -253,9 +255,99 @@ async fn handle_page_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, Html(DEFAULT_404_HTML))
 }
 
-// --------------------------------------
-// OIDC/Github OAuth2 login.
-// --------------------------------------
+// ----- Simple Password Login. -----
+
+#[utoipa::path(
+    post,
+    path = AUTH_PASSWORD_PUBKEY_URI,
+    request_body = PasswordPubKeyRequest,
+    responses((status = 200, description = "Login pubkey.")),
+    tag = "Authentication"
+)]
+#[allow(unused)]
+async fn handle_password_pubkey(
+    State(state): State<AppState>,
+    ValidatedJson(param): ValidatedJson<PasswordPubKeyRequest>
+) -> impl IntoResponse {
+    let base64_pubkey = get_auth_handler(&state).handle_password_pubkey(param).await.ok();
+    let result = serde_json
+        ::to_string(&(PasswordPubKeyResponse { pubkey: base64_pubkey.unwrap() }))
+        .unwrap();
+    (StatusCode::OK, result.to_string()).into_response()
+}
+
+#[utoipa::path(
+    post,
+    path = AUTH_PASSWORD_VERIFY_URI,
+    request_body(
+        content = Option<PasswordLoginRequest>,
+        description = "Password login request parameters",
+        content_type = "application/json",
+        example = json!({"username": null, "password": null, "fingerprint_token": null}),
+    ),
+    responses((status = 200, description = "Password login.")),
+    tag = "Authentication"
+)]
+pub async fn handle_password_verify(
+    State(state): State<AppState>,
+    request: axum::extract::Request<Body>
+) -> impl IntoResponse {
+    let headers = &request.headers().clone();
+    let body = request.into_body();
+
+    let param: PasswordLoginRequest = match
+        serde_json::from_slice(
+            &(match axum::body::to_bytes(body, usize::MAX).await {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    tracing::warn!("Unable to read password login request failed. reason: {:?}", e);
+                    return auths::auth_resp_redirect_or_json(
+                        &state.config,
+                        headers,
+                        &state.config.auth.login_url.to_owned().unwrap(),
+                        StatusCode::BAD_REQUEST,
+                        "Unable to read password login request failed",
+                        None
+                    );
+                }
+            })
+        )
+    {
+        Ok(param) => param,
+        Err(e) => {
+            tracing::warn!("Invalid password login parameter json. reason: {:?}", e);
+            return auths::auth_resp_redirect_or_json(
+                &state.config,
+                headers,
+                &state.config.auth.login_url.to_owned().unwrap(),
+                StatusCode::BAD_REQUEST,
+                "Invalid password login parameter json",
+                None
+            );
+        }
+    };
+
+    match get_auth_handler(&state).handle_password_verify(param).await {
+        Ok(user) => {
+            get_auth_handler(&state).handle_login_success(
+                &state.config,
+                PrincipalType::Password,
+                user.base.id.unwrap(),
+                &user.name.to_owned().unwrap_or_default().to_string(),
+                &user.email.to_owned().unwrap_or_default().to_string(),
+                &headers
+            ).await
+        }
+        Err(e) => {
+            let errmsg = format!("Failed to login. {:?}", e.to_string());
+            tracing::warn!("{}", errmsg);
+            let result = RespBase::errmsg(errmsg.as_str());
+            (StatusCode::OK, serde_json::to_string(&result).unwrap()).into_response()
+        }
+    }
+}
+
+// ----- OIDC/Github OAuth2 login. -----
 
 #[utoipa::path(
     get,
@@ -521,6 +613,7 @@ async fn handle_callback_oidc(
                             if uid > 0 {
                                 get_auth_handler(&state).handle_login_success(
                                     &state.config,
+                                    PrincipalType::OIDC,
                                     uid,
                                     &oidc_name,
                                     &oidc_email,
@@ -662,6 +755,7 @@ async fn handle_callback_github(
                             if uid > 0 {
                                 get_auth_handler(&state).handle_login_success(
                                     &state.config,
+                                    PrincipalType::Github,
                                     uid,
                                     github_uname.unwrap_or_default().as_str(),
                                     github_email.unwrap_or_default().as_str(),
@@ -725,60 +819,42 @@ async fn handle_callback_github(
     }
 }
 
-// --------------------------------------
-// Password Login.
-// --------------------------------------
+// ----- Blockchain Wallet login. -----
 
 #[utoipa::path(
     post,
-    path = AUTH_LOGIN_PUBKEY_URI,
-    request_body = GetPubKeyRequest,
-    responses((status = 200, description = "Login pubkey.")),
-    tag = "Authentication"
-)]
-#[allow(unused)]
-async fn handle_login_pubkey(
-    State(state): State<AppState>,
-    ValidatedJson(param): ValidatedJson<GetPubKeyRequest>
-) -> impl IntoResponse {
-    let base64_pubkey = get_auth_handler(&state).handle_login_pubkey(param).await.ok();
-    let result = serde_json
-        ::to_string(&(GetPubKeyResponse { pubkey: base64_pubkey.unwrap() }))
-        .unwrap();
-    (StatusCode::OK, result.to_string()).into_response()
-}
-
-#[utoipa::path(
-    post,
-    path = AUTH_LOGIN_VERIFY_URI,
+    path = AUTH_WALLET_ETHERS_VERIFY_URI,
     request_body(
-        content = Option<PasswordLoginRequest>,
-        description = "Password login request parameters",
+        content = Option<EthersWalletLoginRequest>,
+        description = "Ethers wallet login request parameters",
         content_type = "application/json",
-        example = json!({"username": null, "password": null, "fingerprint_token": null}),
+        example = json!({"address": null, "signature": null, "message": null}),
     ),
-    responses((status = 200, description = "Password login.")),
+    responses((status = 200, description = "Ethers wallet login.")),
     tag = "Authentication"
 )]
-pub async fn handle_login_verify(
+pub async fn handle_wallet_ethers_verify(
     State(state): State<AppState>,
     request: axum::extract::Request<Body>
 ) -> impl IntoResponse {
     let headers = &request.headers().clone();
     let body = request.into_body();
 
-    let param: PasswordLoginRequest = match
+    let param: EthersWalletLoginRequest = match
         serde_json::from_slice(
             &(match axum::body::to_bytes(body, usize::MAX).await {
                 Ok(bytes) => bytes,
                 Err(e) => {
-                    tracing::warn!("Unable to read password login request failed. reason: {:?}", e);
+                    tracing::warn!(
+                        "Unable to read ethers wallet login request failed. reason: {:?}",
+                        e
+                    );
                     return auths::auth_resp_redirect_or_json(
                         &state.config,
                         headers,
                         &state.config.auth.login_url.to_owned().unwrap(),
                         StatusCode::BAD_REQUEST,
-                        "Unable to read password login request failed",
+                        "Unable to read ethers wallet login request failed",
                         None
                     );
                 }
@@ -787,25 +863,26 @@ pub async fn handle_login_verify(
     {
         Ok(param) => param,
         Err(e) => {
-            tracing::warn!("Invalid password login parameter json. reason: {:?}", e);
+            tracing::warn!("Invalid ethers wallet login parameter json. reason: {:?}", e);
             return auths::auth_resp_redirect_or_json(
                 &state.config,
                 headers,
                 &state.config.auth.login_url.to_owned().unwrap(),
                 StatusCode::BAD_REQUEST,
-                "Invalid password login parameter json",
+                "Invalid ethers wallet login parameter json",
                 None
             );
         }
     };
 
-    match get_auth_handler(&state).handle_login_verify(param).await {
-        Ok(user) => {
+    match get_auth_handler(&state).handle_wallet_verify_ethers(param).await {
+        Ok(uid) => {
             get_auth_handler(&state).handle_login_success(
                 &state.config,
-                user.base.id.unwrap(),
-                &user.name.to_owned().unwrap_or_default().to_string(),
-                &user.email.to_owned().unwrap_or_default().to_string(),
+                PrincipalType::EtherWallet,
+                uid,
+                "",
+                "",
                 &headers
             ).await
         }
@@ -818,7 +895,7 @@ pub async fn handle_login_verify(
     }
 }
 
-// ----- Logout -----
+// ----- Logout. -----
 
 #[utoipa::path(
     get,

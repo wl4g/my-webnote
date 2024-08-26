@@ -25,8 +25,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::option::Option;
 
-// TODO: Notice:
-// Currently, field assignment in nested structures is not supported, only shallow copy assignment is supported.
 pub fn copy_properties<T: Serialize, U: for<'de> Deserialize<'de>>(
     dst: &mut U,
     src: &T
@@ -36,8 +34,6 @@ pub fn copy_properties<T: Serialize, U: for<'de> Deserialize<'de>>(
     copy_properties_with_map(dst, src, None)
 }
 
-// TODO: Notice:
-// Currently, field assignment in nested structures is not supported, only shallow copy assignment is supported.
 pub fn copy_properties_with_map<T: Serialize, U: for<'de> Deserialize<'de>>(
     dst: &mut U,
     src: &T,

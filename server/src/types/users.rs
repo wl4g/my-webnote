@@ -47,6 +47,7 @@ pub struct User {
     pub google_claims_sub: Option<String>,
     pub google_claims_name: Option<String>,
     pub google_claims_email: Option<String>,
+    pub ethers_address: Option<String>,
     pub lang: Option<String>,
 }
 
@@ -67,6 +68,7 @@ impl Default for User {
             google_claims_sub: None,
             google_claims_name: None,
             google_claims_email: None,
+            ethers_address: None,
             lang: None,
         }
     }
@@ -89,6 +91,7 @@ impl<'r> FromRow<'r, SqliteRow> for User {
             google_claims_sub: row.try_get("google_claims_sub")?,
             google_claims_name: row.try_get("google_claims_name")?,
             google_claims_email: row.try_get("google_claims_email")?,
+            ethers_address: row.try_get("ethers_address")?,
             lang: row.try_get("lang")?,
         })
     }
@@ -137,6 +140,8 @@ pub struct QueryUserRequest {
     pub google_claims_name: Option<String>,
     #[validate(length(min = 1, max = 64))]
     pub google_claims_email: Option<String>,
+    #[validate(length(min = 1, max = 64))]
+    pub ethers_address: Option<String>,
 }
 
 impl QueryUserRequest {
@@ -156,6 +161,7 @@ impl QueryUserRequest {
             google_claims_sub: None,
             google_claims_name: None,
             google_claims_email: None,
+            ethers_address: None,
             lang: None,
         }
     }
@@ -215,6 +221,8 @@ pub struct SaveUserRequest {
     #[validate(length(min = 1, max = 64))]
     pub google_claims_email: Option<String>,
     #[validate(length(min = 1, max = 64))]
+    pub ethers_address: Option<String>,
+    #[validate(length(min = 1, max = 64))]
     pub lang: Option<String>,
 }
 
@@ -235,6 +243,7 @@ impl SaveUserRequest {
             google_claims_sub: self.google_claims_sub.clone(),
             google_claims_name: self.google_claims_name.clone(),
             google_claims_email: self.google_claims_email.clone(),
+            ethers_address: self.ethers_address.clone(),
             lang: self.lang.clone(),
         }
     }

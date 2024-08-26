@@ -32,8 +32,8 @@ use crate::routes::{
         __path_handle_connect_github,
         __path_handle_callback_github,
         __path_handle_callback_oidc,
-        __path_handle_login_pubkey,
-        __path_handle_login_verify,
+        __path_handle_password_pubkey,
+        __path_handle_password_verify,
         __path_handle_logout,
     },
     users::{
@@ -72,8 +72,8 @@ use crate::types::{
     auths::{
         CallbackGithubRequest,
         CallbackOidcRequest,
-        GetPubKeyRequest,
-        GetPubKeyResponse,
+        PasswordPubKeyRequest,
+        PasswordPubKeyResponse,
         PasswordLoginRequest,
         LogoutRequest,
     },
@@ -146,8 +146,8 @@ use crate::types::{
         handle_connect_github,
         handle_callback_github,
         handle_callback_oidc,
-        handle_login_pubkey,
-        handle_login_verify,
+        handle_password_pubkey,
+        handle_password_verify,
         handle_logout,
         // Module of User
         handle_get_current_user,
@@ -180,8 +180,8 @@ use crate::types::{
             // Module of Auth
             CallbackOidcRequest,
             CallbackGithubRequest,
-            GetPubKeyRequest,
-            GetPubKeyResponse,
+            PasswordPubKeyRequest,
+            PasswordPubKeyResponse,
             PasswordLoginRequest,
             LogoutRequest,
             // Module of User

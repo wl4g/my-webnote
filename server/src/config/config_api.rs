@@ -282,7 +282,7 @@ impl ApiProperties {
 
         let config = Config::builder()
             .add_source(config::File::with_name(path))
-            .add_source(config::Environment::with_prefix("REVEZONE"))
+            .add_source(config::Environment::with_prefix("MYWEBNOTE"))
             .build()
             .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
             .try_deserialize::<ApiProperties>()

@@ -22,7 +22,8 @@ pub trait IUserHandler: Send {
         phone: Option<String>,
         oidc_claims_sub: Option<String>,
         github_claims_sub: Option<String>,
-        google_claims_sub: Option<String>
+        google_claims_sub: Option<String>,
+        ethers_address: Option<String>
     ) -> Result<Option<Arc<User>>, Error>;
 
     async fn set(
@@ -34,6 +35,7 @@ pub trait IUserHandler: Send {
         oidc_claims_sub: Option<String>,
         github_claims_sub: Option<String>,
         google_claims_sub: Option<String>,
+        ethers_address: Option<String>,
         param: SaveUserRequestWith
     ) -> Result<(), Error>;
 
@@ -68,7 +70,8 @@ impl<'a> IUserHandler for UserHandler<'a> {
         phone: Option<String>,
         oidc_claims_sub: Option<String>,
         github_claims_sub: Option<String>,
-        google_claims_sub: Option<String>
+        google_claims_sub: Option<String>,
+        ethers_address: Option<String>
     ) -> Result<Option<Arc<User>>, Error> {
         let param = User {
             base: BaseBean::new(id, None, None),
@@ -85,6 +88,7 @@ impl<'a> IUserHandler for UserHandler<'a> {
             google_claims_sub,
             google_claims_name: None,
             google_claims_email: None,
+            ethers_address,
             lang: None,
         };
 
@@ -113,6 +117,7 @@ impl<'a> IUserHandler for UserHandler<'a> {
         oidc_claims_sub: Option<String>,
         github_claims_sub: Option<String>,
         google_claims_sub: Option<String>,
+        ethers_address: Option<String>,
         param: SaveUserRequestWith
     ) -> Result<(), Error> {
         match
@@ -123,7 +128,8 @@ impl<'a> IUserHandler for UserHandler<'a> {
                 phone,
                 oidc_claims_sub,
                 github_claims_sub,
-                google_claims_sub
+                google_claims_sub,
+                ethers_address
             ).await
         {
             std::result::Result::Ok(Some(user)) => {
@@ -142,6 +148,7 @@ impl<'a> IUserHandler for UserHandler<'a> {
                     google_claims_sub: param.google_claims_sub,
                     google_claims_name: param.google_claims_name,
                     google_claims_email: param.google_claims_email,
+                    ethers_address: param.ethers_address,
                     lang: param.lang,
                 };
                 if user.base.id.is_some() {
@@ -170,6 +177,7 @@ impl<'a> IUserHandler for UserHandler<'a> {
                     google_claims_sub: param.google_claims_sub,
                     google_claims_name: param.google_claims_name,
                     google_claims_email: param.google_claims_email,
+                    ethers_address: param.ethers_address,
                     lang: param.lang,
                 };
                 match self.save(save_param).await {
