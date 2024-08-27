@@ -39,7 +39,7 @@ pub fn register_subcommand_handles() -> &'static HashMap<
 > {
     SUBCOMMAND_MAP.get_or_init(|| {
         let mut map = HashMap::new();
-        map.insert("start", (
+        map.insert("api", (
             // Type inference error, forced conversion need.
             api::build_cli as SubcommandBuildFn,
             api::handle_cli as SubcommandHandleFn,

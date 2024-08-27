@@ -155,14 +155,19 @@ async fn start_server(config: &Arc<ApiConfig>) {
     let app_state = AppState::new(&config).await;
     tracing::info!("Register API server middlewares ...");
 
-    // 1. Add internal and bussiness modules router.
-    let mut app = Router::new()
-        .merge(health_router())
+    // 1. Add the bussiness modules router.
+    let api_routes = Router::new()
         .merge(auth_router())
         .merge(user_router())
         .merge(document_router())
         .merge(folder_router())
-        .merge(settings_router())
+        .merge(settings_router());
+
+    // Merge of all routes.
+    let mut app = Router::new()
+        .merge(health_router())
+        //.nest("/mywebnote", api_routes) // support the context-path.
+        .merge(api_routes)
         .with_state(app_state.clone()); // TODO: remove clone
 
     // 2. Add swagger router.
@@ -211,14 +216,14 @@ fn load_config(path: String) -> Result<ApiProperties, anyhow::Error> {
 }
 
 pub fn build_cli() -> Command {
-    Command::new("start")
+    Command::new("api")
         .about("My Webnote API server.")
         // .arg_required_else_help(true) // When no args are provided, show help.
         .arg(
             Arg::new("config")
                 .short('c')
                 .long("config")
-                .help("Server configuration path.")
+                .help("API Server configuration path.")
                 .value_name("FILE")
         )
 }
@@ -228,7 +233,7 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
     let config_path = matches
         .get_one::<String>("config")
         .map(PathBuf::from)
-        // .unwrap_or_else(|| PathBuf::from("/etc/server.yaml"))
+        // .unwrap_or_else(|| PathBuf::from("/etc/api.yaml"))
         .unwrap_or_default();
 
     let cfg_props = load_config(config_path.to_string_lossy().into_owned()).unwrap();

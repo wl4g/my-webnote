@@ -184,7 +184,7 @@ pub async fn auth_middleware(
         return next.run(req).await;
     }
 
-    // 5. Unauthenticated Response
+    // 5. Unauthenticated Response.
     utils::auths::auth_resp_redirect_or_json(
         &state.config,
         &req.headers(),

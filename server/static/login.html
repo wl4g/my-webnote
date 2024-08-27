@@ -255,7 +255,7 @@
               if (response.ok) {
                 const res = JSON.parse(await response.text());
                 console.log("Login result:", res);
-                if (res2.errcode == 200) {
+                if (res.errcode == 200) {
                   // save the success tokens.
                   //localStorage.setItem("token", token);
                   // redirect to the home page.

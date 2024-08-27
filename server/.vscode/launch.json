@@ -28,7 +28,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug [start] [not-depends: tokio-console] default config",
+            "name": "[api] [no-deps: tokio-console] default config",
             "cargo": {
                 "args": [
                     "build",
@@ -44,16 +44,16 @@
                 "RUST_BACKTRACE": "full",
             },
             "args": [
-                "start",
+                "api",
                 "--config",
-                "${workspaceFolder}/etc/server.yaml"
+                "${workspaceFolder}/etc/api.yaml"
             ],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug [start] [not-depends: tokio-console] no config",
+            "name": "[api] [no-deps: tokio-console] no config",
             "cargo": {
                 "args": [
                     "build",
@@ -69,14 +69,14 @@
                 "RUST_BACKTRACE": "full"
             },
             "args": [
-                "start"
+                "api"
             ],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug [start] [depends: tokio-console] default config",
+            "name": "[api] [deps: tokio-console] default config",
             "cargo": {
                 "args": [
                     "build",
@@ -99,16 +99,16 @@
                 "RUST_BACKTRACE": "full",
             },
             "args": [
-                "start",
+                "api",
                 "--config",
-                "${workspaceFolder}/etc/server.yaml"
+                "${workspaceFolder}/etc/api.yaml"
             ],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug [start] [depends: tokio-console] no config",
+            "name": "[api] [deps: tokio-console] no config",
             "cargo": {
                 "args": [
                     "build",
@@ -131,7 +131,7 @@
                 "RUST_BACKTRACE": "full"
             },
             "args": [
-                "start"
+                "api"
             ],
             "cwd": "${workspaceFolder}"
         }
