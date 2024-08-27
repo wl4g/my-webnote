@@ -26,43 +26,46 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::config_serve::WebServeConfig;
-use crate::routes::{
-    auths::{
-        __path_handle_connect_oidc,
-        __path_handle_connect_github,
-        __path_handle_callback_github,
-        __path_handle_callback_oidc,
-        __path_handle_password_pubkey,
-        __path_handle_password_verify,
-        __path_handle_logout,
+use crate::{
+    routes::{
+        api_v1::users::{
+            __path_handle_apiv1_delete_user,
+            __path_handle_apiv1_get_users,
+            __path_handle_apiv1_save_user,
+        },
+        auths::{
+            __path_handle_callback_github,
+            __path_handle_callback_oidc,
+            __path_handle_connect_github,
+            __path_handle_connect_oidc,
+            __path_handle_logout,
+            __path_handle_password_pubkey,
+            __path_handle_password_verify,
+        },
+        documents::{
+            __path_handle_delete_document,
+            __path_handle_query_documents,
+            __path_handle_save_document,
+        },
+        folders::{
+            __path_handle_delete_folder,
+            __path_handle_query_folders,
+            __path_handle_save_folder,
+        },
+        settings::{
+            __path_handle_delete_settings,
+            __path_handle_query_settings,
+            __path_handle_save_settings,
+        },
+        users::{
+            __path_handle_delete_user,
+            __path_handle_get_current_user,
+            __path_handle_post_current_user,
+            __path_handle_query_users,
+            __path_handle_save_user,
+        },
     },
-    users::{
-        __path_handle_get_current_user,
-        __path_handle_post_current_user,
-        __path_handle_query_users,
-        __path_handle_save_user,
-        __path_handle_delete_user,
-    },
-    api_v1::users::{
-        __path_handle_apiv1_get_users,
-        __path_handle_apiv1_save_user,
-        __path_handle_apiv1_delete_user,
-    },
-    documents::{
-        __path_handle_query_documents,
-        __path_handle_save_document,
-        __path_handle_delete_document,
-    },
-    folders::{
-        __path_handle_query_folders,
-        __path_handle_save_folder,
-        __path_handle_delete_folder,
-    },
-    settings::{
-        __path_handle_query_settings,
-        __path_handle_save_settings,
-        __path_handle_delete_settings,
-    },
+    utils::auths,
 };
 
 use crate::types::{
@@ -260,8 +263,14 @@ pub fn init_swagger(config: &Arc<WebServeConfig>) -> SwaggerUi {
     // Auto build of OpenAPI.
     let openapi = ApiDoc::openapi();
 
-    SwaggerUi::new(config.swagger.swagger_ui_path.to_string()).url(
-        config.swagger.swagger_openapi_url.to_string(),
-        openapi
-    )
+    let swagger_ui_path = auths::join_context_path(
+        config,
+        config.swagger.swagger_ui_path.to_string()
+    );
+    let openapi_url = auths::join_context_path(
+        config,
+        config.swagger.swagger_openapi_url.to_string()
+    );
+
+    SwaggerUi::new(swagger_ui_path).url(openapi_url, openapi)
 }

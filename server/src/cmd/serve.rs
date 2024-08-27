@@ -156,17 +156,12 @@ async fn start_server(config: &Arc<WebServeConfig>) {
     tracing::info!("Register Web server middlewares ...");
 
     // 1. Merge the biz modules routes.
-    let mut expose_routes = Router::new()
+    let expose_routes = Router::new()
         .merge(auth_router())
         .merge(user_router())
         .merge(document_router())
         .merge(folder_router())
         .merge(settings_router());
-
-    // 3. Merge the swagger router.
-    if config.swagger.enabled {
-        expose_routes = expose_routes.merge(swagger::init_swagger(&config));
-    }
 
     // 2. Merge of all routes.
     let mut app_routes = match &config.server.context_path {
@@ -180,6 +175,11 @@ async fn start_server(config: &Arc<WebServeConfig>) {
             Router::new().merge(health_router()).merge(expose_routes).with_state(app_state.clone()) // TODO: remove clone
         }
     };
+
+    // 3. Merge the swagger router.
+    if config.swagger.enabled {
+        app_routes = app_routes.merge(swagger::init_swagger(&config));
+    }
 
     // 4. Finally add the (auth) middlewares.
     // Notice: The settings of middlewares are in order, which will affect the priority of route matching.
