@@ -20,9 +20,11 @@
  * This includes modifications and derived works.
  */
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use utoipa::OpenApi;
+use utoipa::openapi::{ Paths, PathItem };
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::config_serve::WebServeConfig;
@@ -228,9 +230,24 @@ use crate::types::{
             DeleteSettingsRequest,
             DeleteSettingsResponse
         )
-    )
+    ),
+    modifiers(&ApiPathPrefixer)
 )]
 struct ApiDoc;
+
+struct ApiPathPrefixer;
+
+impl utoipa::Modify for ApiPathPrefixer {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let old_paths = std::mem::take(&mut openapi.paths);
+        let mut new_paths_map: BTreeMap<String, PathItem> = old_paths.paths
+            .into_iter()
+            .map(|(path, item)| (format!("/serve{}", path), item))
+            .collect();
+        openapi.paths = Paths::new();
+        openapi.paths.paths.append(&mut new_paths_map);
+    }
+}
 
 pub fn init_swagger(config: &Arc<WebServeConfig>) -> SwaggerUi {
     // Manual build of OpenAPI.
