@@ -20,10 +20,12 @@
  * This includes modifications and derived works.
  */
 
-use std::{ ops::Deref, sync::Arc, time::Duration };
+use std::{ env, ops::Deref, sync::Arc, time::Duration };
 
 use anyhow::Ok;
+use arc_swap::ArcSwap;
 use globset::{ Glob, GlobSet, GlobSetBuilder };
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 // use std::fs::File;
 // use std::io::Read;
@@ -274,12 +276,12 @@ impl WebServeProperties {
         Ok(self)
     }
 
-    pub fn to_use_config(&self) -> Arc<WebServeConfig> {
+    pub fn to_config(&self) -> Arc<WebServeConfig> {
         WebServeConfig::new(&self)
     }
 
     // see:https://github.com/mehcode/config-rs/blob/master/examples/simple/main.rs
-    pub fn parse(path: &String) -> WebServeProperties {
+    pub fn parse(path: &str) -> WebServeProperties {
         // serde_yaml::from_str(&contents)?;
 
         let config = Config::builder()
@@ -535,6 +537,31 @@ impl WebServeConfig {
         })
     }
 }
+
+#[allow(unused)]
+fn init() -> Arc<WebServeConfig> {
+    env::var("APP_CFG_PATH")
+        .map(|path| {
+            WebServeProperties::parse(path.as_str())
+                .validate()
+                .expect("Failed to validate configuration.")
+                .to_config()
+        })
+        .unwrap_or(WebServeProperties::default().to_config())
+}
+
+pub fn get_config() -> Arc<WebServeConfig> {
+    CONFIG.load().clone()
+}
+
+pub fn refresh_config() -> Result<(), anyhow::Error> {
+    CONFIG.store(init());
+    Ok(())
+}
+
+// Global the single refreshable configuration instance.
+// see: https://github.com/wl4g-collect/openobserve/blob/v0.10.9/src/config/src/config.rs#L186
+static CONFIG: Lazy<ArcSwap<WebServeConfig>> = Lazy::new(|| ArcSwap::from(init()));
 
 pub const DEFAULT_INDEX_HTML: &str = include_str!("../../static/index.html");
 pub const DEFAULT_LOGIN_HTML: &str = include_str!("../../static/login.html");

@@ -42,11 +42,10 @@
             },
             "env": {
                 "RUST_BACKTRACE": "full",
+                "APP_CFG_PATH": "${workspaceFolder}/etc/serve.yaml"
             },
             "args": [
                 "serve",
-                "--config",
-                "${workspaceFolder}/etc/serve.yaml"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -97,11 +96,10 @@
             },
             "env": {
                 "RUST_BACKTRACE": "full",
+                "APP_CFG_PATH": "${workspaceFolder}/etc/serve.yaml"
             },
             "args": [
                 "serve",
-                "--config",
-                "${workspaceFolder}/etc/serve.yaml"
             ],
             "cwd": "${workspaceFolder}"
         },

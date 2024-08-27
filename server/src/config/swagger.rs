@@ -27,7 +27,7 @@ use utoipa::OpenApi;
 use utoipa::openapi::{ Paths, PathItem };
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::config_serve::WebServeConfig;
+use super::config_serve::{ self, WebServeConfig };
 use crate::{
     routes::{
         api_v1::users::{
@@ -239,11 +239,22 @@ struct ApiPathPrefixer;
 
 impl utoipa::Modify for ApiPathPrefixer {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let ctx_path = &config_serve::get_config().server.context_path;
+
         let old_paths = std::mem::take(&mut openapi.paths);
         let mut new_paths_map: BTreeMap<String, PathItem> = old_paths.paths
             .into_iter()
-            .map(|(path, item)| (format!("/serve{}", path), item))
+            .map(|(path, item)| {
+                (
+                    match ctx_path {
+                        Some(cp) => format!("{}{}", cp, path), // Add the prefix context path.
+                        None => path,
+                    },
+                    item,
+                )
+            })
             .collect();
+
         openapi.paths = Paths::new();
         openapi.paths.paths.append(&mut new_paths_map);
     }

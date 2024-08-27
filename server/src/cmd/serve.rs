@@ -20,9 +20,7 @@
  * This includes modifications and derived works.
  */
 
-use std::path::PathBuf;
 use std::sync::Arc;
-use anyhow::Ok;
 
 use clap::{ Command, Arg };
 
@@ -48,8 +46,8 @@ use tokio::sync::oneshot;
 use axum::Router;
 use axum::routing::get;
 
+use crate::config::config_serve;
 use crate::config::config_serve::WebServeConfig;
-use crate::config::config_serve::WebServeProperties;
 use crate::config::swagger;
 use crate::context::state::AppState;
 use crate::monitoring::otel::create_otel_tracer;
@@ -213,14 +211,6 @@ async fn start_server(config: &Arc<WebServeConfig>) {
     tracing::info!("Web server is ready");
 }
 
-fn load_config(path: String) -> Result<WebServeProperties, anyhow::Error> {
-    if path.is_empty() {
-        Ok(WebServeProperties::default())
-    } else {
-        Ok(WebServeProperties::parse(&path).validate()?)
-    }
-}
-
 pub fn build_cli() -> Command {
     Command::new("serve")
         .about("My Webnote web server.")
@@ -234,16 +224,18 @@ pub fn build_cli() -> Command {
         )
 }
 
+#[allow(unused)]
 #[tokio::main]
 pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
-    let config_path = matches
-        .get_one::<String>("config")
-        .map(PathBuf::from)
-        // .unwrap_or_else(|| PathBuf::from("/etc/serve.yaml"))
-        .unwrap_or_default();
+    //let config_path = matches
+    //    .get_one::<String>("config")
+    //    .map(std::path::PathBuf::from)
+    //    // .unwrap_or_else(|| std::path::PathBuf::from("/etc/serve.yaml"))
+    //    .unwrap_or_default()
+    //    .to_string_lossy()
+    //    .into_owned();
 
-    let cfg_props = load_config(config_path.to_string_lossy().into_owned()).unwrap();
-    let config = cfg_props.to_use_config();
+    let config = config_serve::get_config();
 
     init_tracing(&config).await;
     init_custom_metrics(&config).await;
