@@ -454,7 +454,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         let ak_cookie = CookieBuilder::new(&config.auth_jwt_ak_name, ak)
             .path("/")
             .max_age(Duration::milliseconds(config.auth.jwt_validity_ak.unwrap() as i64))
-            .secure(true)
+            //.secure(true) // true: indicates that only https requests will carry
             .http_only(true)
             .same_site(SameSite::Strict)
             .build();
@@ -462,7 +462,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         let rk_cookie = CookieBuilder::new(&config.auth_jwt_rk_name, rk)
             .path("/")
             .max_age(Duration::milliseconds(config.auth.jwt_validity_rk.unwrap() as i64))
-            .secure(true)
+            //.secure(true) // true: indicates that only https requests will carry
             .http_only(true)
             .same_site(SameSite::Strict)
             .build();

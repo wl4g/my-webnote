@@ -388,7 +388,7 @@ async fn handle_connect_oidc(
                     let csrf_cookie = CookieBuilder::new("_csrf_token", csrf_token.secret())
                         .path("/")
                         .http_only(true)
-                        .secure(true)
+                        //.secure(true) // true: indicates that only https requests will carry
                         .max_age(
                             Duration::milliseconds(
                                 state.config.auth.jwt_validity_ak.unwrap() as i64

@@ -35,7 +35,7 @@ pub fn create_cookie_headers(key: &str, value: &str) -> header::HeaderMap {
     let cookie = CookieBuilder::new(key, value)
         .path("/")
         .max_age(Duration::seconds(60))
-        .secure(true)
+        //.secure(true) // true: indicates that only https requests will carry
         .http_only(true)
         .same_site(SameSite::Strict)
         .build();
