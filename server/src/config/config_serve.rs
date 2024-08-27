@@ -34,7 +34,7 @@ use validator::Validate;
 use crate::monitoring::health::HEALTHZ_URI;
 
 #[derive(Debug, Deserialize, Clone, Validate)]
-pub struct ApiProperties {
+pub struct WebServeProperties {
     #[serde(rename = "service-name")]
     #[validate(length(min = 1, max = 32))]
     pub service_name: String,
@@ -59,6 +59,8 @@ pub struct ServerProperties {
     pub bind: String,
     #[serde(rename = "mgmt-bind")]
     pub mgmt_bind: String,
+    #[serde(rename = "context-path")]
+    pub context_path: Option<String>,
     #[serde(rename = "thread-max-pool")]
     pub thread_max_pool: u32,
     #[serde(default = "CorsProperties::default")]
@@ -253,9 +255,9 @@ pub struct OtelProperties {
     // Notice: More OTEL custom configuration use to environment: OTEL_SPAN_xxx, see to: opentelemetry_sdk::trace::config::default()
 }
 
-impl ApiProperties {
-    pub fn default() -> ApiProperties {
-        ApiProperties {
+impl WebServeProperties {
+    pub fn default() -> WebServeProperties {
+        WebServeProperties {
             service_name: String::from("the-mywebnote"),
             server: ServerProperties::default(),
             logging: LoggingProperties::default(),
@@ -267,17 +269,17 @@ impl ApiProperties {
         }
     }
 
-    pub fn validate(self) -> Result<ApiProperties, anyhow::Error> {
+    pub fn validate(self) -> Result<WebServeProperties, anyhow::Error> {
         //self.validate();
         Ok(self)
     }
 
-    pub fn to_use_config(&self) -> Arc<ApiConfig> {
-        ApiConfig::new(&self)
+    pub fn to_use_config(&self) -> Arc<WebServeConfig> {
+        WebServeConfig::new(&self)
     }
 
     // see:https://github.com/mehcode/config-rs/blob/master/examples/simple/main.rs
-    pub fn parse(path: &String) -> ApiProperties {
+    pub fn parse(path: &String) -> WebServeProperties {
         // serde_yaml::from_str(&contents)?;
 
         let config = Config::builder()
@@ -285,7 +287,7 @@ impl ApiProperties {
             .add_source(config::Environment::with_prefix("MYWEBNOTE"))
             .build()
             .unwrap_or_else(|err| panic!("Error parsing config: {}", err))
-            .try_deserialize::<ApiProperties>()
+            .try_deserialize::<WebServeProperties>()
             .unwrap_or_else(|err| panic!("Error deserialize config: {}", err));
 
         config
@@ -297,6 +299,7 @@ impl Default for ServerProperties {
         ServerProperties {
             bind: "0.0.0.0:8888".to_string(),
             mgmt_bind: "0.0.0.0:11700".to_string(),
+            context_path: None,
             thread_max_pool: 4,
             cors: CorsProperties::default(),
         }
@@ -481,22 +484,22 @@ impl Default for OtelProperties {
     }
 }
 
-pub struct ApiConfig {
-    pub inner: ApiProperties,
+pub struct WebServeConfig {
+    pub inner: WebServeProperties,
     pub auth_jwt_ak_name: String,
     pub auth_jwt_rk_name: String,
     pub auth_anonymous_glob_matcher: Option<GlobSet>,
 }
 
-impl Deref for ApiConfig {
-    type Target = ApiProperties;
+impl Deref for WebServeConfig {
+    type Target = WebServeProperties;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl ApiConfig {
-    pub fn new(config: &ApiProperties) -> Arc<ApiConfig> {
+impl WebServeConfig {
+    pub fn new(config: &WebServeProperties) -> Arc<WebServeConfig> {
         // Build to auth anonymous glob matcher.
         let globset;
         if config.auth.anonymous_paths.is_some() {
@@ -518,7 +521,7 @@ impl ApiConfig {
             globset = Some(builder.build().unwrap());
         }
 
-        Arc::new(ApiConfig {
+        Arc::new(WebServeConfig {
             inner: config.clone(),
             auth_jwt_ak_name: config.auth.jwt_ak_name
                 .to_owned()

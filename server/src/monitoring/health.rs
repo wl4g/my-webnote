@@ -27,7 +27,7 @@ use hyper::StatusCode;
 use serde::Serialize;
 
 use crate::{
-    config::config_api::{ CacheProvider, DbType },
+    config::config_serve::{ CacheProvider, DbType },
     context::state::AppState,
     types::{ users::User, PageRequest },
 };

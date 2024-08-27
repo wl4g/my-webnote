@@ -32,7 +32,7 @@ use tower_cookies::cookie::Cookie;
 use tokio::sync::RwLock;
 
 use crate::{
-    config::config_api::ApiConfig,
+    config::config_serve::WebServeConfig,
     handlers::auths::PrincipalType,
     types::auths::{ LoggedResponse, TokenWrapper },
     utils::webs,
@@ -54,7 +54,7 @@ pub struct AuthUserClaims {
 }
 
 pub fn create_jwt(
-    config: &Arc<ApiConfig>,
+    config: &Arc<WebServeConfig>,
     ptype: &PrincipalType,
     uid: i64,
     uname: &str,
@@ -92,7 +92,7 @@ pub fn create_jwt(
 }
 
 pub fn validate_jwt(
-    config: &Arc<ApiConfig>,
+    config: &Arc<WebServeConfig>,
     token: &str
 ) -> Result<AuthUserClaims, jsonwebtoken::errors::Error> {
     let validation = Validation::default();
@@ -105,7 +105,7 @@ pub fn validate_jwt(
 }
 
 pub fn auth_resp_redirect_or_json(
-    config: &Arc<ApiConfig>,
+    config: &Arc<WebServeConfig>,
     headers: &HeaderMap,
     redirect_url: &str,
     status: StatusCode,
@@ -134,11 +134,18 @@ pub fn auth_resp_redirect_or_json(
         errmsg: message.to_string(),
         access_token: ak,
         refresh_token: rk,
-        redirect_url: Some(redirect_url.to_owned()),
+        redirect_url: Some(join_context_path(&config, redirect_url.to_owned())),
     };
     let json_str = serde_json::to_string(&json).unwrap();
 
-    webs::response_redirect_or_json(status, headers, cookies, redirect_url, &message, &json_str)
+    webs::response_redirect_or_json(
+        status,
+        headers,
+        cookies,
+        &json.redirect_url.unwrap(),
+        &message,
+        &json_str
+    )
 }
 
 // Time-constant safety message comparison.
@@ -150,6 +157,31 @@ pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
         .iter()
         .zip(b.iter())
         .fold(0, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
+pub fn clean_context_path<'a>(ctx_path: &'a Option<String>, path: &'a str) -> &'a str {
+    match &ctx_path {
+        // Remove the prefix context path.
+        Some(cp) => { path.strip_prefix(cp.as_str()).unwrap_or(&path) }
+        None => path,
+    }
+}
+
+pub fn join_context_path(config: &WebServeConfig, path: String) -> String {
+    // Absolute URI not needs to join context path.
+    let schema = url::Url
+        ::parse(path.as_str())
+        .map(|uri| uri.scheme().to_lowercase())
+        .unwrap_or_default();
+    if schema.starts_with("http") {
+        return path;
+    }
+
+    match &config.server.context_path {
+        // Add the prefix context path.
+        Some(cp) => format!("{}{}", cp, path),
+        None => path,
+    }
 }
 
 #[derive(Clone, Debug)]

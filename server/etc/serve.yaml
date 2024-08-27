@@ -24,6 +24,7 @@ service-name: mywebnote
 server:
   bind: "0.0.0.0:8888"
   mgmt-bind: "0.0.0.0:11700"
+  context-path: "/serve"
   thread-max-pool: 32
   #cors:
   #  hosts: ["*"]
@@ -79,7 +80,8 @@ auth:
     client-id: "mywebnote-wl4g"
     client-secret: "ZySKr09pTaG5xpyfPI28ARMp4MV3GXxB"
     issue-url: "https://iam.wl4g.com/realms/master"
-    redirect-url: "http://localhost:8888/auth/callback/oidc"
+    #redirect-url: "http://localhost:8888/serve/auth/callback/oidc"
+    redirect-url: "http://wl4g.local:10000/serve/auth/callback/oidc"
     scope: "openid profile email"
   # see:https://github.com/settings/developers
   # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
@@ -89,7 +91,8 @@ auth:
     client-secret: "374b9761778707170e6538932974ea940b45972f"
     auth-url: "https://github.com/login/oauth/authorize"
     token-url: "https://github.com/login/oauth/access_token"
-    redirect-url: "http://localhost:8888/auth/callback/github"
+    #redirect-url: "http://localhost:8888/serve/auth/callback/github"
+    redirect-url: "http://wl4g.local:10000/serve/auth/callback/github"
     # see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps
     scope: "user"
     user-info-url: "https://api.github.com/user"

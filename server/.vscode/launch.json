@@ -44,9 +44,9 @@
                 "RUST_BACKTRACE": "full",
             },
             "args": [
-                "api",
+                "serve",
                 "--config",
-                "${workspaceFolder}/etc/api.yaml"
+                "${workspaceFolder}/etc/serve.yaml"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -69,7 +69,7 @@
                 "RUST_BACKTRACE": "full"
             },
             "args": [
-                "api"
+                "serve"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -99,9 +99,9 @@
                 "RUST_BACKTRACE": "full",
             },
             "args": [
-                "api",
+                "serve",
                 "--config",
-                "${workspaceFolder}/etc/api.yaml"
+                "${workspaceFolder}/etc/serve.yaml"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -131,7 +131,7 @@
                 "RUST_BACKTRACE": "full"
             },
             "args": [
-                "api"
+                "serve"
             ],
             "cwd": "${workspaceFolder}"
         }

@@ -25,7 +25,7 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::config_api::ApiConfig;
+use super::config_serve::WebServeConfig;
 use crate::routes::{
     auths::{
         __path_handle_connect_oidc,
@@ -229,7 +229,7 @@ use crate::types::{
 )]
 struct ApiDoc;
 
-pub fn init_swagger(config: &Arc<ApiConfig>) -> SwaggerUi {
+pub fn init_swagger(config: &Arc<WebServeConfig>) -> SwaggerUi {
     // Manual build of OpenAPI.
     // use utoipa::openapi::{ ContactBuilder, InfoBuilder, LicenseBuilder, Paths };
     // let info = InfoBuilder::new()

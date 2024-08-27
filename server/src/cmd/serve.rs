@@ -48,8 +48,8 @@ use tokio::sync::oneshot;
 use axum::Router;
 use axum::routing::get;
 
-use crate::config::config_api::ApiConfig;
-use crate::config::config_api::ApiProperties;
+use crate::config::config_serve::WebServeConfig;
+use crate::config::config_serve::WebServeProperties;
 use crate::config::swagger;
 use crate::context::state::AppState;
 use crate::monitoring::otel::create_otel_tracer;
@@ -79,7 +79,7 @@ lazy_static! {
 }
 
 #[allow(unused)]
-async fn init_custom_metrics(config: &Arc<ApiConfig>) {
+async fn init_custom_metrics(config: &Arc<WebServeConfig>) {
     REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect(
         "collector can be registered"
     );
@@ -98,7 +98,7 @@ async fn metrics() -> String {
 }
 
 #[allow(unused)]
-async fn init_tracing(config: &Arc<ApiConfig>) {
+async fn init_tracing(config: &Arc<WebServeConfig>) {
     // Intialize setup logger levels.
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "debug".into())
@@ -131,7 +131,7 @@ async fn init_tracing(config: &Arc<ApiConfig>) {
 
 #[allow(unused)]
 async fn start_mgmt_server(
-    config: &Arc<ApiConfig>,
+    config: &Arc<WebServeConfig>,
     signal_sender: oneshot::Sender<()>
 ) -> JoinHandle<()> {
     let (prometheus_layer, _) = PrometheusMetricLayer::pair();
@@ -151,36 +151,42 @@ async fn start_mgmt_server(
     })
 }
 
-async fn start_server(config: &Arc<ApiConfig>) {
+async fn start_server(config: &Arc<WebServeConfig>) {
     let app_state = AppState::new(&config).await;
-    tracing::info!("Register API server middlewares ...");
+    tracing::info!("Register Web server middlewares ...");
 
-    // 1. Add the bussiness modules router.
-    let api_routes = Router::new()
+    // 1. Merge the biz modules routes.
+    let mut expose_routes = Router::new()
         .merge(auth_router())
         .merge(user_router())
         .merge(document_router())
         .merge(folder_router())
         .merge(settings_router());
 
-    // Merge of all routes.
-    let mut app = Router::new()
-        .merge(health_router())
-        //.nest("/mywebnote", api_routes) // support the context-path.
-        .merge(api_routes)
-        .with_state(app_state.clone()); // TODO: remove clone
-
-    // 2. Add swagger router.
+    // 3. Merge the swagger router.
     if config.swagger.enabled {
-        app = app.merge(swagger::init_swagger(&config));
+        expose_routes = expose_routes.merge(swagger::init_swagger(&config));
     }
 
-    // 3. Finally add the (auth) middlewares.
+    // 2. Merge of all routes.
+    let mut app_routes = match &config.server.context_path {
+        Some(cp) => {
+            Router::new()
+                .merge(health_router())
+                .nest(&cp, expose_routes) // support the context-path.
+                .with_state(app_state.clone()) // TODO: remove clone
+        }
+        None => {
+            Router::new().merge(health_router()).merge(expose_routes).with_state(app_state.clone()) // TODO: remove clone
+        }
+    };
+
+    // 4. Finally add the (auth) middlewares.
     // Notice: The settings of middlewares are in order, which will affect the priority of route matching.
     // The later the higher the priority? For example, if auth_middleware is set at the end, it will
     // enter when requesting '/', otherwise it will not enter if it is set at the front, and will
     // directly enter handle_root().
-    app = app.layer(
+    app_routes = app_routes.layer(
         ServiceBuilder::new()
             .layer(axum::middleware::from_fn_with_state(app_state, auth_middleware))
             // Optional: add logs to tracing.
@@ -197,33 +203,33 @@ async fn start_server(config: &Arc<ApiConfig>) {
     //.route_layer(axum::Extension(app_state));
 
     let bind_addr = &config.server.bind;
-    tracing::info!("Starting API server on {}", bind_addr);
+    tracing::info!("Starting web server on {}", bind_addr);
 
     axum::serve(
         TcpListener::bind(&bind_addr).await.unwrap(),
-        app.into_make_service()
+        app_routes.into_make_service()
     ).await.unwrap_or_else(|e| panic!("Error starting API server: {}", e));
 
-    tracing::info!("API server is ready");
+    tracing::info!("Web server is ready");
 }
 
-fn load_config(path: String) -> Result<ApiProperties, anyhow::Error> {
+fn load_config(path: String) -> Result<WebServeProperties, anyhow::Error> {
     if path.is_empty() {
-        Ok(ApiProperties::default())
+        Ok(WebServeProperties::default())
     } else {
-        Ok(ApiProperties::parse(&path).validate()?)
+        Ok(WebServeProperties::parse(&path).validate()?)
     }
 }
 
 pub fn build_cli() -> Command {
-    Command::new("api")
-        .about("My Webnote API server.")
+    Command::new("serve")
+        .about("My Webnote web server.")
         // .arg_required_else_help(true) // When no args are provided, show help.
         .arg(
             Arg::new("config")
                 .short('c')
                 .long("config")
-                .help("API Server configuration path.")
+                .help("Web Server configuration path.")
                 .value_name("FILE")
         )
 }
@@ -233,7 +239,7 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
     let config_path = matches
         .get_one::<String>("config")
         .map(PathBuf::from)
-        // .unwrap_or_else(|| PathBuf::from("/etc/api.yaml"))
+        // .unwrap_or_else(|| PathBuf::from("/etc/serve.yaml"))
         .unwrap_or_default();
 
     let cfg_props = load_config(config_path.to_string_lossy().into_owned()).unwrap();

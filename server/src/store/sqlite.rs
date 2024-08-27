@@ -31,7 +31,7 @@ use axum::async_trait;
 use tracing::{ info, debug };
 use sqlx::{ migrate::MigrateDatabase, Pool, Sqlite, SqlitePool };
 
-use crate::{ config::config_api::DbProperties, types::{ PageResponse, PageRequest } };
+use crate::{ config::config_serve::DbProperties, types::{ PageResponse, PageRequest } };
 use super::AsyncRepository;
 
 //

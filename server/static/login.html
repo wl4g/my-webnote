@@ -104,23 +104,23 @@
       <div class="emoji">🐱</div>
       <h1>Welcome back!</h1>
       <button
-        onclick="window.location.href='/auth/connect/oidc'"
+        onclick="window.location.href='{{context_path}}/auth/connect/oidc'"
         class="federation-btn oidc"
       >
-        <img src="/static/img/openid-logo.jpg" alt="OIDC logo" />
+        <img src="{{context_path}}/static/img/openid-logo.jpg" alt="OIDC logo" />
         Signin for OIDC
       </button>
       <button
-        onclick="window.location.href='/auth/connect/github'"
+        onclick="window.location.href='{{context_path}}/auth/connect/github'"
         class="federation-btn github"
       >
         <!-- https://github.githubassets.com/images/modules/logos_page/github-mark.png -->
-        <img src="/static/img/github-mark.png" alt="GitHub logo" />
+        <img src="{{context_path}}/static/img/github-mark.png" alt="GitHub logo" />
         Signin for GitHub
       </button>
       <button id="ethers_wallet_btn" class="federation-btn ethers-wallet">
-        <img src="/static/img/metamask-logo.png" alt="MetaMask Wallet logo" />
-        <img src="/static/img/phantom-logo.png" alt="Phantom Wallet logo" />
+        <img src="{{context_path}}/static/img/metamask-logo.png" alt="MetaMask Wallet logo" />
+        <img src="{{context_path}}/static/img/phantom-logo.png" alt="Phantom Wallet logo" />
         Signin for Ethers Wallet
       </button>
       <div class="or-divider">OR</div>
@@ -130,10 +130,10 @@
         <button type="submit">Signin</button>
       </form>
     </div>
-    <script src="/static/js/jquery-3.6.0.min.js"></script>
-    <script src="/static/js/fp-3.4.2.min.js"></script>
-    <script src="/static/js/crypto-js-4.1.1.min.js"></script>
-    <script src="/static/js/jsencrypt-3.2.1.min.js"></script>
+    <script src="{{context_path}}/static/js/jquery-3.6.0.min.js"></script>
+    <script src="{{context_path}}/static/js/fp-3.4.2.min.js"></script>
+    <script src="{{context_path}}/static/js/crypto-js-4.1.1.min.js"></script>
+    <script src="{{context_path}}/static/js/jsencrypt-3.2.1.min.js"></script>
     <script>
       $(document).ready(function () {
         // Password login.
@@ -149,7 +149,7 @@
 
             // 2. Getting the public key.
             $.ajax({
-              url: "/auth/password/pubkey",
+              url: "{{context_path}}/auth/password/pubkey",
               method: "POST",
               headers: {
                 "X-Accpet-Type": "json",
@@ -215,7 +215,7 @@
       });
     </script>
     <script type="module">
-      import { ethers } from "/static/js/ethers-5.2.esm.min.js";
+      import { ethers } from "{{context_path}}/static/js/ethers-5.2.esm.min.js";
       $(document).ready(function () {
         // Ethers wallet login.
         $("#ethers_wallet_btn").click(function () {
@@ -244,7 +244,7 @@
               const signature = await signer.signMessage(message);
 
               // Sending the signature to the server verify.
-              const response = await fetch("/auth/wallet/ethers/verify", {
+              const response = await fetch("{{context_path}}/auth/wallet/ethers/verify", {
                 method: "POST",
                 headers: {
                   "X-Accpet-Type": "json",

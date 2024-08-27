@@ -31,7 +31,7 @@ use mongodb::options::{ ReadConcern, WriteConcern };
 use mongodb::{ Client, Database, options::ClientOptions };
 
 use super::AsyncRepository;
-use crate::config::config_api::DbProperties;
+use crate::config::config_serve::DbProperties;
 use crate::types::{ PageResponse, PageRequest };
 
 pub struct MongoRepository<T: Any + Send + Sync> {

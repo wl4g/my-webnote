@@ -12,7 +12,7 @@ use tower_cookies::cookie::{ time::Duration, CookieBuilder, SameSite };
 use ethers::types::{ Address, Signature };
 
 use crate::{
-    config::config_api::ApiConfig,
+    config::config_serve::WebServeConfig,
     context::state::AppState,
     types::{
         auths::{
@@ -66,7 +66,7 @@ pub trait IAuthHandler: Send {
 
     async fn handle_login_success(
         &self,
-        config: &Arc<ApiConfig>,
+        config: &Arc<WebServeConfig>,
         ptype: PrincipalType,
         uid: i64,
         uname: &str,
@@ -439,7 +439,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
 
     async fn handle_login_success(
         &self,
-        config: &Arc<ApiConfig>,
+        config: &Arc<WebServeConfig>,
         ptype: PrincipalType,
         uid: i64,
         uname: &str,

@@ -29,7 +29,7 @@ use openidconnect::{
     RedirectUrl,
 };
 
-use crate::config::config_api::OidcProperties;
+use crate::config::config_serve::OidcProperties;
 
 /*
 curl 'https://keycloak.example.com/realms/master/.well-known/openid-configuration'

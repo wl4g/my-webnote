@@ -1,3 +1,3 @@
-pub mod config_api;
+pub mod config_serve;
 pub mod resources;
 pub mod swagger;

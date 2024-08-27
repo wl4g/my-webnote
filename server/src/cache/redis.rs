@@ -29,7 +29,7 @@ use redis::{
 };
 use std::{ sync::Arc, time::Duration };
 
-use crate::config::config_api::RedisProperties;
+use crate::config::config_serve::RedisProperties;
 
 use super::ICache;
 

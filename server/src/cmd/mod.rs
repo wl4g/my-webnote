@@ -20,7 +20,7 @@
  * This includes modifications and derived works.
  */
 
-pub mod api;
+pub mod serve;
 
 use std::{ collections::HashMap, sync::OnceLock };
 use core::panic;
@@ -39,10 +39,10 @@ pub fn register_subcommand_handles() -> &'static HashMap<
 > {
     SUBCOMMAND_MAP.get_or_init(|| {
         let mut map = HashMap::new();
-        map.insert("api", (
+        map.insert("serve", (
             // Type inference error, forced conversion need.
-            api::build_cli as SubcommandBuildFn,
-            api::handle_cli as SubcommandHandleFn,
+            serve::build_cli as SubcommandBuildFn,
+            serve::handle_cli as SubcommandHandleFn,
         ));
         map
     })

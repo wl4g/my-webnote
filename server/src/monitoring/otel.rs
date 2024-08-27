@@ -31,9 +31,9 @@ use opentelemetry_sdk::trace::Tracer;
 use opentelemetry_otlp::{ new_exporter, ExportConfig, Protocol };
 use opentelemetry_otlp::WithExportConfig;
 
-use crate::config::config_api::ApiConfig;
+use crate::config::config_serve::WebServeConfig;
 
-pub async fn create_otel_tracer(config: &Arc<ApiConfig>) -> Option<Tracer> {
+pub async fn create_otel_tracer(config: &Arc<WebServeConfig>) -> Option<Tracer> {
     let mut tracer = None;
 
     if config.monitoring.enabled {

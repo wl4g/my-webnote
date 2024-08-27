@@ -29,7 +29,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::usize;
 
-use crate::config::config_api::MemoryProperties;
+use crate::config::config_serve::MemoryProperties;
 
 use super::ICache;
 

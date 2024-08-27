@@ -44,7 +44,7 @@ use openidconnect::{
 use tower_cookies::{ cookie::{ time::{ self, Duration }, CookieBuilder }, CookieManagerLayer };
 
 use crate::{
-    config::{ config_api::DEFAULT_404_HTML, resources::handle_static },
+    config::{ config_serve::DEFAULT_404_HTML, resources::handle_static },
     context::state::AppState,
     handlers::auths::{ AuthHandler, IAuthHandler, PrincipalType },
     types::{
@@ -112,7 +112,7 @@ pub async fn auth_middleware(
     req: Request<Body>,
     next: Next
 ) -> impl IntoResponse {
-    let path = req.uri().path();
+    let path = auths::clean_context_path(&state.config.server.context_path, req.uri().path());
 
     // 1. Exclude paths that don't require authentication.
     // 1.1 Paths that must be excluded according to the authentication mechanism's requirements.

@@ -28,7 +28,7 @@ use axum::async_trait;
 use mongodb::Collection;
 use mongodb::bson::doc;
 
-use crate::config::config_api::DbProperties;
+use crate::config::config_serve::DbProperties;
 use crate::types::users::User;
 use crate::types::{ PageRequest, PageResponse };
 use super::AsyncRepository;
