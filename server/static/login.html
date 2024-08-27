@@ -182,6 +182,7 @@
                   url: "/auth/password/verify",
                   method: "POST",
                   headers: {
+                    "X-Accept-Type": "json",
                     "Content-Type": "application/json",
                   },
                   data: JSON.stringify({
@@ -190,9 +191,11 @@
                     fpToken: visitorId, // 再次传递设备指纹
                   }),
                   success: function (res2) {
-                    console.info("Login successful", res2);
-                    //window.location.href = res2.redirectUrl;
-                    window.location.href = "/";
+                    console.info("Login result:", res2);
+                    if (res2.errcode == 200) {
+                      //window.location.href = "/";
+                      window.location.href = res2.redirectUrl;
+                    }
                   },
                   error: function (xhr, status, error) {
                     console.error("Login failed", error);
@@ -218,52 +221,51 @@
         $("#ethers_wallet_btn").click(function () {
           (async () => {
             console.info("Connecting to ethers wallet ...");
+            if (typeof window.ethereum == "undefined") {
+              alert("Please install MetaMask or Wallets!");
+              return;
+            }
+            try {
+              // Wakeup user broswer wallet extension.
+              await window.ethereum.request({
+                method: "eth_requestAccounts",
+              });
+              const provider = new ethers.providers.Web3Provider(
+                window.ethereum
+              );
+              const signer = provider.getSigner();
+              // Getting user wallet pubkey.
+              const address = await signer.getAddress();
+              // Generate random message.
+              const message =
+                "Login to our dApp: " +
+                Math.random().toString(36).substring(2, 15);
+              // Signature the message.
+              const signature = await signer.signMessage(message);
 
-            if (typeof window.ethereum !== "undefined") {
-              try {
-                // Wakeup user broswer wallet extension.
-                await window.ethereum.request({
-                  method: "eth_requestAccounts",
-                });
-                const provider = new ethers.providers.Web3Provider(
-                  window.ethereum
-                );
-                const signer = provider.getSigner();
-                // Getting user wallet pubkey.
-                const address = await signer.getAddress();
-                // Generate random message.
-                const message =
-                  "Login to our dApp: " +
-                  Math.random().toString(36).substring(2, 15);
-                // Signature the message.
-                const signature = await signer.signMessage(message);
-
-                // Sending the signature to the server verify.
-                const response = await fetch("/auth/wallet/ethers/verify", {
-                  method: "POST",
-                  headers: {
-                    "X-Accpet-Type": "json",
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ address, message, signature }),
-                });
-                if (response.ok) {
-                  const res = JSON.parse(await response.text());
-                  console.log("Login successful");
-
+              // Sending the signature to the server verify.
+              const response = await fetch("/auth/wallet/ethers/verify", {
+                method: "POST",
+                headers: {
+                  "X-Accpet-Type": "json",
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ address, message, signature }),
+              });
+              if (response.ok) {
+                const res = JSON.parse(await response.text());
+                console.log("Login result:", res);
+                if (res2.errcode == 200) {
                   // save the success tokens.
                   //localStorage.setItem("token", token);
-
                   // redirect to the home page.
                   window.location.href = res.redirectUrl;
-                } else {
-                  console.error("Login failed");
                 }
-              } catch (error) {
-                console.error("Error:", error);
+              } else {
+                console.error("Login failed");
               }
-            } else {
-              console.log("Please install MetaMask!");
+            } catch (error) {
+              console.error("Error:", error);
             }
           })();
         });

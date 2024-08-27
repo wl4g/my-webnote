@@ -242,7 +242,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
 
         // 1. Get user by oidc uid
         let user = handler
-            .get(None, None, None, None, None, Some(oidc_sub.to_string()), None, None).await
+            .get(None, None, None, None, Some(oidc_sub.to_string()), None, None, None).await
             .unwrap();
 
         // 2. If user exists, update user github subject ID.
@@ -303,7 +303,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
 
         // 1. Get user by github_uid
         let user = handler
-            .get(None, None, None, None, None, None, Some(github_sub.to_string()), None).await
+            .get(None, None, None, None, None, Some(github_sub.to_string()), None, None).await
             .unwrap();
 
         // 2. If user exists, update user github subject ID.
