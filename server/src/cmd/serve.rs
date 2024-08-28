@@ -20,9 +20,9 @@
  * This includes modifications and derived works.
  */
 
+use std::env;
 use std::sync::Arc;
-
-use clap::{ Command, Arg };
+use clap::Command;
 
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -33,11 +33,6 @@ use tracing_subscriber::EnvFilter;
 
 #[cfg(feature = "tokio-console")]
 use console_subscriber::ConsoleLayer;
-// use tower_http::trace::TraceLayer;
-
-use lazy_static::lazy_static;
-use prometheus::{ Registry, Counter, Histogram, Encoder, TextEncoder };
-use axum_prometheus::PrometheusMetricLayer;
 
 use tokio::task::JoinHandle;
 use tokio::net::TcpListener;
@@ -45,11 +40,17 @@ use tokio::sync::oneshot;
 
 use axum::Router;
 use axum::routing::get;
+use axum_prometheus::PrometheusMetricLayer;
 
 use crate::config::config_serve;
 use crate::config::config_serve::WebServeConfig;
+use crate::config::config_serve::GIT_BUILD_DATE;
+use crate::config::config_serve::GIT_COMMIT_HASH;
+use crate::config::config_serve::GIT_VERSION;
 use crate::config::swagger;
 use crate::context::state::AppState;
+use crate::mgmt::logging;
+use crate::mgmt::metrics;
 use crate::mgmt::otel::create_otel_tracer;
 use crate::mgmt::health::init as health_router;
 use crate::route::auths::auth_middleware;
@@ -59,41 +60,11 @@ use crate::route::document::init as document_router;
 use crate::route::folder::init as folder_router;
 use crate::route::settings::init as settings_router;
 
-lazy_static! {
-    pub static ref REGISTRY: Registry = Registry::new();
-
-    pub static ref MY_HTTP_REQUESTS_TOTAL: Counter = Counter::new(
-        "my_http_requests_total",
-        "My Total number of HTTP requests"
-    ).expect("My metric can be created");
-
-    pub static ref MY_HTTP_REQUEST_DURATION: Histogram = Histogram::with_opts(
-        prometheus::HistogramOpts::new(
-            "http_request_duration_seconds",
-            "My HTTP request duration in seconds"
-        )
-    ).expect("My metric can be created");
-    // Register more metrics...
-}
-
-#[allow(unused)]
-async fn metrics() -> String {
-    let encoder = TextEncoder::new();
-    let mut buffer = Vec::new();
-    encoder.encode(&REGISTRY.gather(), &mut buffer).unwrap();
-    String::from_utf8(buffer).unwrap()
-}
-
-#[allow(unused)]
-async fn register_custom_metrics(config: &Arc<WebServeConfig>) {
-    REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect(
-        "collector can be registered"
-    );
-    REGISTRY.register(Box::new(MY_HTTP_REQUEST_DURATION.clone())).expect(
-        "collector can be registered"
-    );
-    // Register more metrics...
-}
+// Check for the allocator used: 'objdump -t target/debug/mywebnote | grep mi_os_alloc'
+// see:https://rustcc.cn/article?id=75f290cd-e8e9-4786-96dc-9a44e398c7f5
+#[global_allocator]
+//static GLOBAL: std::alloc::System = std::alloc::System;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[allow(unused)]
 async fn init_compnents(config: &Arc<WebServeConfig>) {
@@ -118,12 +89,75 @@ async fn init_compnents(config: &Arc<WebServeConfig>) {
     let subscriber = subscriber.with(otel_layer);
 
     // Setup tokio-console layer if feature is enabled.
-    // Notice: Use optional dependencies to avoid slow automatic compilation during debugging
-    // (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
-    // will invalidate the compile-time cache).
-    #[cfg(feature = "tokio-console")]
-    let subscriber = subscriber.with(ConsoleLayer::builder().with_default_env().spawn());
+    if config.mgmt.tokio_console.enabled {
+        // Notice: Use optional dependencies to avoid slow auto compilation during debugg, because if rely
+        // on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
+        // will invalidate the compile-time cache.
+        #[cfg(feature = "tokio-console")]
+        let subscriber = subscriber.with(
+            ConsoleLayer::builder()
+                .with_default_env()
+                .server_addr(&config.mgmt.tokio_console.server_bind.as_str().parse::<SocketAddr>())
+                .retention(Duration::from_secs(config.mgmt.tokio_console.retention))
+                .spawn()
+        );
+    }
     subscriber.init();
+
+    // Setup logging component.
+    logging::init_logging(&config);
+
+    // Setup metrics component.
+    metrics::init_metrics(&config);
+
+    // // Setup profiling
+    // #[cfg(feature = "profiling")]
+    // let agent = if !cfg.profiling.enabled {
+    //     None
+    // } else {
+    //     let agent = PyroscopeAgent::builder(&cfg.profiling.server_url, &cfg.profiling.project_name)
+    //         .tags(
+    //             [
+    //                 ("role", cfg.common.node_role.as_str()),
+    //                 ("instance", cfg.common.instance_name.as_str()),
+    //                 ("version", VERSION),
+    //             ].to_vec()
+    //         )
+    //         .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
+    //         .build()
+    //         .expect("Failed to setup pyroscope agent");
+    //     #[cfg(feature = "profiling")]
+    //     let agent_running = agent.start().expect("Failed to start pyroscope agent");
+    //     Some(agent_running)
+    // };
+
+    // // Setup logs
+    // #[cfg(feature = "tokio-console")]
+    // let enable_tokio_console = true;
+    // #[cfg(not(feature = "tokio-console"))]
+    // let enable_tokio_console = false;
+    // let _guard: Option<WorkerGuard> = if enable_tokio_console {
+    //     None
+    // } else if cfg.log.events_enabled {
+    //     let logger = zo_logger::ZoLogger {
+    //         sender: zo_logger::EVENT_SENDER.clone(),
+    //     };
+    //     log
+    //         ::set_boxed_logger(Box::new(logger))
+    //         .map(|()| {
+    //             log::set_max_level(
+    //                 LevelFilter::from_str(&cfg.log.level).unwrap_or(LevelFilter::Info)
+    //             )
+    //         })?;
+    //     None
+    // } else if cfg.common.tracing_enabled || cfg.common.tracing_search_enabled {
+    //     enable_tracing()?;
+    //     None
+    // } else {
+    //     Some(setup_logs())
+    // };
+
+    log::info!("Starting the Mywebnote :: {}", GIT_VERSION);
 }
 
 #[allow(unused)]
@@ -133,7 +167,9 @@ async fn start_mgmt_server(
 ) -> JoinHandle<()> {
     let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
-    let app: Router = Router::new().route("/metrics", get(metrics)).layer(prometheus_layer);
+    let app: Router = Router::new()
+        .route("/metrics", get(metrics::metrics))
+        .layer(prometheus_layer);
 
     let bind_addr = config.server.mgmt_bind.clone();
     info!("Starting Management server on {}", bind_addr);
@@ -210,6 +246,40 @@ async fn start_server(config: &Arc<WebServeConfig>) {
     tracing::info!("Web server is ready");
 }
 
+fn on_panic(info: &std::panic::PanicInfo) {
+    let info = info.to_string().replace('\n', " ");
+    tracing::error!(%info);
+}
+
+fn print_launch_resume(config: &Arc<WebServeConfig>) {
+    // http://www.network-science.de/ascii/#larry3d,graffiti,basic,drpepper,rounded,roman
+    let ascii_name =
+        r#"
+        __      __          __          __  __          __             
+        /'\_/`\            /\ \  __/\ \        /\ \        /\ \/\ \        /\ \__          
+       /\      \  __  __   \ \ \/\ \ \ \     __\ \ \____   \ \ `\\ \    ___\ \ ,_\    __   
+       \ \ \__\ \/\ \/\ \   \ \ \ \ \ \ \  /'__`\ \ '__`\   \ \ , ` \  / __`\ \ \/  /'__`\ 
+        \ \ \_/\ \ \ \_\ \   \ \ \_/ \_\ \/\  __/\ \ \L\ \   \ \ \`\ \/\ \L\ \ \ \_/\  __/ 
+         \ \_\\ \_\/`____ \   \ `\___x___/\ \____\\ \_,__/    \ \_\ \_\ \____/\ \__\ \____\
+          \/_/ \/_/`/___/> \   '\/__//__/  \/____/ \/___/      \/_/\/_/\/___/  \/__/\/____/
+                      /\___/                                                               
+                      \/__/                                                                
+"#;
+    eprintln!("");
+    eprintln!("{}", ascii_name);
+    eprintln!("          Program Version: {:?}", GIT_VERSION);
+    eprintln!("          Package Version: {:?}", env!("CARGO_PKG_VERSION").to_string());
+    eprintln!("          Git Commit Hash: {:?}", GIT_COMMIT_HASH);
+    eprintln!("           Git Build Date: {:?}", GIT_BUILD_DATE);
+    eprintln!(
+        "         Config file path: {:?}",
+        env::var("APP_CFG_PATH").unwrap_or("none".to_string())
+    );
+    eprintln!("Server serve listening on: \"{}://{}\"", "http", &config.server.bind);
+    eprintln!(" Server mgmt listening on: \"{}://{}\"", "http", &config.server.mgmt_bind);
+    eprintln!("");
+}
+
 pub fn build_cli() -> Command {
     Command::new("serve").about("My Webnote web server.")
     // //.arg_required_else_help(true) // When no args are provided, show help.
@@ -225,6 +295,8 @@ pub fn build_cli() -> Command {
 #[allow(unused)]
 #[tokio::main]
 pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
+    std::panic::set_hook(Box::new(on_panic));
+
     //let config_path = matches
     //    .get_one::<String>("config")
     //    .map(std::path::PathBuf::from)
@@ -234,6 +306,8 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
     //    .into_owned();
 
     let config = config_serve::get_config();
+
+    print_launch_resume(&config);
 
     init_compnents(&config).await;
 

@@ -36,7 +36,7 @@ use crate::config::config_serve::WebServeConfig;
 pub async fn create_otel_tracer(config: &Arc<WebServeConfig>) -> Option<Tracer> {
     let mut tracer = None;
 
-    if config.monitoring.enabled {
+    if config.mgmt.enabled && config.mgmt.otel.enabled {
         let _tracer = opentelemetry_otlp
             ::new_pipeline()
             .tracing()
@@ -44,14 +44,14 @@ pub async fn create_otel_tracer(config: &Arc<WebServeConfig>) -> Option<Tracer> 
                 new_exporter()
                     .tonic()
                     .with_export_config(ExportConfig {
-                        endpoint: config.monitoring.otel.endpoint.to_string(),
-                        protocol: match config.monitoring.otel.protocol.to_lowercase().as_str() {
+                        endpoint: config.mgmt.otel.endpoint.to_string(),
+                        protocol: match config.mgmt.otel.protocol.to_lowercase().as_str() {
                             "http/protobuf" => Protocol::HttpBinary,
                             "grpc" => Protocol::Grpc,
                             "http/json" => Protocol::HttpJson,
                             _ => Protocol::HttpBinary,
                         },
-                        timeout: Duration::from_millis(config.monitoring.otel.timeout.unwrap()),
+                        timeout: Duration::from_millis(config.mgmt.otel.timeout.unwrap()),
                     })
             )
             .with_trace_config(

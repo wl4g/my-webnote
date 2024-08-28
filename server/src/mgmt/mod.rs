@@ -20,5 +20,7 @@
  * This includes modifications and derived works.
  */
 
-pub mod otel;
 pub mod health;
+pub mod logging;
+pub mod metrics;
+pub mod otel;

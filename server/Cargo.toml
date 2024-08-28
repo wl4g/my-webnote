@@ -23,10 +23,6 @@ name = "mywebnote"
 version = "0.1.0"
 edition = "2021"
 
-[dev-dependencies]
-# Benchmarks libs.
-criterion = "0.5.1"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 #
@@ -133,6 +129,13 @@ eyre = "0.6.12"
 common-log-macro = { path = "./components/common-log-macro" }
 common-makestruct-macro = { path = "./components/common-makestruct-macro" }
 common-smartcpy-macro = { path = "./components/common-smartcpy-macro" }
+
+[dev-dependencies]
+# Benchmarks libs.
+criterion = "0.5.1"
+
+[build-dependencies]
+chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 
 [features]
 # Notice: Use optional dependencies to avoid slow automatic compilation during debugging

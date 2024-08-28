@@ -26,6 +26,17 @@ use std::{ collections::HashMap, sync::OnceLock };
 use core::panic;
 use clap::{ ArgMatches, Command };
 
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref VERSION: String = format!(
+        "GitVersion: {}, GitHash: {}, GitBuildDate: {}",
+        env!("GIT_VERSION"),
+        env!("GIT_COMMIT_HASH"),
+        env!("GIT_BUILD_DATE")
+    );
+}
+
 type SubcommandBuildFn = fn() -> Command;
 type SubcommandHandleFn = fn(&ArgMatches) -> ();
 
@@ -49,10 +60,10 @@ pub fn register_subcommand_handles() -> &'static HashMap<
 }
 
 pub fn execute_commands_app() -> () {
-    let mut app = Command::new("MyWebnote API Server")
-        .version("1.0.0")
+    let mut app = Command::new("MyWebnote Rust Serve")
+        .version(VERSION.as_str())
         .author("James Wong")
-        .about("MyWebnote (Excalidraw) Rust API server")
+        .about("MyWebnote Rust Serve")
         .arg_required_else_help(true); // When no args are provided, show help.
 
     let subcommand_map = register_subcommand_handles();

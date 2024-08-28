@@ -33,7 +33,7 @@ use serde::Deserialize;
 use config::Config;
 use validator::Validate;
 
-use crate::mgmt::health::HEALTHZ_URI;
+use crate::mgmt::{ health::HEALTHZ_URI, logging::LogMode };
 
 #[derive(Debug, Deserialize, Clone, Validate)]
 pub struct WebServeProperties {
@@ -52,8 +52,8 @@ pub struct WebServeProperties {
     pub auth: AuthProperties,
     #[serde(default = "SwaggerProperties::default")]
     pub swagger: SwaggerProperties,
-    #[serde(default = "MonitoringProperties::default")]
-    pub monitoring: MonitoringProperties,
+    #[serde(default = "MgmtProperties::default")]
+    pub mgmt: MgmtProperties,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -78,8 +78,8 @@ pub struct CorsProperties {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct LoggingProperties {
-    pub file: String,
-    pub pattern: String,
+    pub mode: LogMode,
+    pub level: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -243,14 +243,26 @@ pub struct SwaggerProperties {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct MonitoringProperties {
+pub struct MgmtProperties {
     pub enabled: bool,
+    #[serde(default = "TokioConsoleProperties::default", rename = "tokio-console")]
+    pub tokio_console: TokioConsoleProperties,
     #[serde(default = "OtelProperties::default")]
     pub otel: OtelProperties,
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct TokioConsoleProperties {
+    pub enabled: bool,
+    //#[env_config(name = "MW_TOKIO_CONSOLE_SERVER_BIND", default = "0.0.0.0:6699")]
+    #[serde(rename = "server-bind")]
+    pub server_bind: String,
+    pub retention: u64,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct OtelProperties {
+    pub enabled: bool,
     pub endpoint: String,
     pub protocol: String,
     pub timeout: Option<u64>,
@@ -267,7 +279,7 @@ impl WebServeProperties {
             cache: CacheProperties::default(),
             auth: AuthProperties::default(),
             swagger: SwaggerProperties::default(),
-            monitoring: MonitoringProperties::default(),
+            mgmt: MgmtProperties::default(),
         }
     }
 
@@ -321,8 +333,8 @@ impl Default for CorsProperties {
 impl Default for LoggingProperties {
     fn default() -> Self {
         LoggingProperties {
-            file: "info".to_string(),
-            pattern: "pretty".to_string(),
+            mode: LogMode::Json,
+            level: "info".to_string(),
         }
     }
 }
@@ -467,11 +479,22 @@ impl Default for SwaggerProperties {
     }
 }
 
-impl Default for MonitoringProperties {
+impl Default for MgmtProperties {
     fn default() -> Self {
-        MonitoringProperties {
+        MgmtProperties {
             enabled: true,
+            tokio_console: TokioConsoleProperties::default(),
             otel: OtelProperties::default(),
+        }
+    }
+}
+
+impl Default for TokioConsoleProperties {
+    fn default() -> Self {
+        TokioConsoleProperties {
+            enabled: false,
+            server_bind: String::from("0.0.0.0:6699"),
+            retention: 60,
         }
     }
 }
@@ -479,6 +502,7 @@ impl Default for MonitoringProperties {
 impl Default for OtelProperties {
     fn default() -> Self {
         OtelProperties {
+            enabled: false,
             endpoint: String::from("http://localhost:4317"),
             protocol: String::from("grpc"),
             timeout: Some(Duration::from_secs(10).as_millis() as u64),
@@ -563,7 +587,13 @@ pub fn refresh_config() -> Result<(), anyhow::Error> {
 // see: https://github.com/wl4g-collect/openobserve/blob/v0.10.9/src/config/src/config.rs#L186
 static CONFIG: Lazy<ArcSwap<WebServeConfig>> = Lazy::new(|| ArcSwap::from(init()));
 
+// Global static resources.
 pub const DEFAULT_INDEX_HTML: &str = include_str!("../../static/index.html");
 pub const DEFAULT_LOGIN_HTML: &str = include_str!("../../static/login.html");
 pub const DEFAULT_404_HTML: &str = include_str!("../../static/404.html");
 pub const DEFAULT_403_HTML: &str = include_str!("../../static/403.html");
+
+// Global program information.
+pub const GIT_VERSION: &str = env!("GIT_VERSION");
+pub const GIT_COMMIT_HASH: &str = env!("GIT_COMMIT_HASH");
+pub const GIT_BUILD_DATE: &str = env!("GIT_BUILD_DATE");
