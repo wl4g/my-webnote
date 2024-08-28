@@ -492,8 +492,8 @@ impl Default for MgmtProperties {
 impl Default for TokioConsoleProperties {
     fn default() -> Self {
         TokioConsoleProperties {
-            enabled: false,
-            server_bind: String::from("0.0.0.0:6699"),
+            enabled: true,
+            server_bind: String::from("0.0.0.0:6669"),
             retention: 60,
         }
     }
@@ -502,7 +502,7 @@ impl Default for TokioConsoleProperties {
 impl Default for OtelProperties {
     fn default() -> Self {
         OtelProperties {
-            enabled: false,
+            enabled: true,
             endpoint: String::from("http://localhost:4317"),
             protocol: String::from("grpc"),
             timeout: Some(Duration::from_secs(10).as_millis() as u64),

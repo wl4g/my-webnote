@@ -28,9 +28,6 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
-#[cfg(feature = "tokio-console")]
-use console_subscriber::ConsoleLayer;
-
 use tokio::task::JoinHandle;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
@@ -220,16 +217,16 @@ fn print_launch_resume(config: &Arc<WebServeConfig>) {
 "#;
     eprintln!("");
     eprintln!("{}", ascii_name);
-    eprintln!("          Program Version: {:?}", GIT_VERSION);
-    eprintln!("          Package Version: {:?}", env!("CARGO_PKG_VERSION").to_string());
-    eprintln!("          Git Commit Hash: {:?}", GIT_COMMIT_HASH);
-    eprintln!("           Git Build Date: {:?}", GIT_BUILD_DATE);
-    eprintln!(
-        "         Config file path: {:?}",
-        env::var("APP_CFG_PATH").unwrap_or("none".to_string())
-    );
-    eprintln!("Server serve listening on: \"{}://{}\"", "http", &config.server.bind);
-    eprintln!(" Server mgmt listening on: \"{}://{}\"", "http", &config.server.mgmt_bind);
+    eprintln!("               Program Version: {:?}", GIT_VERSION);
+    eprintln!("               Package Version: {:?}", env!("CARGO_PKG_VERSION").to_string());
+    eprintln!("               Git Commit Hash: {:?}", GIT_COMMIT_HASH);
+    eprintln!("                Git Build Date: {:?}", GIT_BUILD_DATE);
+    let path = env::var("APP_CFG_PATH").unwrap_or("none".to_string());
+    eprintln!("              Config file path: {:?}", path);
+    eprintln!("          Web Server listen on: \"{}://{}\"", "http", &config.server.bind);
+    eprintln!("   Management Server listen on: \"{}://{}\"", "http", &config.server.mgmt_bind);
+    let server_addr = &config.mgmt.tokio_console.server_bind;
+    eprintln!(" TokioConsole Server listen on: \"{}://{}\"", "http", server_addr);
     eprintln!("");
 }
 

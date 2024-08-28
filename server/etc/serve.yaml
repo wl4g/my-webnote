@@ -117,12 +117,12 @@ swagger:
 mgmt:
   enabled: true
   tokio-console:
-    enabled: false
-    server-bind: "0.0.0.0:6699"
+    enabled: true
+    server-bind: "0.0.0.0:6669"
     retention: 60
   # Notice: More OTEL custom configuration use to env: OTEL_SPAN_xxx, see: opentelemetry_sdk::trace::config::default()
   otel:
-    enabled: false
+    enabled: true
     endpoint: "http://localhost:4317"
     protocol: grpc # Optional: http/protobuf,http/json,grpc
     timeout: 10000

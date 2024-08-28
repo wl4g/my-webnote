@@ -36,8 +36,10 @@ pub mod otel;
 pub async fn init_components(
     config: &Arc<WebServeConfig>
 ) -> anyhow::Result<(LogRouteHandle, LogStderrHandle)> {
+    // Setup custom metrics.
     metrics::init_metrics(config).await;
 
+    // Setup logging+tracing layers.
     let (route_layer, route_layer_handle) = tracing_subscriber::reload::Layer::new(
         logging::default_log_route_layer()
     );
@@ -57,8 +59,31 @@ pub async fn init_components(
     // Add OpenTelemetry layer if available.
     let subscriber = subscriber.with(otel_layer);
 
-    // set the subscriber as the default for the application
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    // Setup profiling for tokio-console layers.
+    if config.mgmt.tokio_console.enabled {
+        // Notice: Use optional dependencies to avoid slow auto compilation during debugg, because if rely
+        // on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
+        // will invalidate the compile-time cache.
+        #[cfg(feature = "tokio-console")]
+        let server_addr = config.mgmt.tokio_console.server_bind
+            .as_str()
+            .parse::<std::net::SocketAddr>()
+            .expect("Failed to parse server address");
+        #[cfg(feature = "tokio-console")]
+        let subscriber = subscriber.with(
+            console_subscriber::ConsoleLayer
+                ::builder()
+                .with_default_env()
+                .server_addr(server_addr)
+                .retention(std::time::Duration::from_secs(config.mgmt.tokio_console.retention))
+                .spawn()
+        );
+        // set the subscriber as the default for the application
+        tracing::subscriber::set_global_default(subscriber).unwrap();
+    } else {
+        // set the subscriber as the default for the application
+        tracing::subscriber::set_global_default(subscriber).unwrap();
+    }
 
     Ok((route_layer_handle, stderr_layer_handle))
 }
