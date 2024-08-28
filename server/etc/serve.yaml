@@ -32,7 +32,7 @@ server:
   #  methods: ["*"]
 
 logging:
-  mode: Json
+  mode: Human
   level: DEBUG
 
 db:

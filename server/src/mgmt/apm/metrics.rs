@@ -45,7 +45,7 @@ lazy_static! {
 }
 
 #[allow(unused)]
-pub async fn metrics() -> String {
+pub async fn handle_metrics() -> String {
     let encoder = TextEncoder::new();
     let mut buffer = Vec::new();
     encoder.encode(&REGISTRY.gather(), &mut buffer).unwrap();
@@ -53,7 +53,7 @@ pub async fn metrics() -> String {
 }
 
 #[allow(unused)]
-pub fn init_metrics(config: &Arc<WebServeConfig>) {
+pub async fn init_metrics(config: &Arc<WebServeConfig>) {
     REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect(
         "collector can be registered"
     );

@@ -23,7 +23,7 @@
 use std::{ fmt::{ self, Display }, io::LineWriter, str::FromStr, sync::Arc };
 
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{ filter::Targets, layer::SubscriberExt, Layer };
+use tracing_subscriber::{ filter::Targets, EnvFilter, Layer };
 
 use serde::{ Deserialize, Serialize };
 
@@ -147,11 +147,11 @@ impl FromStr for LogLevel {
     }
 }
 
-fn default_log_route_layer() -> LogRouteType {
+pub(super) fn default_log_route_layer() -> LogRouteType {
     None.with_filter(tracing_subscriber::filter::Targets::new().with_target("", LevelFilter::OFF))
 }
 
-fn default_log_stderr_layer(config: &Arc<WebServeConfig>) -> LogStderrType {
+pub(super) fn default_log_stderr_layer(config: &Arc<WebServeConfig>) -> LogStderrType {
     let layer = tracing_subscriber::fmt
         ::layer()
         .with_writer(|| LineWriter::new(std::io::stderr()))
@@ -175,24 +175,11 @@ fn default_log_stderr_layer(config: &Arc<WebServeConfig>) -> LogStderrType {
     )
 }
 
-// /// does all the setup before meilisearch is launched
-pub fn init_logging(
-    config: &Arc<WebServeConfig>
-) -> anyhow::Result<(LogRouteHandle, LogStderrHandle)> {
-    let (route_layer, route_layer_handle) = tracing_subscriber::reload::Layer::new(
-        default_log_route_layer()
-    );
-    let route_layer: tracing_subscriber::reload::Layer<_, _> = route_layer;
-
-    let (stderr_layer, stderr_layer_handle) = tracing_subscriber::reload::Layer::new(
-        default_log_stderr_layer(config)
-    );
-    let route_layer: tracing_subscriber::reload::Layer<_, _> = route_layer;
-
-    let subscriber = tracing_subscriber::registry().with(route_layer).with(stderr_layer);
-
-    // set the subscriber as the default for the application
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-
-    Ok((route_layer_handle, stderr_layer_handle))
+pub(super) fn default_log_levels_layer() -> EnvFilter {
+    EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "debug".into())
+        // .add_directive("debug".parse().unwrap()) // default level.
+        .add_directive("mywebnote=debug".parse().unwrap())
+        .add_directive("hyper=warn".parse().unwrap())
+        .add_directive("tokio=trace".parse().unwrap()) // Notice: Must be at trace level to collect
 }

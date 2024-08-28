@@ -27,9 +27,6 @@ use clap::Command;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::info;
-use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::EnvFilter;
 
 #[cfg(feature = "tokio-console")]
 use console_subscriber::ConsoleLayer;
@@ -49,9 +46,8 @@ use crate::config::config_serve::GIT_COMMIT_HASH;
 use crate::config::config_serve::GIT_VERSION;
 use crate::config::swagger;
 use crate::context::state::AppState;
-use crate::mgmt::logging;
-use crate::mgmt::metrics;
-use crate::mgmt::otel::create_otel_tracer;
+use crate::mgmt::apm;
+use crate::mgmt::apm::metrics::handle_metrics;
 use crate::mgmt::health::init as health_router;
 use crate::route::auths::auth_middleware;
 use crate::route::auths::init as auth_router;
@@ -68,47 +64,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[allow(unused)]
 async fn init_compnents(config: &Arc<WebServeConfig>) {
-    // Setup logger.
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "debug".into())
-        // .add_directive("debug".parse().unwrap()) // default level.
-        .add_directive("mywebnote=debug".parse().unwrap())
-        .add_directive("hyper=warn".parse().unwrap())
-        .add_directive("tokio=trace".parse().unwrap()); // Notice: Must be at trace level to collect
-
-    // Initialize layer with tokio console exporter.
-    let subscriber = tracing_subscriber
-        ::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .with(env_filter);
-
-    // Create OpenTelemetry layer if tracer is available.
-    let otel_layer = create_otel_tracer(config).await.map(OpenTelemetryLayer::new);
-
-    // Add OpenTelemetry layer if available.
-    let subscriber = subscriber.with(otel_layer);
-
-    // Setup tokio-console layer if feature is enabled.
-    if config.mgmt.tokio_console.enabled {
-        // Notice: Use optional dependencies to avoid slow auto compilation during debugg, because if rely
-        // on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
-        // will invalidate the compile-time cache.
-        #[cfg(feature = "tokio-console")]
-        let subscriber = subscriber.with(
-            ConsoleLayer::builder()
-                .with_default_env()
-                .server_addr(&config.mgmt.tokio_console.server_bind.as_str().parse::<SocketAddr>())
-                .retention(Duration::from_secs(config.mgmt.tokio_console.retention))
-                .spawn()
-        );
-    }
-    subscriber.init();
-
-    // Setup logging component.
-    logging::init_logging(&config);
-
-    // Setup metrics component.
-    metrics::init_metrics(&config);
+    // Setup APM components.
+    apm::init_components(&config).await;
 
     // // Setup profiling
     // #[cfg(feature = "profiling")]
@@ -156,8 +113,6 @@ async fn init_compnents(config: &Arc<WebServeConfig>) {
     // } else {
     //     Some(setup_logs())
     // };
-
-    log::info!("Starting the Mywebnote :: {}", GIT_VERSION);
 }
 
 #[allow(unused)]
@@ -167,9 +122,7 @@ async fn start_mgmt_server(
 ) -> JoinHandle<()> {
     let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
-    let app: Router = Router::new()
-        .route("/metrics", get(metrics::metrics))
-        .layer(prometheus_layer);
+    let app: Router = Router::new().route("/metrics", get(handle_metrics)).layer(prometheus_layer);
 
     let bind_addr = config.server.mgmt_bind.clone();
     info!("Starting Management server on {}", bind_addr);

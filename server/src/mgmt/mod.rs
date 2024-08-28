@@ -21,6 +21,4 @@
  */
 
 pub mod health;
-pub mod logging;
-pub mod metrics;
-pub mod otel;
+pub mod apm;
