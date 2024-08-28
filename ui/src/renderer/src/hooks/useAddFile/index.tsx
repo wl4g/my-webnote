@@ -28,9 +28,9 @@ export default function useAddFile({ onAdd }: Props) {
 
       const file = await menuIndexeddbStorage.addFile(_folderId, type);
 
-      if (type === 'board') {
+      if (type === 'Board') {
         await boardIndexeddbStorage.addBoard(file.id, DEFAULT_BORAD_DATA);
-      } else if (type === 'note') {
+      } else if (type === 'Note') {
         await blocksuiteStorage.addPage(file.id);
       }
 

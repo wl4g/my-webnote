@@ -28,7 +28,7 @@ export default function useFolderContextMenu(props: Props) {
         icon: <FileType className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          addFile(folder.id, 'note', fileTree);
+          addFile(folder.id, 'Note', fileTree);
         }
       },
       {
@@ -37,7 +37,7 @@ export default function useFolderContextMenu(props: Props) {
         icon: <Palette className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          addFile(folder.id, 'board', fileTree);
+          addFile(folder.id, 'Board', fileTree);
         }
       },
       {

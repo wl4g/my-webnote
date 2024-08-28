@@ -62,7 +62,7 @@ export default function OperationBar(props: Props) {
         className="operation-item flex items-center mr-3 cursor-pointer"
         onClick={(e) => {
           e.stopPropagation();
-          addFile(folderId, 'board', fileTree);
+          addFile(folderId, 'Board', fileTree);
         }}
       >
         <Palette className={`${getSizeClassName()} text-current cursor-pointer menu-icon`} />
@@ -73,7 +73,7 @@ export default function OperationBar(props: Props) {
         className="operation-item flex items-center mr-3 cursor-pointer"
         onClick={(e) => {
           e.stopPropagation();
-          addFile(folderId, 'note', fileTree);
+          addFile(folderId, 'Note', fileTree);
         }}
       >
         <FileType className={`${getSizeClassName()} text-current cursor-pointer menu-icon`} />

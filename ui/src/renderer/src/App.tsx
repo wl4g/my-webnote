@@ -23,9 +23,9 @@ function App(): JSX.Element {
 
   const renderContent = useCallback((file) => {
     switch (file?.type) {
-      case 'note':
+      case 'Note':
         return <NoteEditor file={file} />;
-      case 'board':
+      case 'Board':
         return <RevedrawApp file={file} />;
       default:
         return <WelcomePage />;

@@ -39,6 +39,7 @@ hex = "0.4.3"
 #rand = "0.8.5"
 # syrette = "0.5.1"
 mimalloc = { version = "0.1.43", default-features = false }
+local-ip-address = "0.6.1"
 #
 # Config libs.
 config = "0.14.0"
@@ -75,11 +76,14 @@ opentelemetry-http = { version = "0.12.0" }
 tokio = { version = "1.38.0", features = ["full", "tracing"] }
 # Async core trait polymorphism libs.
 async-trait = "0.1.81"
+#
+# APM libs.
 # Notice: Use optional dependencies to avoid slow automatic compilation during debugging
 # (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
 # will invalidate the compile-time cache).
 console-subscriber = { version = "0.3.0", optional = true }
-#tokio-console = "0.1.11"
+pyroscope = { version = "0.5.6", optional = true}
+pyroscope_pprofrs = { version = "0.2.5", optional = true }
 #
 # Web HTTP libs.
 axum = { version = "0.7.5" }
@@ -141,7 +145,7 @@ chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 # (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
 # will invalidate the compile-time cache).
 tokio-console = ["console-subscriber"]
-profiling = []
+profiling = ["dep:pyroscope", "dep:pyroscope_pprofrs"]
 
 [[bin]]
 name = "mywebnote"

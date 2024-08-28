@@ -20,16 +20,25 @@
  * This includes modifications and derived works.
  */
 
-pub mod auths;
-pub mod cgroup;
-pub mod httpclients;
-pub mod mems;
-pub mod inets;
-pub mod ethers;
-pub mod rsa_ciphers;
-pub mod serde_beans;
-pub mod oauth2;
-pub mod oidcs;
-pub mod snowflake;
-pub mod types;
-pub mod webs;
+use std::net::{ IpAddr, Ipv4Addr };
+use local_ip_address::local_ip;
+
+pub fn get_local_non_loopback_ip_str() -> String {
+    get_local_non_loopback_ip()
+        .map(|ip| ip.to_string())
+        .unwrap_or_default()
+}
+
+pub fn get_local_non_loopback_ip() -> Option<Ipv4Addr> {
+    match local_ip() {
+        Ok(ip) => {
+            match ip {
+                IpAddr::V4(ipv4) => {
+                    if !ipv4.is_loopback() { Some(ipv4) } else { None }
+                }
+                IpAddr::V6(_) => None, // Our care the IPv4
+            }
+        }
+        Err(_) => None,
+    }
+}

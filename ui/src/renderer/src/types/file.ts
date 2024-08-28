@@ -12,7 +12,7 @@ export interface MyWebnoteFolderFileMapping {
   gmtModified: string;
 }
 
-export type MyWebnoteFileType = 'note' | 'board';
+export type MyWebnoteFileType = 'Note' | 'Board';
 
 export interface MyWebnoteFile {
   id: string;

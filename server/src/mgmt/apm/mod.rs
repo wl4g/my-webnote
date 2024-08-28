@@ -32,6 +32,7 @@ use crate::mgmt::apm::otel::create_otel_tracer;
 pub mod logging;
 pub mod metrics;
 pub mod otel;
+pub mod profiling;
 
 pub async fn init_components(
     config: &Arc<WebServeConfig>

@@ -247,6 +247,8 @@ pub struct MgmtProperties {
     pub enabled: bool,
     #[serde(default = "TokioConsoleProperties::default", rename = "tokio-console")]
     pub tokio_console: TokioConsoleProperties,
+    #[serde(default = "PyroscopeAgentProperties::default", rename = "tokio-console")]
+    pub pyroscope: PyroscopeAgentProperties,
     #[serde(default = "OtelProperties::default")]
     pub otel: OtelProperties,
 }
@@ -258,6 +260,18 @@ pub struct TokioConsoleProperties {
     #[serde(rename = "server-bind")]
     pub server_bind: String,
     pub retention: u64,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct PyroscopeAgentProperties {
+    pub enabled: bool,
+    #[serde(rename = "server-url")]
+    pub server_url: String,
+    #[serde(rename = "auth-token")]
+    pub auth_token: Option<String>,
+    pub tags: Option<Vec<(String, String)>>,
+    #[serde(rename = "sample-rate")]
+    pub sample_rate: f32,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -484,6 +498,7 @@ impl Default for MgmtProperties {
         MgmtProperties {
             enabled: true,
             tokio_console: TokioConsoleProperties::default(),
+            pyroscope: PyroscopeAgentProperties::default(),
             otel: OtelProperties::default(),
         }
     }
@@ -495,6 +510,18 @@ impl Default for TokioConsoleProperties {
             enabled: true,
             server_bind: String::from("0.0.0.0:6669"),
             retention: 60,
+        }
+    }
+}
+
+impl Default for PyroscopeAgentProperties {
+    fn default() -> Self {
+        PyroscopeAgentProperties {
+            enabled: true,
+            server_url: String::from("http://127.0.0.1:4040"),
+            auth_token: None,
+            tags: None,
+            sample_rate: 0.1,
         }
     }
 }

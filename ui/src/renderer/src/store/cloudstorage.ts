@@ -6,10 +6,17 @@ export class CloudStorageService implements IStorageService {
     this.apiUrl = apiUrl;
   }
 
+  async saveFolder(folderKey: string, folderName: string): Promise<void> {
+    this.doRequest('POST', '/modules/folder/save', {
+      key: folderKey,
+      name: folderName
+    });
+  }
+
   async searchFileNames(): Promise<string[]> {
     const data = {};
-    return this.doRequest('GET', '/modules/document/list', data).then((res) => {
-      return [res];
+    return this.doRequest('GET', '/modules/document/query', data).then((res) => {
+      return res.data.map((doc) => doc.folder_key);
     });
   }
 
@@ -17,19 +24,29 @@ export class CloudStorageService implements IStorageService {
     const data = {
       docNames: docNames
     };
-    this.doRequest('POST', '/document/save', data);
+    this.doRequest('POST', '/modules/document/save', data);
   }
 
-  async saveCurrentFile(fileId: string | undefined | null): Promise<void> {
+  async saveCurrentFile(
+    fileKey: string,
+    fileType: string,
+    fileName: string | undefined | null,
+    folderKey: string,
+    content: string
+  ): Promise<void> {
     const data = {
-      fileId: fileId
+      key: fileKey,
+      type: fileType,
+      name: fileName,
+      folderKey: folderKey,
+      content: content
     };
-    this.doRequest('POST', '/document/current-save', data);
+    this.doRequest('POST', '/modules/document/save', data);
   }
 
   async loadCurrentFile(): Promise<string | null> {
     const data = {};
-    return this.doRequest('GET', '/document/current-get', data);
+    return this.doRequest('GET', '/modules/document/query', data);
   }
 
   async loadBoardCustomFont(): Promise<string | null> {
@@ -67,12 +84,12 @@ export class CloudStorageService implements IStorageService {
     const data = {
       langCode: langCode
     };
-    this.doRequest('POST', '/setting/lang/save', data);
+    this.doRequest('POST', '/sys/user/current', data);
   }
 
   async loadLangCode(): Promise<string | null> {
     const data = {};
-    return this.doRequest('GET', '/settings/lang/get', data);
+    return this.doRequest('GET', '/sys/user/current', data);
   }
 
   private async doRequest(method: string, path: string, data: object): Promise<string> {
@@ -105,5 +122,5 @@ export class CloudStorageService implements IStorageService {
 }
 
 // If in electron env the location.origin is 'file://'
-export const API_URI = location.origin != 'file://' ? 'http://localhost:4523' : location.origin;
-export const cloudStorageService: CloudStorageService = new CloudStorageService(API_URI + '/m1/4058706-0-default/api/v1');
+export const API_URI = location.origin == 'file://' ? 'http://localhost:5173' : '/serve';
+export const cloudStorageService = new CloudStorageService(API_URI);

@@ -60,59 +60,6 @@ use crate::route::settings::init as settings_router;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[allow(unused)]
-async fn init_compnents(config: &Arc<WebServeConfig>) {
-    // Setup APM components.
-    apm::init_components(&config).await;
-
-    // // Setup profiling
-    // #[cfg(feature = "profiling")]
-    // let agent = if !cfg.profiling.enabled {
-    //     None
-    // } else {
-    //     let agent = PyroscopeAgent::builder(&cfg.profiling.server_url, &cfg.profiling.project_name)
-    //         .tags(
-    //             [
-    //                 ("role", cfg.common.node_role.as_str()),
-    //                 ("instance", cfg.common.instance_name.as_str()),
-    //                 ("version", VERSION),
-    //             ].to_vec()
-    //         )
-    //         .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
-    //         .build()
-    //         .expect("Failed to setup pyroscope agent");
-    //     #[cfg(feature = "profiling")]
-    //     let agent_running = agent.start().expect("Failed to start pyroscope agent");
-    //     Some(agent_running)
-    // };
-
-    // // Setup logs
-    // #[cfg(feature = "tokio-console")]
-    // let enable_tokio_console = true;
-    // #[cfg(not(feature = "tokio-console"))]
-    // let enable_tokio_console = false;
-    // let _guard: Option<WorkerGuard> = if enable_tokio_console {
-    //     None
-    // } else if cfg.log.events_enabled {
-    //     let logger = zo_logger::ZoLogger {
-    //         sender: zo_logger::EVENT_SENDER.clone(),
-    //     };
-    //     log
-    //         ::set_boxed_logger(Box::new(logger))
-    //         .map(|()| {
-    //             log::set_max_level(
-    //                 LevelFilter::from_str(&cfg.log.level).unwrap_or(LevelFilter::Info)
-    //             )
-    //         })?;
-    //     None
-    // } else if cfg.common.tracing_enabled || cfg.common.tracing_search_enabled {
-    //     enable_tracing()?;
-    //     None
-    // } else {
-    //     Some(setup_logs())
-    // };
-}
-
-#[allow(unused)]
 async fn start_mgmt_server(
     config: &Arc<WebServeConfig>,
     signal_sender: oneshot::Sender<()>
@@ -217,16 +164,26 @@ fn print_launch_resume(config: &Arc<WebServeConfig>) {
 "#;
     eprintln!("");
     eprintln!("{}", ascii_name);
-    eprintln!("               Program Version: {:?}", GIT_VERSION);
-    eprintln!("               Package Version: {:?}", env!("CARGO_PKG_VERSION").to_string());
-    eprintln!("               Git Commit Hash: {:?}", GIT_COMMIT_HASH);
-    eprintln!("                Git Build Date: {:?}", GIT_BUILD_DATE);
+    eprintln!("                Program Version: {:?}", GIT_VERSION);
+    eprintln!("                Package Version: {:?}", env!("CARGO_PKG_VERSION").to_string());
+    eprintln!("                Git Commit Hash: {:?}", GIT_COMMIT_HASH);
+    eprintln!("                 Git Build Date: {:?}", GIT_BUILD_DATE);
     let path = env::var("APP_CFG_PATH").unwrap_or("none".to_string());
-    eprintln!("              Config file path: {:?}", path);
-    eprintln!("          Web Server listen on: \"{}://{}\"", "http", &config.server.bind);
-    eprintln!("   Management Server listen on: \"{}://{}\"", "http", &config.server.mgmt_bind);
-    let server_addr = &config.mgmt.tokio_console.server_bind;
-    eprintln!(" TokioConsole Server listen on: \"{}://{}\"", "http", server_addr);
+    eprintln!("               Config file path: {:?}", path);
+    eprintln!("            Web Serve listen on: \"{}://{}\"", "http", &config.server.bind);
+    if config.mgmt.enabled {
+        eprintln!("     Management Serve listen on: \"{}://{}\"", "http", &config.server.mgmt_bind);
+        #[cfg(feature = "tokio-console")]
+        if config.mgmt.tokio_console.enabled {
+            let server_addr = &config.mgmt.tokio_console.server_bind;
+            eprintln!("   TokioConsole Serve listen on: \"{}://{}\"", "http", server_addr);
+        }
+        #[cfg(feature = "profiling")]
+        if config.mgmt.pyroscope.enabled {
+            let server_addr = &config.mgmt.tokio_console.server_bind;
+            eprintln!("Pyroscope Agent Serve listen on: \"{}://{}\"", "http", server_addr);
+        }
+    }
     eprintln!("");
 }
 
@@ -259,7 +216,8 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
 
     print_launch_resume(&config);
 
-    init_compnents(&config).await;
+    // Setup APM components.
+    apm::init_components(&config).await;
 
     let (signal_sender, signal_receiver) = oneshot::channel();
     let mgmt_handle = start_mgmt_server(&config, signal_sender).await;

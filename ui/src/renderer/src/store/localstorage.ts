@@ -7,6 +7,8 @@ export const LOCALSTORAGE_LANG_CODE = 'lang_code';
 export const LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH = 'board_custom_font_switch';
 
 export class LocalStorageService implements IStorageService {
+  async saveFolder(folderKey: string, folderName: string): Promise<void> {}
+
   searchFileNames(): Promise<string[]> {
     return new Promise(() => {
       const localStr = localStorage.getItem(LOCALSTORAGE_MENU_OPEN_KEYS);
@@ -19,8 +21,14 @@ export class LocalStorageService implements IStorageService {
     localStorage.setItem(LOCALSTORAGE_MENU_OPEN_KEYS, localStr);
   }
 
-  saveCurrentFile(fileId: string | undefined | null): void {
-    localStorage.setItem(LOCALSTORAGE_CURRENT_FILE_ID, fileId || '');
+  async saveCurrentFile(
+    fileKey: string,
+    fileType: string,
+    fileName: string | undefined | null,
+    folderKey: string,
+    content: string
+  ): Promise<void> {
+    localStorage.setItem(LOCALSTORAGE_CURRENT_FILE_ID, fileKey || '');
   }
 
   loadCurrentFile(): Promise<string | null> {

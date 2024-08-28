@@ -2,9 +2,16 @@ import { localStorageService } from './localstorage';
 import { cloudStorageService } from './cloudstorage';
 
 export interface IStorageService {
+  saveFolder(folderKey: string, folderName: string): Promise<void>;
   searchFileNames(): Promise<string[]>;
   saveOpenFileNames(docNames: string[]): void;
-  saveCurrentFile(fileId: string | undefined | null): void;
+  saveCurrentFile(
+    fileKey: string,
+    fileType: string,
+    fileName: string | undefined | null,
+    folderKey: string,
+    content: string
+  ): Promise<void>;
   loadCurrentFile(): Promise<string | null>;
   loadBoardCustomFont(): Promise<string | null>;
   saveBoardCustomFont(fontName: string | null): void;
@@ -30,6 +37,10 @@ export class StorageAdapter implements IStorageService {
     }
   }
 
+  async saveFolder(folderKey: string, folderName: string): Promise<void> {
+    this.delegate.saveFolder(folderKey, folderName);
+  }
+
   async searchFileNames(): Promise<string[]> {
     return this.delegate.searchFileNames();
   }
@@ -38,8 +49,14 @@ export class StorageAdapter implements IStorageService {
     this.delegate.saveOpenFileNames(docNames);
   }
 
-  async saveCurrentFile(fileId: string | undefined | null): Promise<void> {
-    this.delegate.saveCurrentFile(fileId);
+  async saveCurrentFile(
+    fileKey: string,
+    fileType: string,
+    fileName: string | undefined | null,
+    folderKey: string,
+    content: string
+  ): Promise<void> {
+    this.delegate.saveCurrentFile(fileKey, fileType, fileName, folderKey, content);
   }
 
   async loadCurrentFile(): Promise<string | null> {

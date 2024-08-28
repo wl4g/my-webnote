@@ -139,7 +139,7 @@ class MenuIndexeddbStorage {
 
   async addFile(
     folderId: string,
-    type: MyWebnoteFileType = 'note',
+    type: MyWebnoteFileType = 'Note',
     name?: string
   ): Promise<MyWebnoteFile> {
     await this.initDB();

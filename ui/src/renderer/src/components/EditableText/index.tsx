@@ -62,9 +62,9 @@ export default function EditableText({
 
   const getMark = useCallback((type) => {
     switch (type) {
-      case 'note':
+      case 'Note':
         return <FileType className="w-4 mr-2" />;
-      case 'board':
+      case 'Board':
         return <Palette className="w-4 mr-2" />;
     }
     return null;

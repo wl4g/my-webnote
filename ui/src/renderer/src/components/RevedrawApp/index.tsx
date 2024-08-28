@@ -8,6 +8,7 @@ import { currentFileAtom, fileTreeAtom, langCodeAtom } from '@renderer/store/jot
 import { useAtom } from 'jotai';
 import { getOSName } from '@renderer/utils/navigator';
 import { getFileIdOrNameFromLink } from '@renderer/utils/file';
+import { storageAdapter } from '../../store/storage';
 
 import './index.css';
 
@@ -61,8 +62,17 @@ export default function RevedrawApp({ file }: Props) {
   const onChangeFn = useCallback(
     async (data) => {
       const str = JSON.stringify(data);
-
       await boardIndexeddbStorage.addOrUpdateBoard(file.id, str);
+
+      // TODO:
+      console.log('onChangeFn() -> addOrUpdateBoard() :: file: ', file, ' data:', data);
+      await storageAdapter.saveCurrentFile(
+        file.id,
+        file.type,
+        file.name,
+        'xxxxxx-see-onFolderOrFileAdd',
+        str
+      );
     },
     [file.id]
   );

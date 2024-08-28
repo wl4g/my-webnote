@@ -129,8 +129,9 @@ export default function CustomMenu({ collapsed }: Props) {
     if (firstRenderRef.current === false) return;
     const saveCurrentFile = async () => {
       try {
-        await storageAdapter.saveCurrentFile(currentFile?.id);
         setSelectedKeys(currentFile?.id ? [currentFile.id] : []);
+        // TODO:
+        //await storageAdapter.saveCurrentFile(currentFile?.id);
       } catch (error) {
         console.error('Error saving current file:', error);
       }
@@ -150,10 +151,10 @@ export default function CustomMenu({ collapsed }: Props) {
       console.log('onDeletedFile :: file:', file);
 
       switch (file.type) {
-        case 'board':
+        case 'Board':
           await boardIndexeddbStorage.deleteBoard(file.id);
           break;
-        case 'note':
+        case 'Note':
           await blocksuiteStorage.deletePage(file.id);
           break;
       }
@@ -245,6 +246,9 @@ export default function CustomMenu({ collapsed }: Props) {
       setCurrentFile(file);
       setCurrentFolderId(folderId);
       addSelectedKeys([key, folderId]);
+
+      // TODO:
+      //storageAdapter.saveCurrentFile(fileId, file?.type || '', file?.name, folderId);
     },
     [fileTree, resetMenu, setCurrentFile, setCurrentFolderId, addSelectedKeys]
   );
@@ -259,6 +263,13 @@ export default function CustomMenu({ collapsed }: Props) {
       setSelectedKeys([file.id]);
       setCurrentFile({ ...file, name: text });
       await getFileTree();
+
+      await storageAdapter.saveCurrentFile(
+        file.id,
+        file.type,
+        text,
+        'xxxxxx-see-onFolderOrFileAdd' // TODO:
+      );
     },
     [setCurrentFile, getFileTree]
   );
@@ -268,6 +279,8 @@ export default function CustomMenu({ collapsed }: Props) {
 
     await menuIndexeddbStorage.updateFolderName(folder, text);
     updateEditableTextState(folder.id, true);
+
+    await storageAdapter.saveFolder(folder.id, text);
   }, []);
 
   const onEditableTextEdit = useCallback((id: string) => {

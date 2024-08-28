@@ -28,7 +28,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "[api] [no-deps: tokio-console] default config",
+            "name": "[api] [no-deps: tokio-console,profiling] default config",
             "cargo": {
                 "args": [
                     "build",
@@ -52,7 +52,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "[api] [no-deps: tokio-console] no config",
+            "name": "[api] [no-deps: tokio-console,profiling] no config",
             "cargo": {
                 "args": [
                     "build",
@@ -75,12 +75,13 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "[api] [deps: tokio-console] default config",
+            "name": "[api] [deps: tokio-console,profiling] default config",
             "cargo": {
                 "args": [
                     "build",
                     "--features",
                     "tokio-console",
+                    "profiling",
                     "--bin=mywebnote",
                     "--package=mywebnote"
                 ],
@@ -106,12 +107,13 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "[api] [deps: tokio-console] no config",
+            "name": "[api] [deps: tokio-console,profiling] no config",
             "cargo": {
                 "args": [
                     "build",
                     "--features",
                     "tokio-console",
+                    "profiling",
                     "--bin=mywebnote",
                     "--package=mywebnote"
                 ],

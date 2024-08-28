@@ -120,6 +120,11 @@ mgmt:
     enabled: true
     server-bind: "0.0.0.0:6669"
     retention: 60
+  pyroscope:
+    enabled: true
+    server-url: "http://localhost:4040"
+    tags: []
+    sample-rate: 0.1
   # Notice: More OTEL custom configuration use to env: OTEL_SPAN_xxx, see: opentelemetry_sdk::trace::config::default()
   otel:
     enabled: true
