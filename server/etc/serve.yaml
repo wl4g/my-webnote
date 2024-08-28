@@ -121,6 +121,8 @@ mgmt:
     server-bind: "0.0.0.0:6669"
     retention: 60
   pyroscope:
+    # Because of known-issues: https://github.com/grafana/pyroscope-rs/issues/174
+    # https://github.com/tikv/pprof-rs/issues/232 Therefore it is not enabled by default for now.
     enabled: false
     server-url: "http://localhost:4040"
     tags: []
