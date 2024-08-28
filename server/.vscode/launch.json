@@ -32,8 +32,6 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=mywebnote",
-                    "--package=mywebnote"
                 ],
                 "filter": {
                     "name": "mywebnote",
@@ -56,8 +54,6 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=mywebnote",
-                    "--package=mywebnote"
                 ],
                 "filter": {
                     "name": "mywebnote",
@@ -80,10 +76,7 @@
                 "args": [
                     "build",
                     "--features",
-                    "tokio-console",
-                    "profiling",
-                    "--bin=mywebnote",
-                    "--package=mywebnote"
+                    "tokio-console,profiling",
                 ],
                 "filter": {
                     "name": "mywebnote",
@@ -112,10 +105,7 @@
                 "args": [
                     "build",
                     "--features",
-                    "tokio-console",
-                    "profiling",
-                    "--bin=mywebnote",
-                    "--package=mywebnote"
+                    "tokio-console,profiling",
                 ],
                 "filter": {
                     "name": "mywebnote",

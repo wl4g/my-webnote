@@ -22,7 +22,6 @@
 
 use std::sync::Arc;
 
-use logging::{ LogRouteHandle, LogStderrHandle };
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -34,17 +33,12 @@ pub mod metrics;
 pub mod otel;
 pub mod profiling;
 
-pub async fn init_components(
-    config: &Arc<WebServeConfig>
-) -> anyhow::Result<(LogRouteHandle, LogStderrHandle)> {
-    // Setup custom metrics.
-    metrics::init_metrics(config).await;
-
+pub async fn init_components(config: &Arc<WebServeConfig>) {
     // Setup logging+tracing layers.
-    let (route_layer, route_layer_handle) = tracing_subscriber::reload::Layer::new(
+    let (route_layer, _) = tracing_subscriber::reload::Layer::new(
         logging::default_log_route_layer()
     );
-    let (stderr_layer, stderr_layer_handle) = tracing_subscriber::reload::Layer::new(
+    let (stderr_layer, _) = tracing_subscriber::reload::Layer::new(
         logging::default_log_stderr_layer(config)
     );
     let level_layer = logging::default_log_levels_layer();
@@ -61,7 +55,7 @@ pub async fn init_components(
     let subscriber = subscriber.with(otel_layer);
 
     // Setup profiling for tokio-console layers.
-    if config.mgmt.tokio_console.enabled {
+    if config.mgmt.enabled && config.mgmt.tokio_console.enabled {
         // Notice: Use optional dependencies to avoid slow auto compilation during debugg, because if rely
         // on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
         // will invalidate the compile-time cache.
@@ -86,5 +80,9 @@ pub async fn init_components(
         tracing::subscriber::set_global_default(subscriber).unwrap();
     }
 
-    Ok((route_layer_handle, stderr_layer_handle))
+    // Setup custom metrics.
+    metrics::init_metrics(config).await;
+
+    // Setup profiling.
+    profiling::init_profiling(config).await;
 }

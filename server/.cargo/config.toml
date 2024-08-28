@@ -1,3 +1,12 @@
+[build]
+# Enable experimental, but invalid?
+# valid command-line: RUSTFLAGS="--cfg tokio_unstable" && cargo build
+# see:https://github.com/wl4g-collect/tokio-rs-console/tree/main/console-subscriber#enabling-tokio-instrumentation
+rustflags = ["--cfg", "tokio_unstable"]
+
+# [env]
+# RUSTFLAGS = "--cfg tokio_unstable"
+#
 [target.x86_64-unknown-linux-gnu]
 rustflags = ["-C", "target-feature=+aes,+sse2,+ssse3,+sse4.1,+sse4.2"]
 

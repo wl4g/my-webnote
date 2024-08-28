@@ -22,6 +22,7 @@
 
 use std::env;
 use std::sync::Arc;
+use clap::Arg;
 use clap::Command;
 
 use tower::ServiceBuilder;
@@ -146,9 +147,10 @@ async fn start_server(config: &Arc<WebServeConfig>) {
 fn on_panic(info: &std::panic::PanicInfo) {
     let info = info.to_string().replace('\n', " ");
     tracing::error!(%info);
+    eprintln!(":: Panic Error ::\n{}", info)
 }
 
-fn print_launch_resume(config: &Arc<WebServeConfig>) {
+fn print_launch_resume(config: &Arc<WebServeConfig>, verbose: bool) {
     // http://www.network-science.de/ascii/#larry3d,graffiti,basic,drpepper,rounded,roman
     let ascii_name =
         r#"
@@ -169,34 +171,45 @@ fn print_launch_resume(config: &Arc<WebServeConfig>) {
     eprintln!("                Git Commit Hash: {:?}", GIT_COMMIT_HASH);
     eprintln!("                 Git Build Date: {:?}", GIT_BUILD_DATE);
     let path = env::var("APP_CFG_PATH").unwrap_or("none".to_string());
-    eprintln!("               Config file path: {:?}", path);
+    eprintln!("        Configuration file path: {:?}", path);
     eprintln!("            Web Serve listen on: \"{}://{}\"", "http", &config.server.bind);
     if config.mgmt.enabled {
-        eprintln!("     Management Serve listen on: \"{}://{}\"", "http", &config.server.mgmt_bind);
-        #[cfg(feature = "tokio-console")]
+        eprintln!("     Management serve listen on: \"{}://{}\"", "http", &config.server.mgmt_bind);
         if config.mgmt.tokio_console.enabled {
+            #[cfg(feature = "tokio-console")]
             let server_addr = &config.mgmt.tokio_console.server_bind;
-            eprintln!("   TokioConsole Serve listen on: \"{}://{}\"", "http", server_addr);
+            #[cfg(feature = "tokio-console")]
+            eprintln!("   TokioConsole serve listen on: \"{}://{}\"", "http", server_addr);
         }
-        #[cfg(feature = "profiling")]
         if config.mgmt.pyroscope.enabled {
-            let server_addr = &config.mgmt.tokio_console.server_bind;
-            eprintln!("Pyroscope Agent Serve listen on: \"{}://{}\"", "http", server_addr);
+            #[cfg(feature = "profiling")]
+            let server_url = &config.mgmt.pyroscope.server_url;
+            #[cfg(feature = "profiling")]
+            eprintln!("     Pyroscope agent connect to: \"{}\"", server_url);
         }
+        if config.mgmt.otel.enabled {
+            let endpoint = &config.mgmt.otel.endpoint;
+            eprintln!("          Otel agent connect to: \"{}\"", endpoint);
+        }
+    }
+    if verbose {
+        let config_json = serde_json::to_string(&config.inner).unwrap_or_default();
+        eprintln!("Configuration loaded: {}", config_json);
     }
     eprintln!("");
 }
 
 pub fn build_cli() -> Command {
-    Command::new("serve").about("My Webnote web server.")
-    // //.arg_required_else_help(true) // When no args are provided, show help.
-    // .arg(
-    //     Arg::new("config")
-    //         .short('c')
-    //         .long("config")
-    //         .help("Web Server configuration path.")
-    //         .value_name("FILE")
-    // )
+    Command::new("serve")
+        .about("My Webnote web server.")
+        //.arg_required_else_help(true) // When no args are provided, show help.
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(clap::ArgAction::SetTrue)
+                .help("Verbose output.")
+        )
 }
 
 #[allow(unused)]
@@ -204,17 +217,11 @@ pub fn build_cli() -> Command {
 pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
     std::panic::set_hook(Box::new(on_panic));
 
-    //let config_path = matches
-    //    .get_one::<String>("config")
-    //    .map(std::path::PathBuf::from)
-    //    // .unwrap_or_else(|| std::path::PathBuf::from("/etc/serve.yaml"))
-    //    .unwrap_or_default()
-    //    .to_string_lossy()
-    //    .into_owned();
+    let verbose = matches.get_flag("verbose");
 
     let config = config_serve::get_config();
 
-    print_launch_resume(&config);
+    print_launch_resume(&config, verbose);
 
     // Setup APM components.
     apm::init_components(&config).await;

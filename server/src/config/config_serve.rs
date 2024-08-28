@@ -26,7 +26,7 @@ use anyhow::Ok;
 use arc_swap::ArcSwap;
 use globset::{ Glob, GlobSet, GlobSetBuilder };
 use once_cell::sync::Lazy;
-use serde::Deserialize;
+use serde::{ Deserialize, Serialize };
 // use std::fs::File;
 // use std::io::Read;
 // use std::path::Path;
@@ -35,7 +35,7 @@ use validator::Validate;
 
 use crate::mgmt::{ health::HEALTHZ_URI, apm::logging::LogMode };
 
-#[derive(Debug, Deserialize, Clone, Validate)]
+#[derive(Debug, Serialize, Deserialize, Clone, Validate)]
 pub struct WebServeProperties {
     #[serde(rename = "service-name")]
     #[validate(length(min = 1, max = 32))]
@@ -56,7 +56,7 @@ pub struct WebServeProperties {
     pub mgmt: MgmtProperties,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerProperties {
     pub bind: String,
     #[serde(rename = "mgmt-bind")]
@@ -69,20 +69,20 @@ pub struct ServerProperties {
     pub cors: CorsProperties,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CorsProperties {
     pub hosts: Vec<String>,
     pub headers: Vec<String>,
     pub methods: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoggingProperties {
     pub mode: LogMode,
     pub level: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbProperties {
     #[serde(rename = "type")]
     pub db_type: DbType,
@@ -90,38 +90,38 @@ pub struct DbProperties {
     pub mongo: MongoProperties,
 }
 
-#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum DbType {
     Sqlite,
     Mongo,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SqliteProperties {
     pub dir: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MongoProperties {
     pub url: Option<String>,
     pub database: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CacheProperties {
     pub provider: CacheProvider,
     pub memory: MemoryProperties,
     pub redis: RedisProperties,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum CacheProvider {
     Memory,
     Redis,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemoryProperties {
     #[serde(rename = "initial-capacity")]
     pub initial_capacity: Option<u32>,
@@ -132,7 +132,7 @@ pub struct MemoryProperties {
     pub eviction_policy: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedisProperties {
     pub nodes: Vec<String>,
     pub username: Option<String>,
@@ -150,7 +150,7 @@ pub struct RedisProperties {
     pub read_from_replicas: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AuthProperties {
     #[serde(rename = "jwt-ak-name")]
     pub jwt_ak_name: Option<String>,
@@ -174,7 +174,7 @@ pub struct AuthProperties {
     pub unauthz_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OidcProperties {
     pub enabled: Option<bool>,
     #[serde(rename = "client-id")]
@@ -191,7 +191,7 @@ pub struct OidcProperties {
 
 // see:https://github.com/settings/developers
 // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OAuth2Properties {
     pub enabled: Option<bool>,
     #[serde(rename = "client-id")]
@@ -213,7 +213,7 @@ pub struct OAuth2Properties {
 
 // see:https://github.com/settings/developers
 // see:https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GithubProperties(OAuth2Properties);
 
 // Copy all OAuth2Config functions to GithubConfig.
@@ -225,7 +225,7 @@ impl Deref for GithubProperties {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SwaggerProperties {
     pub enabled: bool,
     // pub title: String,
@@ -242,18 +242,18 @@ pub struct SwaggerProperties {
     pub swagger_openapi_url: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MgmtProperties {
     pub enabled: bool,
     #[serde(default = "TokioConsoleProperties::default", rename = "tokio-console")]
     pub tokio_console: TokioConsoleProperties,
-    #[serde(default = "PyroscopeAgentProperties::default", rename = "tokio-console")]
+    #[serde(default = "PyroscopeAgentProperties::default")]
     pub pyroscope: PyroscopeAgentProperties,
     #[serde(default = "OtelProperties::default")]
     pub otel: OtelProperties,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TokioConsoleProperties {
     pub enabled: bool,
     //#[env_config(name = "MW_TOKIO_CONSOLE_SERVER_BIND", default = "0.0.0.0:6699")]
@@ -262,7 +262,7 @@ pub struct TokioConsoleProperties {
     pub retention: u64,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PyroscopeAgentProperties {
     pub enabled: bool,
     #[serde(rename = "server-url")]
@@ -274,7 +274,7 @@ pub struct PyroscopeAgentProperties {
     pub sample_rate: f32,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OtelProperties {
     pub enabled: bool,
     pub endpoint: String,

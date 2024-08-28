@@ -26,6 +26,7 @@ use crate::config::config_serve::WebServeConfig;
 #[cfg(feature = "profiling")]
 use crate::{ config::config_serve::GIT_VERSION, utils::inets };
 
+#[allow(unused)]
 pub async fn init_profiling(config: &Arc<WebServeConfig>) {
     #[cfg(feature = "profiling")]
     let agent = if config.mgmt.enabled && config.mgmt.pyroscope.enabled {

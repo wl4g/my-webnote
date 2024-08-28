@@ -121,7 +121,7 @@ mgmt:
     server-bind: "0.0.0.0:6669"
     retention: 60
   pyroscope:
-    enabled: true
+    enabled: false
     server-url: "http://localhost:4040"
     tags: []
     sample-rate: 0.1

@@ -54,11 +54,14 @@ pub async fn handle_metrics() -> String {
 
 #[allow(unused)]
 pub async fn init_metrics(config: &Arc<WebServeConfig>) {
-    REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect(
-        "collector can be registered"
-    );
-    REGISTRY.register(Box::new(MY_HTTP_REQUEST_DURATION.clone())).expect(
-        "collector can be registered"
-    );
-    // Register more metrics...
+    if config.mgmt.enabled {
+        tracing::info!("Custom metrics starting ...");
+        REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect(
+            "collector can be registered"
+        );
+        REGISTRY.register(Box::new(MY_HTTP_REQUEST_DURATION.clone())).expect(
+            "collector can be registered"
+        );
+        // Register more metrics...
+    }
 }
