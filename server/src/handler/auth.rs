@@ -15,19 +15,19 @@ use crate::{
     config::config_serve::WebServeConfig,
     context::state::AppState,
     types::{
-        auths::{
+        auth::{
             EthersWalletLoginRequest,
             GithubUserInfo,
             LogoutRequest,
             PasswordLoginRequest,
             PasswordPubKeyRequest,
         },
-        users::{ SaveUserRequest, User },
+        user::{ SaveUserRequest, User },
     },
     utils::{ self, auths, rsa_ciphers::RSACipher },
 };
 
-use super::users::{ IUserHandler, UserHandler };
+use super::user::{ IUserHandler, UserHandler };
 
 pub const AUTH_NONCE_PREFIX: &'static str = "auth:nonce:";
 pub const LOGIN_PRIVATE_KEY_PREFIX: &'static str = "login:privatekey:";

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{ Error, Ok };
 use axum::async_trait;
 use crate::context::state::AppState;
-use crate::types::users::{
+use crate::types::user::{
     DeleteUserRequest,
     QueryUserRequest,
     SaveUserRequest,

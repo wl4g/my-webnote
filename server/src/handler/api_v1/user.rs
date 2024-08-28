@@ -8,7 +8,7 @@ use crate::types::api_v1::users::{
     QueryUserApiV1Request,
     SaveUserApiV1Request,
 };
-use crate::types::users::User;
+use crate::types::user::User;
 use crate::types::{ PageRequest, PageResponse };
 
 #[async_trait]

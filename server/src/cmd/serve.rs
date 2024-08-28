@@ -50,14 +50,14 @@ use crate::config::config_serve;
 use crate::config::config_serve::WebServeConfig;
 use crate::config::swagger;
 use crate::context::state::AppState;
-use crate::monitoring::otel::create_otel_tracer;
-use crate::monitoring::health::init as health_router;
-use crate::routes::auths::auth_middleware;
-use crate::routes::auths::init as auth_router;
-use crate::routes::users::init as user_router;
-use crate::routes::documents::init as document_router;
-use crate::routes::folders::init as folder_router;
-use crate::routes::settings::init as settings_router;
+use crate::mgmt::otel::create_otel_tracer;
+use crate::mgmt::health::init as health_router;
+use crate::route::auths::auth_middleware;
+use crate::route::auths::init as auth_router;
+use crate::route::user::init as user_router;
+use crate::route::document::init as document_router;
+use crate::route::folder::init as folder_router;
+use crate::route::settings::init as settings_router;
 
 lazy_static! {
     pub static ref REGISTRY: Registry = Registry::new();
@@ -77,7 +77,15 @@ lazy_static! {
 }
 
 #[allow(unused)]
-async fn init_custom_metrics(config: &Arc<WebServeConfig>) {
+async fn metrics() -> String {
+    let encoder = TextEncoder::new();
+    let mut buffer = Vec::new();
+    encoder.encode(&REGISTRY.gather(), &mut buffer).unwrap();
+    String::from_utf8(buffer).unwrap()
+}
+
+#[allow(unused)]
+async fn register_custom_metrics(config: &Arc<WebServeConfig>) {
     REGISTRY.register(Box::new(MY_HTTP_REQUESTS_TOTAL.clone())).expect(
         "collector can be registered"
     );
@@ -88,16 +96,8 @@ async fn init_custom_metrics(config: &Arc<WebServeConfig>) {
 }
 
 #[allow(unused)]
-async fn metrics() -> String {
-    let encoder = TextEncoder::new();
-    let mut buffer = Vec::new();
-    encoder.encode(&REGISTRY.gather(), &mut buffer).unwrap();
-    String::from_utf8(buffer).unwrap()
-}
-
-#[allow(unused)]
-async fn init_tracing(config: &Arc<WebServeConfig>) {
-    // Intialize setup logger levels.
+async fn init_compnents(config: &Arc<WebServeConfig>) {
+    // Setup logger.
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "debug".into())
         // .add_directive("debug".parse().unwrap()) // default level.
@@ -117,13 +117,12 @@ async fn init_tracing(config: &Arc<WebServeConfig>) {
     // Add OpenTelemetry layer if available.
     let subscriber = subscriber.with(otel_layer);
 
-    // Add console layer if feature is enabled.
+    // Setup tokio-console layer if feature is enabled.
     // Notice: Use optional dependencies to avoid slow automatic compilation during debugging
     // (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
     // will invalidate the compile-time cache).
     #[cfg(feature = "tokio-console")]
     let subscriber = subscriber.with(ConsoleLayer::builder().with_default_env().spawn());
-
     subscriber.init();
 }
 
@@ -212,16 +211,15 @@ async fn start_server(config: &Arc<WebServeConfig>) {
 }
 
 pub fn build_cli() -> Command {
-    Command::new("serve")
-        .about("My Webnote web server.")
-        // .arg_required_else_help(true) // When no args are provided, show help.
-        .arg(
-            Arg::new("config")
-                .short('c')
-                .long("config")
-                .help("Web Server configuration path.")
-                .value_name("FILE")
-        )
+    Command::new("serve").about("My Webnote web server.")
+    // //.arg_required_else_help(true) // When no args are provided, show help.
+    // .arg(
+    //     Arg::new("config")
+    //         .short('c')
+    //         .long("config")
+    //         .help("Web Server configuration path.")
+    //         .value_name("FILE")
+    // )
 }
 
 #[allow(unused)]
@@ -237,8 +235,7 @@ pub async fn handle_cli(matches: &clap::ArgMatches) -> () {
 
     let config = config_serve::get_config();
 
-    init_tracing(&config).await;
-    init_custom_metrics(&config).await;
+    init_compnents(&config).await;
 
     let (signal_sender, signal_receiver) = oneshot::channel();
     let mgmt_handle = start_mgmt_server(&config, signal_sender).await;

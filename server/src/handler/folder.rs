@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{ Error, Ok };
 use axum::async_trait;
 use crate::context::state::AppState;
-use crate::types::folders::{ DeleteFolderRequest, QueryFolderRequest, SaveFolderRequest, Folder };
+use crate::types::folder::{ DeleteFolderRequest, QueryFolderRequest, SaveFolderRequest, Folder };
 use crate::types::{ PageRequest, PageResponse };
 
 #[async_trait]

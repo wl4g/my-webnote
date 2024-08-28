@@ -24,7 +24,7 @@ use anyhow::{ Error, Ok };
 use axum::async_trait;
 
 use crate::config::config_serve::DbProperties;
-use crate::types::folders::Folder;
+use crate::types::folder::Folder;
 use crate::types::PageRequest;
 use crate::types::PageResponse;
 use super::AsyncRepository;

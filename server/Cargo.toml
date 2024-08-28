@@ -139,6 +139,7 @@ common-smartcpy-macro = { path = "./components/common-smartcpy-macro" }
 # (because if rely on console-subscriber, need to enable RUSTFLAGS="--cfg tokio_unstable" which
 # will invalidate the compile-time cache).
 tokio-console = ["console-subscriber"]
+profiling = []
 
 [[bin]]
 name = "mywebnote"

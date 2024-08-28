@@ -30,8 +30,8 @@ use axum::{
 
 use crate::{
     context::state::AppState,
-    handlers::api_v1::users::{ ApiV1Handler, IApiV1Handler },
-    routes::ValidatedJson,
+    handler::api_v1::user::{ ApiV1Handler, IApiV1Handler },
+    route::ValidatedJson,
     types::{
         api_v1::users::{
             DeleteUserApiV1Request,

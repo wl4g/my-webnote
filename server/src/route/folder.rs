@@ -8,15 +8,15 @@ use axum::{
 
 use crate::{
     context::state::AppState,
-    handlers::folders::IFolderHandler,
+    handler::folder::IFolderHandler,
     types::{
-        folders::{ DeleteFolderResponse, QueryFolderResponse, SaveFolderResponse },
+        folder::{ DeleteFolderResponse, QueryFolderResponse, SaveFolderResponse },
         PageRequest,
     },
     utils::auths::SecurityContext,
 };
-use crate::handlers::folders::FolderHandler;
-use crate::types::folders::{ QueryFolderRequest, SaveFolderRequest, DeleteFolderRequest };
+use crate::handler::folder::FolderHandler;
+use crate::types::folder::{ QueryFolderRequest, SaveFolderRequest, DeleteFolderRequest };
 
 /*
  * SPDX-License-Identifier: GNU GENERAL PUBLIC LICENSE Version 3

@@ -30,14 +30,14 @@ use axum::{
 
 use crate::{
     context::state::AppState,
-    handlers::settings::ISettingsHandler,
+    handler::settings::ISettingsHandler,
     types::{
         settings::{ DeleteSettingsResponse, QuerySettingsResponse, SaveSettingsResponse },
         PageRequest,
     },
     utils::auths::SecurityContext,
 };
-use crate::handlers::settings::SettingsHandler;
+use crate::handler::settings::SettingsHandler;
 use crate::types::settings::{ QuerySettingsRequest, SaveSettingsRequest, DeleteSettingsRequest };
 
 use super::ValidatedJson;

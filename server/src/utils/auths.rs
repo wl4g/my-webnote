@@ -33,8 +33,8 @@ use tokio::sync::RwLock;
 
 use crate::{
     config::config_serve::WebServeConfig,
-    handlers::auths::PrincipalType,
-    types::auths::{ LoggedResponse, TokenWrapper },
+    handler::auth::PrincipalType,
+    types::auth::{ LoggedResponse, TokenWrapper },
     utils::webs,
 };
 

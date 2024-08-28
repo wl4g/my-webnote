@@ -29,7 +29,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use super::config_serve::{ self, WebServeConfig };
 use crate::{
-    routes::{
+    route::{
         api_v1::users::{
             __path_handle_apiv1_delete_user,
             __path_handle_apiv1_get_users,
@@ -44,12 +44,12 @@ use crate::{
             __path_handle_password_pubkey,
             __path_handle_password_verify,
         },
-        documents::{
+        document::{
             __path_handle_delete_document,
             __path_handle_query_documents,
             __path_handle_save_document,
         },
-        folders::{
+        folder::{
             __path_handle_delete_folder,
             __path_handle_query_folders,
             __path_handle_save_folder,
@@ -59,7 +59,7 @@ use crate::{
             __path_handle_query_settings,
             __path_handle_save_settings,
         },
-        users::{
+        user::{
             __path_handle_delete_user,
             __path_handle_get_current_user,
             __path_handle_post_current_user,
@@ -74,7 +74,7 @@ use crate::types::{
     BaseBean,
     PageRequest,
     PageResponse,
-    auths::{
+    auth::{
         CallbackGithubRequest,
         CallbackOidcRequest,
         PasswordPubKeyRequest,
@@ -82,7 +82,7 @@ use crate::types::{
         PasswordLoginRequest,
         LogoutRequest,
     },
-    users::{
+    user::{
         User,
         QueryUserRequest,
         QueryUserResponse,
@@ -100,7 +100,7 @@ use crate::types::{
         DeleteUserApiV1Request,
         DeleteUserApiV1Response,
     },
-    documents::{
+    document::{
         Document,
         QueryDocumentRequest,
         QueryDocumentResponse,
@@ -110,7 +110,7 @@ use crate::types::{
         DeleteDocumentResponse,
         DocumentType,
     },
-    folders::{
+    folder::{
         Folder,
         QueryFolderRequest,
         QueryFolderResponse,

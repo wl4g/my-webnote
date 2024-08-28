@@ -30,15 +30,15 @@ use axum::{
 
 use crate::{
     context::state::AppState,
-    handlers::documents::IDocumentHandler,
+    handler::document::IDocumentHandler,
     types::{
-        documents::{ DeleteDocumentResponse, QueryDocumentResponse, SaveDocumentResponse },
+        document::{ DeleteDocumentResponse, QueryDocumentResponse, SaveDocumentResponse },
         PageRequest,
     },
     utils::auths::SecurityContext,
 };
-use crate::handlers::documents::DocumentHandler;
-use crate::types::documents::{ QueryDocumentRequest, SaveDocumentRequest, DeleteDocumentRequest };
+use crate::handler::document::DocumentHandler;
+use crate::types::document::{ QueryDocumentRequest, SaveDocumentRequest, DeleteDocumentRequest };
 
 use super::ValidatedJson;
 

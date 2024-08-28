@@ -29,7 +29,7 @@ use serde::Serialize;
 use crate::{
     config::config_serve::{ CacheProvider, DbType },
     context::state::AppState,
-    types::{ users::User, PageRequest },
+    types::{ user::User, PageRequest },
 };
 
 pub(crate) const HEALTHZ_URI: &str = "/_/healthz";

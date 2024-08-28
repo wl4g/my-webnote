@@ -30,16 +30,16 @@ use axum::{
 
 use crate::{
     context::state::AppState,
-    handlers::users::IUserHandler,
+    handler::user::IUserHandler,
     types::{
-        users::{ DeleteUserResponse, QueryUserResponse, SaveUserRequestWith, SaveUserResponse },
+        user::{ DeleteUserResponse, QueryUserResponse, SaveUserRequestWith, SaveUserResponse },
         PageRequest,
         RespBase,
     },
     utils::auths::SecurityContext,
 };
-use crate::handlers::users::UserHandler;
-use crate::types::users::{ QueryUserRequest, SaveUserRequest, DeleteUserRequest };
+use crate::handler::user::UserHandler;
+use crate::types::user::{ QueryUserRequest, SaveUserRequest, DeleteUserRequest };
 
 use super::ValidatedJson;
 

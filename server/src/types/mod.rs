@@ -21,11 +21,11 @@
  */
 
 pub mod api_v1;
-pub mod auths;
-pub mod documents;
-pub mod folders;
+pub mod auth;
+pub mod document;
+pub mod folder;
 pub mod settings;
-pub mod users;
+pub mod user;
 
 use anyhow::Error;
 use hyper::StatusCode;

@@ -29,7 +29,7 @@ use mongodb::Collection;
 use mongodb::bson::doc;
 
 use crate::config::config_serve::DbProperties;
-use crate::types::documents::Document;
+use crate::types::document::Document;
 use crate::types::{ PageRequest, PageResponse };
 use super::AsyncRepository;
 use super::mongo::MongoRepository;

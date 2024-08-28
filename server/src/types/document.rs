@@ -86,7 +86,6 @@ pub struct QueryDocumentRequest {
     pub folder_key: Option<String>,
     #[serde(rename = "type")]
     pub doc_type: Option<DocumentType>,
-    pub content: Option<String>,
 }
 
 impl QueryDocumentRequest {
@@ -97,7 +96,7 @@ impl QueryDocumentRequest {
             name: Some(self.name.to_owned().unwrap_or_default()),
             folder_key: Some(self.folder_key.to_owned().unwrap_or_default()),
             doc_type: self.doc_type.to_owned(),
-            content: Some(self.content.to_owned().unwrap_or_default()),
+            content: None,
         }
     }
 }
@@ -119,13 +118,14 @@ pub struct SaveDocumentRequest {
     pub id: Option<i64>,
     #[validate(length(min = 1, max = 64))]
     pub key: Option<String>,
-    #[validate(length(min = 1, max = 64))]
+    #[validate(length(min = 0, max = 64))]
     pub name: Option<String>,
-    #[validate(length(min = 1, max = 64))]
+    #[validate(length(min = 0, max = 64))]
     #[serde(rename = "folderKey")]
     pub folder_key: Option<String>,
     #[serde(rename = "type")]
     pub doc_type: Option<DocumentType>,
+    #[validate(length(min = 0, max = 8192))]
     pub content: Option<String>,
 }
 

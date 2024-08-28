@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{ Error, Ok };
 use axum::async_trait;
 use crate::context::state::AppState;
-use crate::types::documents::{
+use crate::types::document::{
     DeleteDocumentRequest,
     QueryDocumentRequest,
     SaveDocumentRequest,
@@ -44,7 +44,6 @@ impl<'a> IDocumentHandler for DocumentHandler<'a> {
             name,
             folder_key: None,
             doc_type: None,
-            content: None,
         };
         let res = self.find(param, PageRequest::default()).await.unwrap().1;
         if res.len() > 0 {

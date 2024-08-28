@@ -28,10 +28,10 @@ use crate::cache::memory::StringMemoryCache;
 use crate::cache::redis::StringRedisCache;
 use crate::cache::CacheContainer;
 // use crate::monitoring::health::{ MongoChecker, RedisClusterChecker, SQLiteChecker };
-use crate::types::documents::Document;
-use crate::types::folders::Folder;
+use crate::types::document::Document;
+use crate::types::folder::Folder;
 use crate::types::settings::Settings;
-use crate::types::users::User;
+use crate::types::user::User;
 use crate::config::config_serve::WebServeConfig;
 use crate::store::{
     RepositoryContainer,

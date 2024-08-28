@@ -46,9 +46,9 @@ use tower_cookies::{ cookie::{ time::{ self, Duration }, CookieBuilder }, Cookie
 use crate::{
     config::{ config_serve::DEFAULT_404_HTML, resources::handle_static },
     context::state::AppState,
-    handlers::auths::{ AuthHandler, IAuthHandler, PrincipalType },
+    handler::auth::{ AuthHandler, IAuthHandler, PrincipalType },
     types::{
-        auths::{
+        auth::{
             CallbackGithubRequest,
             CallbackOidcRequest,
             EthersWalletLoginRequest,

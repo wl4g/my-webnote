@@ -33,7 +33,7 @@ use serde::Deserialize;
 use config::Config;
 use validator::Validate;
 
-use crate::monitoring::health::HEALTHZ_URI;
+use crate::mgmt::health::HEALTHZ_URI;
 
 #[derive(Debug, Deserialize, Clone, Validate)]
 pub struct WebServeProperties {

@@ -1,7 +1,7 @@
 use serde::{ Deserialize, Serialize };
 use validator::Validate;
 
-use crate::types::{ users::User, BaseBean, PageResponse };
+use crate::types::{ user::User, BaseBean, PageResponse };
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema, utoipa::IntoParams)]
 #[into_params(parameter_in = Query)]

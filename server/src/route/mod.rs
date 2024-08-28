@@ -30,10 +30,10 @@ use validator::Validate;
 
 pub mod api_v1;
 pub mod auths;
-pub mod documents;
-pub mod folders;
+pub mod document;
+pub mod folder;
 pub mod settings;
-pub mod users;
+pub mod user;
 
 pub struct ValidatedJson<T>(pub T);
 
