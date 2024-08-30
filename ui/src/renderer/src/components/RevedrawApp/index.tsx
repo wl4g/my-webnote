@@ -62,19 +62,19 @@ export default function RevedrawApp({ file }: Props) {
   const onChangeFn = useCallback(
     async (data) => {
       const str = JSON.stringify(data);
-      await boardIndexeddbStorage.addOrUpdateBoard(file.id, str);
+      await boardIndexeddbStorage.addOrUpdateBoard(file.key, str);
 
       // TODO:
       console.log('onChangeFn() -> addOrUpdateBoard() :: file: ', file, ' data:', data);
       await storageAdapter.saveCurrentFile(
-        file.id,
+        file.key,
         file.type,
         file.name,
         'xxxxxx-see-onFolderOrFileAdd',
         str
       );
     },
-    [file.id]
+    [file.key]
   );
 
   const { run: onChangeDebounceFn, cancel: cancelDebounceFn } = useDebounceFn(onChangeFn, {
@@ -86,15 +86,15 @@ export default function RevedrawApp({ file }: Props) {
       const { link } = element;
       console.log('link', link);
 
-      const fileIdOrNameInMyWebnote = link && getFileIdOrNameFromLink(link);
+      const fileKeyOrNameInMyWebnote = link && getFileIdOrNameFromLink(link);
 
-      if (fileIdOrNameInMyWebnote) {
+      if (fileKeyOrNameInMyWebnote) {
         const files = fileTree?.reduce((prev: MyWebnoteFile[], item: FileTreeItem) => {
           return [...prev, ...item.children];
         }, []);
 
         const file = files.find(
-          (_file) => _file.id === fileIdOrNameInMyWebnote || _file.name === fileIdOrNameInMyWebnote
+          (_file) => _file.key === fileKeyOrNameInMyWebnote || _file.name === fileKeyOrNameInMyWebnote
         );
 
         if (file) {
@@ -108,11 +108,11 @@ export default function RevedrawApp({ file }: Props) {
   );
 
   useEffect(() => {
-    getDataSource(file.id);
+    getDataSource(file.key);
     return () => {
       cancelDebounceFn();
     };
-  }, [file.id]);
+  }, [file.key]);
 
   return dataSource ? (
     <>

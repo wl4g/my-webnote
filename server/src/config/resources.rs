@@ -35,14 +35,18 @@ pub async fn handle_static(State(state): State<AppState>, uri: Uri) -> impl Into
     path = path.trim_start_matches("/static/").trim_start_matches('/');
 
     let context_path = &state.config.server.context_path.to_owned().unwrap_or_default();
+    let swagger_ui_path = &state.config.swagger.swagger_ui_path;
+
     match Asset::get(path) {
         Some(content) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
             // Check if the content is HTML.
             if mime.essence_str() == "text/html" {
                 let html_content = String::from_utf8_lossy(&content.data);
-                // Replace with the actual context path.
-                let modified_content = html_content.replace(r#"{{context_path}}"#, context_path);
+                // TODO: Use template render engine.
+                let modified_content = html_content
+                    .replace(r#"{{context_path}}"#, context_path)
+                    .replace("{{swagger_ui_path}}", swagger_ui_path);
                 (
                     StatusCode::OK,
                     [(header::CONTENT_TYPE, mime.as_ref())],

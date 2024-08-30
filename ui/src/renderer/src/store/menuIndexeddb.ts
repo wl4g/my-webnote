@@ -8,6 +8,7 @@ import {
   MyWebnoteFileType,
   MyWebnoteFolderFileMapping
 } from '../types/file';
+import { storageAdapter } from '../store/storage';
 
 moment.tz.setDefault('Asia/Shanghai');
 
@@ -83,12 +84,12 @@ class MenuIndexeddbStorage {
       }
     );
 
-    await folderFileMappingStore.createIndex('folderId', 'folderId', { unique: false });
-    await folderFileMappingStore.createIndex('fileId', 'fileId', { unique: true });
+    await folderFileMappingStore.createIndex('folderKey', 'folderKey', { unique: false });
+    await folderFileMappingStore.createIndex('fileKey', 'fileKey', { unique: true });
 
     const mapping = {
-      folderId: localStorage.getItem(LOCALSTORAGE_FIRST_FOLDER_KEY),
-      fileId: localStorage.getItem(LOCALSTORAGE_FIRST_FILE_KEY)
+      folderKey: localStorage.getItem(LOCALSTORAGE_FIRST_FOLDER_KEY),
+      fileKey: localStorage.getItem(LOCALSTORAGE_FIRST_FILE_KEY)
     };
 
     await folderFileMappingStore.add(mapping);
@@ -108,24 +109,24 @@ class MenuIndexeddbStorage {
 
   async addFolder(name?: string) {
     await this.initDB();
-    const id = `folder_${uuidv4()}`;
+    const folderKey = `folder_${uuidv4()}`;
 
     const folderInfo = {
-      id,
+      key: folderKey,
       name: name || '',
       gmtCreate: moment().toLocaleString(),
       gmtModified: moment().toLocaleString()
     };
 
-    await this.db?.add(INDEXEDDB_FOLDER_KEY, folderInfo, id);
+    await this.db?.add(INDEXEDDB_FOLDER_KEY, folderInfo, folderKey);
 
     return folderInfo;
   }
 
-  async getFolder(folderId: string): Promise<MyWebnoteFolder | undefined> {
+  async getFolder(folderKey: string): Promise<MyWebnoteFolder | undefined> {
     await this.initDB();
     // @ts-ignore
-    const value = await this.db?.get(INDEXEDDB_FOLDER_KEY, folderId);
+    const value = await this.db?.get(INDEXEDDB_FOLDER_KEY, folderKey);
     return value;
   }
 
@@ -138,27 +139,27 @@ class MenuIndexeddbStorage {
   }
 
   async addFile(
-    folderId: string,
+    folderKey: string,
     type: MyWebnoteFileType = 'Note',
     name?: string
   ): Promise<MyWebnoteFile> {
     await this.initDB();
 
-    const fileId = `file_${uuidv4()}`;
+    const fileKey = `file_${uuidv4()}`;
 
     const fileInfo = {
-      id: fileId,
+      key: fileKey,
       name: name || '',
       type,
       gmtCreate: moment().toLocaleString(),
       gmtModified: moment().toLocaleString()
     };
 
-    await this.db?.add(INDEXEDDB_FILE_KEY, fileInfo, fileId);
+    await this.db?.add(INDEXEDDB_FILE_KEY, fileInfo, fileKey);
 
     await this.db?.add(INDEXEDDB_FOLD_FILE_MAPPING_KEY, {
-      folderId,
-      fileId,
+      folderKey,
+      fileKey,
       gmtCreate: moment().toLocaleString(),
       gmtModified: moment().toLocaleString()
     });
@@ -167,34 +168,34 @@ class MenuIndexeddbStorage {
   }
 
   // TODO: NOT FINISHED, DO NOT USE
-  async _copyFile(copyFileId: string, folderId: string) {
+  async _copyFile(copyFileId: string, folderKey: string) {
     await this.initDB();
 
-    if (!(copyFileId && folderId)) return;
+    if (!(copyFileId && folderKey)) return;
 
     const copyFile = await this.db?.get(INDEXEDDB_FILE_KEY, copyFileId);
 
-    await this.addFile(folderId, copyFile?.type);
+    await this.addFile(folderKey, copyFile?.type);
 
     // await blocksuiteStorage.copyPage();
   }
 
-  async getFile(fileId: string): Promise<MyWebnoteFile | undefined> {
+  async getFile(fileKey: string): Promise<MyWebnoteFile | undefined> {
     await this.initDB();
-    const value = await this.db?.get(INDEXEDDB_FILE_KEY, fileId);
+    const value = await this.db?.get(INDEXEDDB_FILE_KEY, fileKey);
     return value;
   }
 
   async deleteFile(file: MyWebnoteFile) {
     await this.initDB();
 
-    file && (await this.db?.delete(INDEXEDDB_FILE_KEY, file.id));
+    file && (await this.db?.delete(INDEXEDDB_FILE_KEY, file.key));
 
     const folderFileMappingKeys = await this.db?.getAllKeysFromIndex(
       INDEXEDDB_FOLD_FILE_MAPPING_KEY,
       // @ts-ignore
-      'fileId',
-      file.id
+      'fileKey',
+      file.key
     );
 
     const deleteFolderFileMappingPromises = folderFileMappingKeys?.map(async (key) =>
@@ -220,17 +221,21 @@ class MenuIndexeddbStorage {
 
   async getFileTree(): Promise<FileTree> {
     await this.initDB();
-    const folders = await this.getFolders();
-    const files = await this.getFiles();
+
+    // MODIFIED:
+    //const folders = await this.getFolders();
+    //const files = await this.getFiles();
+    const folders = await storageAdapter.searchFolders(null);
+    const files = await storageAdapter.searchFileNames();
     const mappings = await this.getAllFileFolderMappings();
 
     const tree = folders.map((folder) => {
       const children: MyWebnoteFile[] = [];
 
-      const mappingsCertainFolder = mappings.filter((map) => map.folderId === folder.id);
+      const mappingsCertainFolder = mappings.filter((map) => map.folderKey === folder.key);
 
       files.forEach((file) => {
-        const _file = mappingsCertainFolder.find((map) => map.fileId === file.id);
+        const _file = mappingsCertainFolder.find((map) => map.fileKey === file.key);
         if (_file) {
           children.push(file);
         }
@@ -242,18 +247,18 @@ class MenuIndexeddbStorage {
     return tree;
   }
 
-  async getFilesInFolder(folderId: string): Promise<MyWebnoteFile[] | undefined> {
+  async getFilesInFolder(folderKey: string): Promise<MyWebnoteFile[] | undefined> {
     await this.initDB();
 
     const mappings = await this.db?.getAllFromIndex(
       INDEXEDDB_FOLD_FILE_MAPPING_KEY,
       // @ts-ignore
-      'folderId',
-      folderId
+      'folderKey',
+      folderKey
     );
 
     const promises = mappings
-      ?.map(async (item) => this.getFile(item.fileId))
+      ?.map(async (item) => this.getFile(item.fileKey))
       .filter((item) => !!item);
 
     const files = mappings && promises && (await Promise.all(promises)).filter((item) => !!item);
@@ -271,7 +276,7 @@ class MenuIndexeddbStorage {
       (await this.db?.put(
         INDEXEDDB_FILE_KEY,
         { ...file, name, gmtModified: moment().toLocaleString() },
-        file.id
+        file.key
       ));
   }
 
@@ -282,24 +287,24 @@ class MenuIndexeddbStorage {
       (await this.db?.put(
         INDEXEDDB_FILE_KEY,
         { ...file, gmtModified: moment().toLocaleString() },
-        file.id
+        file.key
       ));
   }
 
   async updateFolderName(folder: MyWebnoteFolder, name: string) {
     await this.initDB();
     if (name === folder?.name) return;
-    folder && this.db?.put(INDEXEDDB_FOLDER_KEY, { ...folder, name }, folder.id);
+    folder && this.db?.put(INDEXEDDB_FOLDER_KEY, { ...folder, name }, folder.key);
   }
 
-  async deleteFolder(folderId: string) {
+  async deleteFolder(folderKey: string) {
     await this.initDB();
 
-    if (!folderId) return;
+    if (!folderKey) return;
 
-    await this.db?.delete(INDEXEDDB_FOLDER_KEY, folderId);
+    await this.db?.delete(INDEXEDDB_FOLDER_KEY, folderKey);
 
-    const filesInFolder = await this.getFilesInFolder(folderId);
+    const filesInFolder = await this.getFilesInFolder(folderKey);
 
     const deleteFilesPromise = filesInFolder?.map(async (file) => this.deleteFile(file));
 

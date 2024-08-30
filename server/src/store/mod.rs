@@ -31,11 +31,15 @@ pub mod settings_sqlite;
 pub mod settings_mongo;
 pub mod users_sqlite;
 pub mod users_mongo;
+pub mod browser_indexeddb;
 
 use anyhow::Error;
 use axum::async_trait;
 
-use crate::{ config::config_serve::{ WebServeProperties, DbType }, types::{ PageResponse, PageRequest } };
+use crate::{
+    config::config_serve::{ WebServeProperties, DbType },
+    types::{ PageResponse, PageRequest },
+};
 
 #[async_trait] // solution2: async fn + dyn polymorphism problem.
 pub trait AsyncRepository<T>: Send {

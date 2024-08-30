@@ -1,13 +1,13 @@
 export interface MyWebnoteFolder {
-  id: string;
+  key: string;
   name: string;
   gmtCreate: string;
   gmtModified: string;
 }
 
 export interface MyWebnoteFolderFileMapping {
-  folderId: string;
-  fileId: string;
+  folderKey: string;
+  fileKey: string;
   gmtCreate: string;
   gmtModified: string;
 }
@@ -15,7 +15,7 @@ export interface MyWebnoteFolderFileMapping {
 export type MyWebnoteFileType = 'Note' | 'Board';
 
 export interface MyWebnoteFile {
-  id: string;
+  key: string;
   name: string;
   type: MyWebnoteFileType;
   gmtCreate: string;
@@ -23,7 +23,7 @@ export interface MyWebnoteFile {
 }
 
 export interface MyWebnoteFolder {
-  id: string;
+  key: string;
   name: string;
   gmtCreate: string;
   gmtModified: string;
@@ -34,8 +34,8 @@ export type FileTreeItem = MyWebnoteFolder & { children: MyWebnoteFile[] };
 export type FileTree = FileTreeItem[];
 
 export interface OnFolderOrFileAddProps {
-  fileId?: string;
-  folderId: string;
+  fileKey?: string;
+  folderKey: string;
   type: 'folder' | 'file';
 }
 

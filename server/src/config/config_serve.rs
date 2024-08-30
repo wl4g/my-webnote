@@ -54,6 +54,8 @@ pub struct WebServeProperties {
     pub swagger: SwaggerProperties,
     #[serde(default = "MgmtProperties::default")]
     pub mgmt: MgmtProperties,
+    #[serde(default = "WebNoteProperties::default")]
+    pub webnote: WebNoteProperties,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -283,6 +285,12 @@ pub struct OtelProperties {
     // Notice: More OTEL custom configuration use to environment: OTEL_SPAN_xxx, see to: opentelemetry_sdk::trace::config::default()
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WebNoteProperties {
+    pub indexeddb_name: String,
+    pub indexeddb_store_names: Vec<String>,
+}
+
 impl WebServeProperties {
     pub fn default() -> WebServeProperties {
         WebServeProperties {
@@ -294,6 +302,7 @@ impl WebServeProperties {
             auth: AuthProperties::default(),
             swagger: SwaggerProperties::default(),
             mgmt: MgmtProperties::default(),
+            webnote: WebNoteProperties::default(),
         }
     }
 
@@ -325,7 +334,7 @@ impl WebServeProperties {
 impl Default for ServerProperties {
     fn default() -> Self {
         ServerProperties {
-            bind: "0.0.0.0:8888".to_string(),
+            bind: "0.0.0.0:18888".to_string(),
             mgmt_bind: "0.0.0.0:11700".to_string(),
             context_path: None,
             thread_max_pool: 4,
@@ -586,6 +595,20 @@ impl WebServeConfig {
                 .to_string(),
             auth_anonymous_glob_matcher: globset,
         })
+    }
+}
+
+impl Default for WebNoteProperties {
+    fn default() -> Self {
+        WebNoteProperties {
+            indexeddb_name: String::from("mywebnote"),
+            indexeddb_store_names: vec![
+                String::from("blocksuite"),
+                String::from("board"),
+                String::from("menu"),
+                String::from("blob")
+            ],
+        }
     }
 }
 

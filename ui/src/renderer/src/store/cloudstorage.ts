@@ -1,9 +1,26 @@
+import { MyWebnoteFolder } from '@renderer/types/file';
 import { IStorageService } from './storage';
 
 export class CloudStorageService implements IStorageService {
   private apiUrl: string;
   constructor(apiUrl: string) {
     this.apiUrl = apiUrl;
+  }
+
+  async searchFolders(folderName: string | null): Promise<MyWebnoteFolder[]> {
+    const query = {
+      name: folderName
+    };
+    return this.doRequest('GET', '/modules/folder/query', query).then((res) => {
+      return res['data'].map((f) => {
+        return {
+          key: f['key'],
+          name: f['name'],
+          gmtCreate: f['createTime'],
+          gmtModified: f['updateTime']
+        };
+      });
+    });
   }
 
   async saveFolder(folderKey: string, folderName: string): Promise<void> {
@@ -16,7 +33,7 @@ export class CloudStorageService implements IStorageService {
   async searchFileNames(): Promise<string[]> {
     const data = {};
     return this.doRequest('GET', '/modules/document/query', data).then((res) => {
-      return res.data.map((doc) => doc.folder_key);
+      return res['data'].map((doc) => doc.folder_key);
     });
   }
 
@@ -89,7 +106,9 @@ export class CloudStorageService implements IStorageService {
 
   async loadLangCode(): Promise<string | null> {
     const data = {};
-    return this.doRequest('GET', '/sys/user/current', data);
+    return this.doRequest('GET', '/sys/user/current', data).then((res) => {
+      return res['lang'];
+    });
   }
 
   private async doRequest(method: string, path: string, data: object): Promise<string> {

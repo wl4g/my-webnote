@@ -36,7 +36,7 @@ function NoteEditor({ file }: Props): JSX.Element | null {
 
     if (editorRef.current) {
       editor = new MyWebnoteBlockSuiteEditor({
-        pageId: file.id
+        pageId: file.key
       });
 
       editorRef.current.innerHTML = '';
@@ -50,7 +50,7 @@ function NoteEditor({ file }: Props): JSX.Element | null {
     return () => {
       editorRef.current?.removeChild(editor);
     };
-  }, [file.id]);
+  }, [file.key]);
 
   useEffect(() => {
     setTitle(file.name);
@@ -58,7 +58,7 @@ function NoteEditor({ file }: Props): JSX.Element | null {
 
   useEffect(() => {
     editorMountRef.current = false;
-  }, [file.id]);
+  }, [file.key]);
 
   const onPageTitleChange = useCallback(
     (e) => {
@@ -67,7 +67,7 @@ function NoteEditor({ file }: Props): JSX.Element | null {
       menuIndexeddbStorage.updateFileName(file, newTitle);
       getFileTree();
     },
-    [file.id]
+    [file.key]
   );
 
   const onPressEnter = useCallback(() => {

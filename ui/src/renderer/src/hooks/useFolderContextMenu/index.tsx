@@ -7,13 +7,13 @@ import { useTranslation } from 'react-i18next';
 interface Props {
   fileTree: FileTree;
   editableTextState: EditableTextState;
-  addFile: (folderId: string | undefined, type: MyWebnoteFileType, fileTree: FileTree) => void;
+  addFile: (folderKey: string | undefined, type: MyWebnoteFileType, fileTree: FileTree) => void;
   updateEditableTextState: (
-    id: string,
+    key: string,
     value: boolean,
     editableTextState: EditableTextState
   ) => void;
-  deleteFolder: (folderId: string) => void;
+  deleteFolder: (folderKey: string) => void;
 }
 
 export default function useFolderContextMenu(props: Props) {
@@ -28,7 +28,7 @@ export default function useFolderContextMenu(props: Props) {
         icon: <FileType className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          addFile(folder.id, 'Note', fileTree);
+          addFile(folder.key, 'Note', fileTree);
         }
       },
       {
@@ -37,7 +37,7 @@ export default function useFolderContextMenu(props: Props) {
         icon: <Palette className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          addFile(folder.id, 'Board', fileTree);
+          addFile(folder.key, 'Board', fileTree);
         }
       },
       {
@@ -47,7 +47,7 @@ export default function useFolderContextMenu(props: Props) {
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
           console.log('rename');
-          updateEditableTextState(folder.id, false, editableTextState);
+          updateEditableTextState(folder.key, false, editableTextState);
         }
       },
       {
@@ -56,7 +56,7 @@ export default function useFolderContextMenu(props: Props) {
         icon: <Trash2 className="w-4"></Trash2>,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          deleteFolder(folder.id);
+          deleteFolder(folder.key);
         }
       }
     ],

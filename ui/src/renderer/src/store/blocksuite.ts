@@ -19,7 +19,7 @@ class BlocksuiteStorage {
 
   static instance: BlocksuiteStorage;
   workspace: Workspace = new Workspace({
-    id: REVEZONE_EDITOR_KEY,
+    key: REVEZONE_EDITOR_KEY,
     blobStorages: [createIndexeddbStorage, createMemoryStorage]
   }).register(AffineSchemas);
   indexeddbPersistence;
@@ -39,7 +39,7 @@ class BlocksuiteStorage {
   }
 
   async addPage(pageId: string) {
-    return await this.workspace.createPage({ id: pageId, init: true });
+    return await this.workspace.createPage({ key: pageId, init: true });
   }
 
   async deletePage(pageId: string) {
@@ -50,7 +50,7 @@ class BlocksuiteStorage {
   async copyPage(pageId: string, copyPageId: string, title: string) {
     // const copyPage = await this.workspace.getPage(copyPageId);
     // const newPage = await this.workspace.createPage({
-    //   id: pageId,
+    //   key: pageId,
     //   init: { title }
     // });
   }

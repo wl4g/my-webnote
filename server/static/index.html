@@ -42,8 +42,8 @@
         margin-top: 20px;
         width: 92px;
         height: 92px;
-        border-radius: 50%; /* 使用百分比边框半径，使图片成为圆形 */
-        object-fit: cover; /* 确保图片填充整个容器且不拉伸 */
+        border-radius: 50%;
+        object-fit: cover; /* 填充不拉伸 */
         animation: spinAndFade 2.5s linear forwards;
       }
       .footer {
@@ -60,7 +60,10 @@
   <body>
     <div class="container">
       <h1 class="header-text">The default home page</h1>
-      <!--<p class="center-text">Redirecting to ...</p>-->
+      <p class="center-text">
+        Your already Login successfully! <br /><br />
+        Redirecting to Swagger UI ...
+      </p>
       <img
         class="cat-image"
         src="{{context_path}}/static/img/cat.jpg"
@@ -68,11 +71,11 @@
       />
     </div>
     <footer class="footer">Copyright © 2024. All rights reserved.</footer>
-    <!--<script>
-      let targetUrl = "http://wl4g.local:10000";
+    <script>
+      let targetUrl = location.origin + "{{context_path}}{{swagger_ui_path}}";
       setTimeout(function () {
         window.location.href = targetUrl;
       }, 2500);
-    </script>-->
+    </script>
   </body>
 </html>

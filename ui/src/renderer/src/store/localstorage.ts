@@ -1,3 +1,4 @@
+import { MyWebnoteFolder } from '@renderer/types/file';
 import { IStorageService } from './storage';
 
 export const LOCALSTORAGE_MENU_OPEN_KEYS = 'menu_open_keys';
@@ -7,6 +8,12 @@ export const LOCALSTORAGE_LANG_CODE = 'lang_code';
 export const LOCALSTORAGE_BOARD_CUSTOM_FONT_SWITCH = 'board_custom_font_switch';
 
 export class LocalStorageService implements IStorageService {
+  async searchFolders(folderName: string | null): Promise<MyWebnoteFolder[]> {
+    return new Promise(() => {
+      return {}; // TODO
+    });
+  }
+
   async saveFolder(folderKey: string, folderName: string): Promise<void> {}
 
   searchFileNames(): Promise<string[]> {

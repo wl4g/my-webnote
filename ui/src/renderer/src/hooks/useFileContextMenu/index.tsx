@@ -7,11 +7,11 @@ import { MyWebnoteFile, MyWebnoteFolder } from '@renderer/types/file';
 interface Props {
   editableTextState: EditableTextState;
   updateEditableTextState: (
-    id: string,
+    key: string,
     value: boolean,
     editableTextState: EditableTextState
   ) => void;
-  deleteFile: (file: MyWebnoteFile, folderId: string) => void;
+  deleteFile: (file: MyWebnoteFile, folderKey: string) => void;
 }
 
 export default function useFileContextMenu(props: Props) {
@@ -26,8 +26,8 @@ export default function useFileContextMenu(props: Props) {
         icon: <FileEdit className="w-4" />,
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
-          console.debug('onRenameFileBefore :: file.id:', file.id, ', folder.id:', folder.id);
-          updateEditableTextState(file.id, false, editableTextState);
+          console.debug('onRenameFileBefore :: file.key:', file.key, ', folder.key:', folder.key);
+          updateEditableTextState(file.key, false, editableTextState);
         }
       },
       {
@@ -35,8 +35,8 @@ export default function useFileContextMenu(props: Props) {
         label: t('operation.delete'),
         icon: <Trash2 className="w-4"></Trash2>,
         onClick: () => {
-          console.debug('onDeletedFileBefore :: file.id:', file.id, ', folder.id:', folder.id);
-          deleteFile(file, folder.id);
+          console.debug('onDeletedFileBefore :: file.key:', file.key, ', folder.key:', folder.key);
+          deleteFile(file, folder.key);
         }
       },
       {
@@ -46,7 +46,7 @@ export default function useFileContextMenu(props: Props) {
         onClick: ({ domEvent }) => {
           domEvent.stopPropagation();
           // for test: When use electron client.
-          //navigator.clipboard.writeText(`mywebnote://${file.id}`);
+          //navigator.clipboard.writeText(`mywebnote://${file.key}`);
           // TODO: copy link
         }
       }

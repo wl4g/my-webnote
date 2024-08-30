@@ -22,7 +22,7 @@
 service-name: mywebnote
 
 server:
-  bind: "0.0.0.0:8888"
+  bind: "0.0.0.0:18888"
   mgmt-bind: "0.0.0.0:11700"
   context-path: "/serve"
   thread-max-pool: 32
@@ -133,3 +133,11 @@ mgmt:
     endpoint: "http://localhost:4317"
     protocol: grpc # Optional: http/protobuf,http/json,grpc
     timeout: 10000
+
+webnote:
+  indexeddb_name: mywebnote
+  indexeddb_store_names:
+    - "blocksuite"
+    - "menu"
+    - "board"
+    - "blob"

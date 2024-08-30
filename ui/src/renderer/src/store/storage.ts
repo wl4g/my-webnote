@@ -1,8 +1,11 @@
 import { localStorageService } from './localstorage';
 import { cloudStorageService } from './cloudstorage';
+import { MyWebnoteFolder } from '@renderer/types/file';
 
 export interface IStorageService {
+  searchFolders(folderName: string | null): Promise<MyWebnoteFolder[]>;
   saveFolder(folderKey: string, folderName: string): Promise<void>;
+
   searchFileNames(): Promise<string[]>;
   saveOpenFileNames(docNames: string[]): void;
   saveCurrentFile(
@@ -13,11 +16,14 @@ export interface IStorageService {
     content: string
   ): Promise<void>;
   loadCurrentFile(): Promise<string | null>;
+
   loadBoardCustomFont(): Promise<string | null>;
   saveBoardCustomFont(fontName: string | null): void;
   addBoardCustomFont(fontFamilyName: string): void;
+
   saveLangCode(langCode: string): void;
   loadLangCode(): Promise<string | null>;
+
   loadBoardCustomFontSwitch(): Promise<string | null>;
   saveBoardCustomFontSwitch(value: boolean): void;
 }
@@ -35,6 +41,10 @@ export class StorageAdapter implements IStorageService {
     } else {
       this.delegate = cloudStorageService;
     }
+  }
+
+  async searchFolders(folderName: string | null): Promise<MyWebnoteFolder[]> {
+    return this.delegate.searchFolders(folderName);
   }
 
   async saveFolder(folderKey: string, folderName: string): Promise<void> {

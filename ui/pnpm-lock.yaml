@@ -5110,7 +5110,7 @@ packages:
 
   registry.npmmirror.com/ajv-keywords@3.5.2(ajv@6.12.6):
     resolution: {integrity: sha512-5p6WTN0DdTGVQk6VjcEju19IgaHudalcfabD7yhDGeA6bcQnmL+CpveLJq/3hvfwd1aof6L386Ougkx6RfyMIQ==, registry: https://registry.npmjs.org/, tarball: https://registry.npmmirror.com/ajv-keywords/-/ajv-keywords-3.5.2.tgz}
-    id: registry.npmmirror.com/ajv-keywords/3.5.2
+    key: registry.npmmirror.com/ajv-keywords/3.5.2
     name: ajv-keywords
     version: 3.5.2
     peerDependencies:

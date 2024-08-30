@@ -65,7 +65,7 @@ class BoardIndexeddbStorage {
 
   async deleteBoard(id) {
     await this.initDB();
-    console.debug('Deleting Board to the indexedDB id: ', id, ', current DB: ', this.db);
+    console.debug('Deleting Board to the indexedDB key: ', id, ', current DB: ', this.db);
     await this.db?.delete(INDEXEDDB_BOARD_FILE_KEY, id);
   }
 }

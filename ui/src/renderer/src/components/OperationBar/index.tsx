@@ -11,13 +11,13 @@ import { useTranslation } from 'react-i18next';
 
 interface Props {
   size: 'small' | 'middle' | 'large';
-  folderId: string | undefined;
+  folderKey: string | undefined;
   className?: string;
-  onAdd?: ({ fileId, folderId, type }: OnFolderOrFileAddProps) => void;
+  onAdd?: ({ fileKey, folderKey, type }: OnFolderOrFileAddProps) => void;
 }
 
 export default function OperationBar(props: Props) {
-  const { folderId, size = 'middle', className, onAdd } = props;
+  const { folderKey, size = 'middle', className, onAdd } = props;
   const [, setCurrentFile] = useAtom(currentFileAtom);
   const [, setCurrentFolderId] = useAtom(currentFolderIdAtom);
   const [fileTree, setFileTree] = useAtom(fileTreeAtom);
@@ -41,10 +41,10 @@ export default function OperationBar(props: Props) {
     const folder = await menuIndexeddbStorage.addFolder();
     const tree = await menuIndexeddbStorage.getFileTree();
     setFileTree(tree);
-    setCurrentFolderId(folder.id);
+    setCurrentFolderId(folder.key);
     setCurrentFile(undefined);
 
-    onAdd?.({ folderId: folder.id, type: 'folder' });
+    onAdd?.({ folderKey: folder.key, type: 'folder' });
   }, []);
 
   return (
@@ -62,7 +62,7 @@ export default function OperationBar(props: Props) {
         className="operation-item flex items-center mr-3 cursor-pointer"
         onClick={(e) => {
           e.stopPropagation();
-          addFile(folderId, 'Board', fileTree);
+          addFile(folderKey, 'Board', fileTree);
         }}
       >
         <Palette className={`${getSizeClassName()} text-current cursor-pointer menu-icon`} />
@@ -73,7 +73,7 @@ export default function OperationBar(props: Props) {
         className="operation-item flex items-center mr-3 cursor-pointer"
         onClick={(e) => {
           e.stopPropagation();
-          addFile(folderId, 'Note', fileTree);
+          addFile(folderKey, 'Note', fileTree);
         }}
       >
         <FileType className={`${getSizeClassName()} text-current cursor-pointer menu-icon`} />
