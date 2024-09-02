@@ -58,12 +58,12 @@ pub fn init() -> Router<AppState> {
 
 #[utoipa::path(
     get,
-    path = "/modules/browser_indexeddb/query",
+    path = "/modules/browser_indexeddb/get",
     params(GetIndexedRecordRequest),
     responses((
         status = 200,
         description = "Getting record for browser indexeddbs.",
-        body = QueryFolderResponse,
+        body = GetIndexedRecordResponse,
     )),
     tag = "Browser IndexedDB"
 )]
@@ -84,7 +84,7 @@ pub async fn handle_browser_indexeddb_get(
     responses((
         status = 200,
         description = "Getting record for browser indexeddbs.",
-        body = QueryFolderResponse,
+        body = GetAllIndexedRecordResponse,
     )),
     tag = "Browser IndexedDB"
 )]
@@ -105,7 +105,7 @@ pub async fn handle_browser_indexeddb_get_all(
     responses((
         status = 200,
         description = "Getting keys for browser indexeddbs.",
-        body = QueryFolderResponse,
+        body = GetAllKeyIndexedRecordResponse,
     )),
     tag = "Browser IndexedDB"
 )]
@@ -164,11 +164,11 @@ async fn handle_put_browser_indexeddb(
 #[utoipa::path(
     post,
     path = "/modules/browser_indexeddb/delete",
-    request_body = DeleteFolderRequest,
+    request_body = DeleteIndexedRecordRequest,
     responses((
         status = 200,
         description = "Delete for browser_indexeddb.",
-        body = DeleteFolderResponse,
+        body = DeleteIndexedRecordResponse,
     )),
     tag = "Browser IndexedDB"
 )]

@@ -26,7 +26,6 @@ use validator::Validate;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct IndexedValue {
-    // pub key: String,
     pub value: Option<String>,
 }
 
@@ -38,9 +37,6 @@ impl<'r> FromRow<'r, SqliteRow> for IndexedValue {
         })
     }
 }
-
-
-
 
 // get
 

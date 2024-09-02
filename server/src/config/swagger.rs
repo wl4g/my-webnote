@@ -44,6 +44,13 @@ use crate::{
             __path_handle_password_pubkey,
             __path_handle_password_verify,
         },
+        user::{
+            __path_handle_delete_user,
+            __path_handle_get_current_user,
+            __path_handle_post_current_user,
+            __path_handle_query_users,
+            __path_handle_save_user,
+        },
         document::{
             __path_handle_delete_document,
             __path_handle_query_documents,
@@ -59,12 +66,13 @@ use crate::{
             __path_handle_query_settings,
             __path_handle_save_settings,
         },
-        user::{
-            __path_handle_delete_user,
-            __path_handle_get_current_user,
-            __path_handle_post_current_user,
-            __path_handle_query_users,
-            __path_handle_save_user,
+        browser_indexeddb::{
+            __path_handle_browser_indexeddb_get,
+            __path_handle_browser_indexeddb_get_all,
+            __path_handle_browser_indexeddb_get_all_keys,
+            __path_handle_add_browser_indexeddb,
+            __path_handle_put_browser_indexeddb,
+            __path_handle_delete_browser_indexeddb,
         },
     },
     utils::auths,
@@ -128,6 +136,18 @@ use crate::types::{
         DeleteSettingsRequest,
         DeleteSettingsResponse,
     },
+    browser_indexeddb::{
+        IndexedValue,
+        GetIndexedRecordRequest,
+        GetIndexedRecordResponse,
+        GetAllIndexedRecordRequest,
+        GetAllIndexedRecordResponse,
+        GetAllKeyIndexedRecordResponse,
+        SaveIndexedRecordRequest,
+        SaveIndexedRecordResponse,
+        DeleteIndexedRecordRequest,
+        DeleteIndexedRecordResponse,
+    },
 };
 
 #[derive(utoipa::OpenApi)]
@@ -146,7 +166,7 @@ use crate::types::{
     //security((), "my_auth" = ["read:items", "edit:items"], "token_jwt" = []),
     external_docs(url = "https://github.com/wl4g/my-webnote", description = "More about our APIs"),
     paths(
-        // Module of Auth
+        // Auth
         handle_connect_oidc,
         handle_connect_github,
         handle_callback_github,
@@ -154,7 +174,7 @@ use crate::types::{
         handle_password_pubkey,
         handle_password_verify,
         handle_logout,
-        // Module of User
+        // User
         handle_get_current_user,
         handle_post_current_user,
         handle_query_users,
@@ -163,18 +183,25 @@ use crate::types::{
         handle_apiv1_get_users,
         handle_apiv1_save_user,
         handle_apiv1_delete_user,
-        // Module of Document
+        // Document
         handle_query_documents,
         handle_save_document,
         handle_delete_document,
-        // Module of Folder
+        // Folder
         handle_query_folders,
         handle_save_folder,
         handle_delete_folder,
-        // Module of Settings
+        // Settings
         handle_query_settings,
         handle_save_settings,
-        handle_delete_settings
+        handle_delete_settings,
+        // Browser IndexedDB
+        handle_browser_indexeddb_get,
+        handle_browser_indexeddb_get_all,
+        handle_browser_indexeddb_get_all_keys,
+        handle_add_browser_indexeddb,
+        handle_put_browser_indexeddb,
+        handle_delete_browser_indexeddb
     ),
     components(
         schemas(
@@ -228,7 +255,18 @@ use crate::types::{
             SaveSettingsRequest,
             SaveSettingsResponse,
             DeleteSettingsRequest,
-            DeleteSettingsResponse
+            DeleteSettingsResponse,
+            // Module of Browser IndexedDB
+            IndexedValue,
+            GetIndexedRecordRequest,
+            GetIndexedRecordResponse,
+            GetAllIndexedRecordRequest,
+            GetAllIndexedRecordResponse,
+            GetAllKeyIndexedRecordResponse,
+            SaveIndexedRecordRequest,
+            SaveIndexedRecordResponse,
+            DeleteIndexedRecordRequest,
+            DeleteIndexedRecordResponse
         )
     ),
     modifiers(&ApiPathPrefixer)

@@ -111,16 +111,31 @@ impl<'a> IBrowserIndexedDBHandler for BrowserIndexedDBHandlerImpl<'a> {
     }
 
     async fn add(&self, param: SaveIndexedRecordRequest) -> Result<String, Error> {
+        let value = serde_json
+            ::to_string(
+                &(IndexedValue {
+                    value: Some(param.value),
+                })
+            )
+            .unwrap();
+
         #[allow(unused)]
         let result = self.state.string_cache
             .get(&self.state.config)
-            .hset_nx(param.store_name, param.key.unwrap_or_default(), param.value).await?;
+            .hset_nx(param.store_name, param.key.unwrap_or_default(), value).await?;
 
         Ok("OK".to_string())
     }
 
     async fn put(&self, param: SaveIndexedRecordRequest) -> Result<String, Error> {
-        let field_values = vec![(param.key.unwrap_or_default(), param.value)];
+        let value = serde_json
+            ::to_string(
+                &(IndexedValue {
+                    value: Some(param.value),
+                })
+            )
+            .unwrap();
+        let field_values = vec![(param.key.unwrap_or_default(), value)];
 
         #[allow(unused)]
         let result = self.state.string_cache
