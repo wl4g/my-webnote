@@ -27,7 +27,7 @@ use redis::{
     cluster_async::ClusterConnection,
     RedisResult,
 };
-use std::{ sync::Arc, time::Duration };
+use std::{ collections::HashMap, sync::Arc, time::Duration };
 
 use crate::config::config_serve::RedisProperties;
 
@@ -119,23 +119,19 @@ impl ICache<String> for StringRedisCache {
         Ok(result?)
     }
 
-    async fn hget(
-        &self,
-        key: String,
-        fields: Option<Vec<String>>
-    ) -> Result<Option<Vec<String>>, Error> {
+    async fn hget(&self, key: String, field: Option<String>) -> Result<Option<String>, Error> {
         let mut con = self.get_async_connection().await?;
         let result = redis
             ::cmd("HGET")
             .arg(key)
-            .arg(fields.unwrap_or_default())
+            .arg(field.unwrap_or_default())
             .query_async(&mut con).await;
         Ok(result?)
     }
 
-    async fn hget_all(&self, key: String) -> Result<Option<Vec<String>>, Error> {
+    async fn hget_all(&self, key: String) -> Result<Option<HashMap<String, String>>, Error> {
         let mut con = self.get_async_connection().await?;
-        let result: RedisResult<Option<Vec<String>>> = redis
+        let result: RedisResult<Option<HashMap<String, String>>> = redis
             ::cmd("HGETALL")
             .arg(key)
             .query_async(&mut con).await;

@@ -69,8 +69,6 @@ pub struct GetAllIndexedRecordRequest {
     #[serde(rename = "storeName")]
     #[validate(length(min = 1, max = 64))]
     pub store_name: String,
-    #[validate(range(min = 1, max = 1000))]
-    pub limit: Option<u32>,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
@@ -84,14 +82,24 @@ impl GetAllIndexedRecordResponse {
     }
 }
 
+// get_all_keys
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Validate, utoipa::ToSchema, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct GetAllKeysIndexedRecordRequest {
+    #[serde(rename = "storeName")]
+    #[validate(length(min = 1, max = 64))]
+    pub store_name: String,
+}
+
 #[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
-pub struct GetAllKeyIndexedRecordResponse {
+pub struct GetAllKeysIndexedRecordResponse {
     pub records: Option<Vec<String>>,
 }
 
-impl GetAllKeyIndexedRecordResponse {
+impl GetAllKeysIndexedRecordResponse {
     pub fn new(records: Option<Vec<String>>) -> Self {
-        GetAllKeyIndexedRecordResponse { records }
+        GetAllKeysIndexedRecordResponse { records }
     }
 }
 

@@ -20,6 +20,8 @@
  * This includes modifications and derived works.
  */
 
+use std::collections::HashMap;
+
 use anyhow::Error;
 use axum::async_trait;
 
@@ -40,13 +42,9 @@ pub trait ICache<T>: Send + Sync {
     async fn keys(&self, pattern: String) -> Result<Vec<String>, Error>
         where T: 'static + Send + Sync;
 
-    async fn hget(
-        &self,
-        key: String,
-        fields: Option<Vec<String>>
-    ) -> Result<Option<Vec<String>>, Error>;
+    async fn hget(&self, key: String, field: Option<String>) -> Result<Option<String>, Error>;
 
-    async fn hget_all(&self, name: String) -> Result<Option<Vec<String>>, Error>;
+    async fn hget_all(&self, name: String) -> Result<Option<HashMap<String, String>>, Error>;
 
     async fn hkeys(&self, key: String) -> Result<Vec<String>, Error> where T: 'static + Send + Sync;
 

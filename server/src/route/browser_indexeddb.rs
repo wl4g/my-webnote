@@ -36,7 +36,8 @@ use crate::{
         DeleteIndexedRecordResponse,
         GetAllIndexedRecordRequest,
         GetAllIndexedRecordResponse,
-        GetAllKeyIndexedRecordResponse,
+        GetAllKeysIndexedRecordRequest,
+        GetAllKeysIndexedRecordResponse,
         GetIndexedRecordRequest,
         GetIndexedRecordResponse,
         SaveIndexedRecordRequest,
@@ -50,7 +51,10 @@ pub fn init() -> Router<AppState> {
     Router::new()
         .route("/modules/browser_indexeddb/get", get(handle_browser_indexeddb_get))
         .route("/modules/browser_indexeddb/get_all", get(handle_browser_indexeddb_get_all))
-        .route("/modules/browser_indexeddb/get_all_key", get(handle_browser_indexeddb_get_all_keys))
+        .route(
+            "/modules/browser_indexeddb/get_all_keys",
+            get(handle_browser_indexeddb_get_all_keys)
+        )
         .route("/modules/browser_indexeddb/add", post(handle_add_browser_indexeddb))
         .route("/modules/browser_indexeddb/put", post(handle_put_browser_indexeddb))
         .route("/modules/browser_indexeddb/delete", post(handle_delete_browser_indexeddb))
@@ -101,20 +105,20 @@ pub async fn handle_browser_indexeddb_get_all(
 #[utoipa::path(
     get,
     path = "/modules/browser_indexeddb/get_all_keys",
-    params(GetAllIndexedRecordRequest),
+    params(GetAllKeysIndexedRecordRequest),
     responses((
         status = 200,
         description = "Getting keys for browser indexeddbs.",
-        body = GetAllKeyIndexedRecordResponse,
+        body = GetAllKeysIndexedRecordResponse,
     )),
     tag = "Browser IndexedDB"
 )]
 pub async fn handle_browser_indexeddb_get_all_keys(
     State(state): State<AppState>,
-    Query(param): Query<GetAllIndexedRecordRequest>
+    Query(param): Query<GetAllKeysIndexedRecordRequest>
 ) -> impl IntoResponse {
     match get_browser_indexeddb_handler(&state).get_all_keys(param).await {
-        Ok(res) => Ok(Json(GetAllKeyIndexedRecordResponse::new(res))),
+        Ok(res) => Ok(Json(GetAllKeysIndexedRecordResponse::new(res))),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }

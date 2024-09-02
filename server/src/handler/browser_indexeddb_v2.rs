@@ -6,6 +6,7 @@ use crate::{
     types::browser_indexeddb::{
         DeleteIndexedRecordRequest,
         GetAllIndexedRecordRequest,
+        GetAllKeysIndexedRecordRequest,
         GetIndexedRecordRequest,
         IndexedValue,
         SaveIndexedRecordRequest,
@@ -23,7 +24,7 @@ pub trait IBrowserIndexedDBHandler: Send {
 
     async fn get_all_keys(
         &self,
-        param: GetAllIndexedRecordRequest
+        param: GetAllKeysIndexedRecordRequest
     ) -> Result<Option<Vec<String>>, Error>;
 
     async fn add(&self, param: SaveIndexedRecordRequest) -> Result<String, Error>;
@@ -60,20 +61,12 @@ impl<'a> IBrowserIndexedDBHandler for BrowserIndexedDBHandlerImpl<'a> {
         //     .transpose()?;
         // Ok(result.and_then(|v| v.into_iter().next()))
 
-        let result = self.state.string_cache.get(&self.state.config).hget(
-            param.store_name,
-            param.key.map(|k| vec![k])
-        ).await?;
+        let result = self.state.string_cache
+            .get(&self.state.config)
+            .hget(param.store_name, param.key).await?;
 
         match result {
-            Some(vs) => {
-                if let Some(v) = vs.into_iter().next() {
-                    let indexed_value = serde_json::from_str(&v)?;
-                    Ok(Some(indexed_value))
-                } else {
-                    Ok(None)
-                }
-            }
+            Some(v) => { Ok(Some(serde_json::from_str(&v)?)) }
             None => Ok(None),
         }
     }
@@ -90,7 +83,7 @@ impl<'a> IBrowserIndexedDBHandler for BrowserIndexedDBHandlerImpl<'a> {
                 opt.map(|vs|
                     vs
                         .into_iter()
-                        .map(|v| serde_json::de::from_str(v.as_str()).unwrap())
+                        .map(|v| serde_json::de::from_str(v.1.as_str()).unwrap())
                         .collect()
                 )
             )
@@ -100,7 +93,7 @@ impl<'a> IBrowserIndexedDBHandler for BrowserIndexedDBHandlerImpl<'a> {
 
     async fn get_all_keys(
         &self,
-        param: GetAllIndexedRecordRequest
+        param: GetAllKeysIndexedRecordRequest
     ) -> Result<Option<Vec<String>>, Error> {
         let keys = self.state.string_cache.get(&self.state.config).hkeys(param.store_name).await?;
         if keys.is_empty() {

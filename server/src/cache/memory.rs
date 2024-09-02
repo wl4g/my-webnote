@@ -126,41 +126,22 @@ impl ICache<String> for StringMemoryCache {
         Ok(keys)
     }
 
-    async fn hget(
-        &self,
-        key: String,
-        fields: Option<Vec<String>>
-    ) -> Result<Option<Vec<String>>, Error> {
+    async fn hget(&self, key: String, field: Option<String>) -> Result<Option<String>, Error> {
         if let Some(hash_str) = self.cache.get(&key).await {
             let hash = Self::deserialize_hash(&hash_str);
-            if let Some(field_list) = fields {
-                Ok(
-                    Some(
-                        field_list
-                            .iter()
-                            .filter_map(|f| hash.get(f).cloned())
-                            .collect()
-                    )
-                )
-            } else {
-                Ok(Some(hash.values().cloned().collect()))
+            match field {
+                Some(f) => Ok(hash.get(&f).map(|v| v.to_string())),
+                None => Ok(None),
             }
         } else {
             Ok(None)
         }
     }
 
-    async fn hget_all(&self, key: String) -> Result<Option<Vec<String>>, Error> {
+    async fn hget_all(&self, key: String) -> Result<Option<HashMap<String, String>>, Error> {
         if let Some(hash_str) = self.cache.get(&key).await {
             let hash = Self::deserialize_hash(&hash_str);
-            Ok(
-                Some(
-                    hash
-                        .into_iter()
-                        .flat_map(|(k, v)| vec![k, v])
-                        .collect()
-                )
-            )
+            Ok(Some(hash))
         } else {
             Ok(None)
         }
@@ -217,7 +198,17 @@ impl ICache<String> for StringMemoryCache {
 
     #[allow(unused)]
     async fn hdel(&self, key: String, field: String) -> Result<bool, Error> {
-        todo!()
+        let result = self.hget_all(key.clone()).await?;
+        match result {
+            Some(mut hash) => {
+                // Remove the field from the keys vector
+                hash.remove(&field);
+                // Update to cache.
+                self.cache.insert(key, Self::serialize_hash(&hash)).await;
+                Ok(true)
+            }
+            None => Ok(false),
+        }
     }
 
     /// Sets the given key to the specified value.
@@ -334,6 +325,7 @@ mod tests {
 
         let key = String::from("test_hset_and_hget");
 
+        // hset
         assert!(
             cache
                 .hset_nx(key.clone(), String::from("field1"), String::from("value1")).await
@@ -345,29 +337,13 @@ mod tests {
                 .unwrap()
         );
 
-        let mut result1 = cache
-            .hget(key.clone(), Some(vec!["field1".to_string()])).await
-            .unwrap()
-            .unwrap();
-        let mut expected1 = vec!["value1".to_string()];
+        // hget
+        let result1 = cache.hget(key.clone(), Some("field1".to_string())).await.unwrap().unwrap();
+        assert_eq!(result1, "value1".to_string());
 
-        result1.sort();
-        expected1.sort();
-
-        assert_eq!(result1, expected1);
-
-        let mut result2 = cache.hget_all(key.clone()).await.unwrap().unwrap();
-        let mut expected2 = vec![
-            "field1".to_string(),
-            "value1".to_string(),
-            "field2".to_string(),
-            "value2".to_string()
-        ];
-
-        result2.sort();
-        expected2.sort();
-
-        assert_eq!(result2, expected2);
+        let result2 = cache.hget_all(key.clone()).await.unwrap().unwrap();
+        assert_eq!(result2.get("field1").unwrap().to_owned(), "value1".to_string());
+        assert_eq!(result2.get("field2").unwrap().to_owned(), "value2".to_string());
     }
 
     #[tokio::test]
@@ -387,8 +363,8 @@ mod tests {
                 .unwrap()
         );
 
-        let result = cache.hget(key.clone(), Some(vec!["field1".to_string()])).await.unwrap();
-        assert_eq!(result, Some(vec!["value1".to_string()]));
+        let result = cache.hget(key.clone(), Some("field1".to_string())).await.unwrap().unwrap();
+        assert_eq!(result, "value1".to_string());
 
         let mut expected = vec!["field1".to_string(), "field2".to_string()];
         let mut keys = cache.hkeys(key.clone()).await.unwrap();

@@ -113,43 +113,34 @@ async fn test_hset_and_hget() {
     // hset
 
     let key = String::from("test_hset_hget_key");
-    assert!(
-        cache.hset_nx(key.clone(), String::from("field1"), String::from("value1")).await.unwrap()
-    );
-    assert!(
-        cache.hset_nx(key.clone(), String::from("field2"), String::from("value2")).await.unwrap()
-    );
-    assert!(
-        cache.hset_nx(key.clone(), String::from("field3"), String::from("value3")).await.unwrap()
-    );
+    cache.del(key.clone());
 
-    let mut result1 = cache
-        .hget(key.clone(), Some(vec![String::from("field1")])).await
-        .unwrap()
-        .unwrap();
-    let mut expected1 = vec![String::from("value1")];
-
-    result1.sort();
-    expected1.sort();
-
-    assert_eq!(result1, expected1);
+    cache.hset_nx(key.clone(), String::from("field1"), String::from("value1")).await.unwrap();
+    cache.hset_nx(key.clone(), String::from("field2"), String::from("value2")).await.unwrap();
+    cache.hset_nx(key.clone(), String::from("field3"), String::from("value3")).await.unwrap();
 
     // hget
 
-    let mut result2 = cache.hget_all(key.clone()).await.unwrap().unwrap();
-    let mut expected2 = vec![
-        String::from("field1"),
-        String::from("value1"),
-        String::from("field2"),
-        String::from("value2"),
-        String::from("field3"),
-        String::from("value3")
-    ];
+    let mut result1 = cache
+        .hget(key.clone(), Some(String::from("field1"))).await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result1, String::from("value1"));
+}
 
-    result2.sort();
-    expected2.sort();
+#[tokio::test]
+async fn test_hget_all() {
+    let cache = create_test_cache();
 
-    assert_eq!(result2, expected2);
+    let key = String::from("test_hget_all");
+    cache.hset_nx(key.clone(), String::from("field1"), String::from("value1")).await.unwrap();
+    cache.hset_nx(key.clone(), String::from("field2"), String::from("value2")).await.unwrap();
+    cache.hset_nx(key.clone(), String::from("field3"), String::from("value3")).await.unwrap();
+
+    let result = cache.hget_all(key.clone()).await.unwrap().unwrap();
+    assert_eq!(result.get("field1").unwrap().to_owned(), "value1".to_string());
+    assert_eq!(result.get("field2").unwrap().to_owned(), "value2".to_string());
+    assert_eq!(result.get("field3").unwrap().to_owned(), "value3".to_string());
 }
 
 #[tokio::test]
@@ -184,7 +175,7 @@ async fn test_hdel() {
 
     assert!(cache.hdel(key.clone(), String::from("field1")).await.unwrap());
 
-    let result = cache.hget(key.clone(), Some(vec![String::from("field1")])).await.unwrap();
+    let result = cache.hget(key.clone(), Some(String::from("field1"))).await.unwrap();
     assert_eq!(result, None)
 }
 
