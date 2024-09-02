@@ -60,20 +60,20 @@ impl<'a> IDocumentHandler for DocumentHandler<'a> {
         page: PageRequest
     ) -> Result<(PageResponse, Vec<Document>), Error> {
         let repo = self.state.document_repo.lock().await;
-        repo.repo(&self.state.config).select(param.to_document(), page).await
+        repo.get(&self.state.config).select(param.to_document(), page).await
     }
 
     async fn save(&self, param: SaveDocumentRequest) -> Result<i64, Error> {
         let repo = self.state.document_repo.lock().await;
         if param.id.is_some() {
-            repo.repo(&self.state.config).update(param.to_document()).await
+            repo.get(&self.state.config).update(param.to_document()).await
         } else {
-            repo.repo(&self.state.config).insert(param.to_document()).await
+            repo.get(&self.state.config).insert(param.to_document()).await
         }
     }
 
     async fn delete(&self, param: DeleteDocumentRequest) -> Result<u64, Error> {
         let repo = self.state.document_repo.lock().await;
-        repo.repo(&self.state.config).delete_by_id(param.id).await
+        repo.get(&self.state.config).delete_by_id(param.id).await
     }
 }

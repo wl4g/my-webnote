@@ -98,7 +98,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     async fn handle_password_pubkey(&self, param: PasswordPubKeyRequest) -> Result<String, Error> {
         let pair = RSACipher::new(2048).unwrap();
         // Storage private key to cache.
-        let cache = self.state.string_cache.cache(&self.state.config);
+        let cache = self.state.string_cache.get(&self.state.config);
         let key = self.build_login_private_key(&param.fingerprint_token);
         let value = pair.get_base64_private_key().unwrap();
         match cache.set(key, value, Some(30_000)).await {
@@ -117,7 +117,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
         &self,
         param: PasswordLoginRequest
     ) -> Result<Arc<User>, Error> {
-        let cache = self.state.string_cache.cache(&self.state.config);
+        let cache = self.state.string_cache.get(&self.state.config);
         let key = self.build_login_private_key(&param.fingerprint_token);
 
         // Getting private key from cache.
@@ -197,7 +197,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     }
 
     async fn handle_auth_create_nonce(&self, sid: &str, nonce: String) -> Result<(), Error> {
-        let cache = self.state.string_cache.cache(&self.state.config);
+        let cache = self.state.string_cache.get(&self.state.config);
 
         let key = self.build_logout_blacklist_key(sid);
         let value = nonce;
@@ -216,7 +216,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     }
 
     async fn handle_auth_get_nonce(&self, sid: &str) -> Result<Option<String>, Error> {
-        let cache = self.state.string_cache.cache(&self.state.config);
+        let cache = self.state.string_cache.get(&self.state.config);
 
         let key = self.build_logout_blacklist_key(sid);
 
@@ -478,7 +478,7 @@ impl<'a> IAuthHandler for AuthHandler<'a> {
     }
 
     async fn handle_logout(&self, param: LogoutRequest) -> Result<(), Error> {
-        let cache = self.state.string_cache.cache(&self.state.config);
+        let cache = self.state.string_cache.get(&self.state.config);
 
         // Add current jwt token to cache blacklist, expiration time is less than now time - id_token issue time.
         let ak = match param.access_token {

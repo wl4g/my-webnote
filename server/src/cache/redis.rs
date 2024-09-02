@@ -39,6 +39,8 @@ pub struct StringRedisCache {
 
 impl StringRedisCache {
     pub fn new(config: &RedisProperties) -> Self {
+        tracing::info!("Initializing redis with config: {:?}", config);
+
         let mut builder = ClusterClientBuilder::new(config.nodes.clone());
         if config.username.is_some() {
             builder = builder.username(config.username.clone().unwrap());
@@ -88,19 +90,136 @@ impl ICache<String> for StringRedisCache {
         Ok(result?)
     }
 
-    async fn set(&self, key: String, value: String, expire: Option<i32>) -> Result<bool, Error> {
-        let mut con: ClusterConnection = self.get_async_connection().await?;
-        let result: RedisResult<()> = if let Some(seconds) = expire {
+    async fn set(&self, key: String, value: String, seonds: Option<i32>) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let result: RedisResult<String> = if let Some(seconds) = seonds {
             redis::cmd("SETEX").arg(key).arg(seconds).arg(value).query_async(&mut con).await
         } else {
             redis::cmd("SET").arg(key).arg(value).query_async(&mut con).await
         };
-        Ok(result.is_ok())
+        Ok(result.map(|s| s == "OK")?)
     }
 
-    async fn delete(&self, key: String) -> Result<bool, Error> {
+    async fn set_nx(&self, key: String, value: Option<String>) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let result: RedisResult<i64> = redis
+            ::cmd("SETNX")
+            .arg(key)
+            .arg(value)
+            .query_async(&mut con).await;
+        Ok(result.map(|s| s > 0)?)
+    }
+
+    async fn keys(&self, pattern: String) -> Result<Vec<String>, Error> {
+        let mut con = self.get_async_connection().await?;
+        let result: RedisResult<Vec<String>> = redis
+            ::cmd("KEYS")
+            .arg(pattern)
+            .query_async(&mut con).await;
+        Ok(result?)
+    }
+
+    async fn hget(
+        &self,
+        key: String,
+        fields: Option<Vec<String>>
+    ) -> Result<Option<Vec<String>>, Error> {
+        let mut con = self.get_async_connection().await?;
+        let result = redis
+            ::cmd("HGET")
+            .arg(key)
+            .arg(fields.unwrap_or_default())
+            .query_async(&mut con).await;
+        Ok(result?)
+    }
+
+    async fn hget_all(&self, key: String) -> Result<Option<Vec<String>>, Error> {
+        let mut con = self.get_async_connection().await?;
+        let result: RedisResult<Option<Vec<String>>> = redis
+            ::cmd("HGETALL")
+            .arg(key)
+            .query_async(&mut con).await;
+        Ok(result?)
+    }
+
+    async fn hkeys(&self, key: String) -> Result<Vec<String>, Error> {
+        let mut con = self.get_async_connection().await?;
+        let result: RedisResult<Vec<String>> = redis
+            ::cmd("HKEYS")
+            .arg(key)
+            .query_async(&mut con).await;
+        Ok(result?)
+    }
+
+    async fn hset(
+        &self,
+        key: String,
+        field_values: Option<Vec<(String, String)>>
+    ) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let mut cmd = redis::cmd("HSET");
+        cmd.arg(key);
+        if let Some(fvs) = field_values {
+            for (field, value) in fvs {
+                cmd.arg(field).arg(value);
+            }
+        }
+        let result: RedisResult<i64> = cmd.query_async(&mut con).await;
+        Ok(result.map(|s| s >= 1)?)
+    }
+
+    async fn hset_nx(&self, key: String, field: String, value: String) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let mut cmd = redis::cmd("HSETNX");
+        cmd.arg(key).arg(field).arg(value);
+        let result: RedisResult<i64> = cmd.query_async(&mut con).await;
+        Ok(result.map(|s| s > 0)?)
+    }
+
+    async fn hdel(&self, key: String, field: String) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let mut cmd = redis::cmd("HDEL");
+        cmd.arg(key);
+        cmd.arg(field);
+        let result: RedisResult<i64> = cmd.query_async(&mut con).await;
+        Ok(result.map(|s| s >= 1)?)
+    }
+
+    async fn expire(&self, key: String, milliseconds: i64) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let mut cmd = redis::cmd("PEXPIRE");
+        cmd.arg(key);
+        cmd.arg(milliseconds);
+        cmd.arg("NX");
+        let result: RedisResult<i64> = cmd.query_async(&mut con).await;
+        Ok(result.map(|s| s > 0)?)
+    }
+
+    async fn get_bit(&self, key: String, offset: u64) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let mut cmd = redis::cmd("GETBIT");
+        cmd.arg(key);
+        cmd.arg(offset);
+        let result: RedisResult<i64> = cmd.query_async(&mut con).await;
+        Ok(result.map(|s| s >= 1)?)
+    }
+
+    async fn set_bit(&self, key: String, offset: u64, value: bool) -> Result<bool, Error> {
+        let mut con = self.get_async_connection().await?;
+        let mut cmd = redis::cmd("SETBIT");
+        cmd.arg(key);
+        cmd.arg(offset);
+        cmd.arg(match value {
+            true => 1,
+            false => 0,
+        });
+        let result: RedisResult<i64> = cmd.query_async(&mut con).await;
+        Ok(result.map(|s| s >= 1).unwrap_or(false))
+    }
+
+    async fn del(&self, key: String) -> Result<bool, Error> {
         let mut con = self.get_async_connection().await?;
         let result: RedisResult<i32> = redis::cmd("DEL").arg(key).query_async(&mut con).await;
-        Ok(result.map(|n| n == 1).unwrap_or(false))
+        Ok(result.map(|n| n > 0).unwrap_or(false))
     }
 }

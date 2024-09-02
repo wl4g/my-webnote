@@ -34,6 +34,7 @@ pub mod document;
 pub mod folder;
 pub mod settings;
 pub mod user;
+pub mod browser_indexeddb;
 
 pub struct ValidatedJson<T>(pub T);
 

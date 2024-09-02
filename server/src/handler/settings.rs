@@ -57,20 +57,20 @@ impl<'a> ISettingsHandler for SettingsHandler<'a> {
         page: PageRequest
     ) -> Result<(PageResponse, Vec<Settings>), Error> {
         let repo = self.state.settings_repo.lock().await;
-        repo.repo(&self.state.config).select(param.to_settings(), page).await
+        repo.get(&self.state.config).select(param.to_settings(), page).await
     }
 
     async fn save(&self, param: SaveSettingsRequest) -> Result<i64, Error> {
         let repo = self.state.settings_repo.lock().await;
         if param.id.is_some() {
-            repo.repo(&self.state.config).update(param.to_settings()).await
+            repo.get(&self.state.config).update(param.to_settings()).await
         } else {
-            repo.repo(&self.state.config).insert(param.to_settings()).await
+            repo.get(&self.state.config).insert(param.to_settings()).await
         }
     }
 
     async fn delete(&self, param: DeleteSettingsRequest) -> Result<u64, Error> {
         let repo = self.state.settings_repo.lock().await;
-        repo.repo(&self.state.config).delete_by_id(param.id).await
+        repo.get(&self.state.config).delete_by_id(param.id).await
     }
 }

@@ -94,7 +94,7 @@ impl<'a> IUserHandler for UserHandler<'a> {
 
         let repo = self.state.user_repo.lock().await;
         let res = repo
-            .repo(&self.state.config)
+            .get(&self.state.config)
             .select(param, PageRequest::default()).await
             .unwrap().1;
 
@@ -201,21 +201,21 @@ impl<'a> IUserHandler for UserHandler<'a> {
         page: PageRequest
     ) -> Result<(PageResponse, Vec<User>), Error> {
         let repo = self.state.user_repo.lock().await;
-        repo.repo(&self.state.config).select(param.to_user(), page).await
+        repo.get(&self.state.config).select(param.to_user(), page).await
     }
 
     //#[common_log_macro::biz_log("创建/更新了用户信息: id: {param.base.id}, name: {param.name}")]
     async fn save(&self, param: SaveUserRequest) -> Result<i64, Error> {
         let repo = self.state.user_repo.lock().await;
         if param.id.is_some() {
-            repo.repo(&self.state.config).update(param.to_user()).await
+            repo.get(&self.state.config).update(param.to_user()).await
         } else {
-            repo.repo(&self.state.config).insert(param.to_user()).await
+            repo.get(&self.state.config).insert(param.to_user()).await
         }
     }
 
     async fn delete(&self, param: DeleteUserRequest) -> Result<u64, Error> {
         let repo = self.state.user_repo.lock().await;
-        repo.repo(&self.state.config).delete_by_id(param.id).await
+        repo.get(&self.state.config).delete_by_id(param.id).await
     }
 }

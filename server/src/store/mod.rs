@@ -31,7 +31,6 @@ pub mod settings_sqlite;
 pub mod settings_mongo;
 pub mod users_sqlite;
 pub mod users_mongo;
-pub mod browser_indexeddb;
 
 use anyhow::Error;
 use axum::async_trait;
@@ -78,7 +77,7 @@ impl<T> RepositoryContainer<T> where T: 'static + Send + Sync {
         &*self.mongo_repo
     }
 
-    pub fn repo(/*&mut self*/ &self, config: &WebServeProperties) -> &dyn AsyncRepository<T> {
+    pub fn get(/*&mut self*/ &self, config: &WebServeProperties) -> &dyn AsyncRepository<T> {
         match config.db.db_type {
             DbType::Sqlite => self.sqlite_repo(),
             DbType::Mongo => self.mongo_repo(),

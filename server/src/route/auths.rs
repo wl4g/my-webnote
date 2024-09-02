@@ -203,7 +203,7 @@ async fn validate_token(state: &AppState, ak: &str) -> (bool, Option<AuthUserCla
             let now = time::OffsetDateTime::now_utc();
             if exp > now {
                 // 2. Verify whether the token is in the cancelled blacklist.
-                let cache = state.string_cache.cache(&state.config);
+                let cache = state.string_cache.get(&state.config);
                 match cache.get(get_auth_handler(state).build_logout_blacklist_key(ak)).await {
                     std::result::Result::Ok(logout) => {
                         tracing::warn!("Invalid the token because in blacklist for {}", ak);

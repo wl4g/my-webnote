@@ -27,7 +27,6 @@ use tokio::sync::Mutex;
 use crate::cache::memory::StringMemoryCache;
 use crate::cache::redis::StringRedisCache;
 use crate::cache::CacheContainer;
-use crate::store::browser_indexeddb::BrowserIndexedDBRepository;
 // use crate::monitoring::health::{ MongoChecker, RedisClusterChecker, SQLiteChecker };
 use crate::types::document::Document;
 use crate::types::folder::Folder;
@@ -60,7 +59,6 @@ pub struct AppState {
     pub document_repo: Arc<Mutex<RepositoryContainer<Document>>>,
     pub folder_repo: Arc<Mutex<RepositoryContainer<Folder>>>,
     pub settings_repo: Arc<Mutex<RepositoryContainer<Settings>>>,
-    pub browser_indexeded_repo: Arc<Mutex<BrowserIndexedDBRepository>>,
     // // The health checker.
     // pub sqlite_checker: SQLiteChecker,
     // pub mongo_checker: MongoChecker,
@@ -108,9 +106,6 @@ impl AppState {
             Box::new(SettingsSQLiteRepository::new(&db_config).await.unwrap()),
             Box::new(SettingsMongoRepository::new(&db_config).await.unwrap())
         );
-        let browser_indexeded_repo = BrowserIndexedDBRepository::new(
-            Arc::new(config.webnote.to_owned())
-        ).await.unwrap();
 
         let app_state = AppState {
             // Notice: Arc object clone only increments the reference counter, and does not copy the actual data block.
@@ -125,7 +120,6 @@ impl AppState {
             document_repo: Arc::new(Mutex::new(document_repo_container)),
             folder_repo: Arc::new(Mutex::new(folder_repo_container)),
             settings_repo: Arc::new(Mutex::new(settings_repo_container)),
-            browser_indexeded_repo: Arc::new(Mutex::new(browser_indexeded_repo)),
             // // The health checker.
             // sqlite_checker: SQLiteChecker::new(),
             // mongo_checker: MongoChecker::new(),

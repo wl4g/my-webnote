@@ -61,7 +61,7 @@ impl SQLiteChecker {
             DbType::Sqlite => {
                 let repo = state.user_repo.lock().await;
                 match
-                    repo.repo(&state.config).select(User::default(), PageRequest::default()).await
+                    repo.get(&state.config).select(User::default(), PageRequest::default()).await
                 {
                     Ok(_) => true,
                     Err(e) => {
@@ -99,7 +99,7 @@ impl MongoChecker {
             DbType::Mongo => {
                 let repo = state.user_repo.lock().await;
                 match
-                    repo.repo(&state.config).select(User::default(), PageRequest::default()).await
+                    repo.get(&state.config).select(User::default(), PageRequest::default()).await
                 {
                     Ok(_) => true,
                     Err(e) => {
@@ -135,7 +135,7 @@ impl RedisClusterChecker {
     async fn is_redis_cluster_connected(&self, state: &AppState) -> bool {
         match &state.config.cache.provider {
             CacheProvider::Redis => {
-                let cache = state.string_cache.cache(&state.config);
+                let cache = state.string_cache.get(&state.config);
                 match cache.get("".to_string()).await {
                     Ok(_) => true,
                     Err(e) => {

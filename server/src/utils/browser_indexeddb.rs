@@ -34,13 +34,19 @@ use idb::{
     TransactionMode,
 };
 
+use serde::{ Deserialize, Serialize };
 use serde_json::Value;
 
-use crate::config::config_serve::WebNoteProperties;
 use wasm_bindgen::JsValue;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct IdbConfigProperties {
+    pub indexeddb_name: String,
+    pub indexeddb_store_names: Vec<String>,
+}
+
 pub struct BrowserIndexedDBRepository {
-    config: Arc<WebNoteProperties>,
+    config: Arc<IdbConfigProperties>,
     //inner: Arc<idb::Database>,
 }
 
@@ -60,7 +66,7 @@ pub struct CustomIndexParams {
 
 impl BrowserIndexedDBRepository {
     pub async fn new(
-        config: Arc<WebNoteProperties>
+        config: Arc<IdbConfigProperties>
         //obj_store_params: Vec<CustomObjectStoreParams>
     ) -> Result<Self, Error> {
         //let inner = Arc::new(Self::init_db(&config.indexeddb_name, 1, obj_store_params).await?);
@@ -71,7 +77,7 @@ impl BrowserIndexedDBRepository {
     }
 
     #[allow(unused)]
-    pub async fn build_default(config: Arc<WebNoteProperties>) -> Vec<CustomObjectStoreParams> {
+    pub async fn build_default(config: Arc<IdbConfigProperties>) -> Vec<CustomObjectStoreParams> {
         let obj_store_params = vec![
             CustomObjectStoreParams {
                 name: "folder".to_string(),
@@ -119,7 +125,7 @@ impl BrowserIndexedDBRepository {
 
     // TODO: Suspected problem: thread not-safe and low performance??
     // TODO: Unable use member of BrowserIndexedDBRepository, because idb:Database is not Send.
-    async fn get_db(&self, config: Arc<WebNoteProperties>) -> Result<Arc<idb::Database>, Error> {
+    async fn get_db(&self, config: Arc<IdbConfigProperties>) -> Result<Arc<idb::Database>, Error> {
         let obj_store_params = Self::build_default(config.clone()).await;
         Ok(Arc::new(Self::init_db(&config.indexeddb_name, 1, obj_store_params).await?))
     }
@@ -304,7 +310,7 @@ impl BrowserIndexedDBRepository {
         Ok(id)
     }
 
-    pub async fn delete(&self, store_name: &str, key: JsValue) -> Result<i16, Error> {
+    pub async fn delete(&self, store_name: &str, key: JsValue) -> Result<u32, Error> {
         // Create a read-write transaction
         let transaction = self
             .get_db(self.config.clone()).await

@@ -20,3 +20,4 @@
  * This includes modifications and derived works.
  */
 
+pub mod redis;

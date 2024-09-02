@@ -33,3 +33,4 @@ pub mod oidcs;
 pub mod snowflake;
 pub mod types;
 pub mod webs;
+pub mod browser_indexeddb;

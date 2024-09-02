@@ -54,20 +54,20 @@ impl<'a> IFolderHandler for FolderHandler<'a> {
         page: PageRequest
     ) -> Result<(PageResponse, Vec<Folder>), Error> {
         let repo = self.state.folder_repo.lock().await;
-        repo.repo(&self.state.config).select(param.to_folder(), page).await
+        repo.get(&self.state.config).select(param.to_folder(), page).await
     }
 
     async fn save(&self, param: SaveFolderRequest) -> Result<i64, Error> {
         let repo = self.state.folder_repo.lock().await;
         if param.id.is_some() {
-            repo.repo(&self.state.config).update(param.to_folder()).await
+            repo.get(&self.state.config).update(param.to_folder()).await
         } else {
-            repo.repo(&self.state.config).insert(param.to_folder()).await
+            repo.get(&self.state.config).insert(param.to_folder()).await
         }
     }
 
     async fn delete(&self, param: DeleteFolderRequest) -> Result<u64, Error> {
         let repo = self.state.folder_repo.lock().await;
-        repo.repo(&self.state.config).delete_by_id(param.id).await
+        repo.get(&self.state.config).delete_by_id(param.id).await
     }
 }

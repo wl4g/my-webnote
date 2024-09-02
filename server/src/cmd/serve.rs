@@ -53,6 +53,7 @@ use crate::route::user::init as user_router;
 use crate::route::document::init as document_router;
 use crate::route::folder::init as folder_router;
 use crate::route::settings::init as settings_router;
+use crate::route::browser_indexeddb::init as browser_indexeddb_router;
 use crate::route::api_v1::users::init as api_v1_users_router;
 
 // Check for the allocator used: 'objdump -t target/debug/mywebnote | grep mi_os_alloc'
@@ -94,6 +95,7 @@ async fn start_server(config: &Arc<WebServeConfig>) {
         .merge(document_router())
         .merge(folder_router())
         .merge(settings_router())
+        .merge(browser_indexeddb_router())
         .merge(api_v1_users_router());
 
     // 2. Merge of all routes.

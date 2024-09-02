@@ -25,19 +25,22 @@ use sqlx::{ FromRow, sqlite::SqliteRow, Row };
 use validator::Validate;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
-pub struct IndexedRecord {
-    pub key: String,
+pub struct IndexedValue {
+    // pub key: String,
     pub value: Option<String>,
 }
 
-impl<'r> FromRow<'r, SqliteRow> for IndexedRecord {
+impl<'r> FromRow<'r, SqliteRow> for IndexedValue {
     fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
-        Ok(IndexedRecord {
-            key: row.try_get("key")?,
+        Ok(IndexedValue {
+            // key: row.try_get("key")?,
             value: row.try_get("value")?,
         })
     }
 }
+
+
+
 
 // get
 
@@ -53,12 +56,12 @@ pub struct GetIndexedRecordRequest {
 
 #[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct GetIndexedRecordResponse {
-    pub records: Option<Vec<IndexedRecord>>,
+    pub record: Option<IndexedValue>,
 }
 
 impl GetIndexedRecordResponse {
-    pub fn new(records: Vec<IndexedRecord>) -> Self {
-        GetIndexedRecordResponse { records: Some(records) }
+    pub fn new(record: Option<IndexedValue>) -> Self {
+        GetIndexedRecordResponse { record }
     }
 }
 
@@ -70,20 +73,29 @@ pub struct GetAllIndexedRecordRequest {
     #[serde(rename = "storeName")]
     #[validate(length(min = 1, max = 64))]
     pub store_name: String,
-    #[validate(length(min = 1, max = 64))]
-    pub key: Option<String>,
     #[validate(range(min = 1, max = 1000))]
     pub limit: Option<u32>,
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct GetAllIndexedRecordResponse {
-    pub records: Option<Vec<IndexedRecord>>,
+    pub records: Option<Vec<IndexedValue>>,
 }
 
 impl GetAllIndexedRecordResponse {
-    pub fn new(records: Vec<IndexedRecord>) -> Self {
-        GetAllIndexedRecordResponse { records: Some(records) }
+    pub fn new(records: Option<Vec<IndexedValue>>) -> Self {
+        GetAllIndexedRecordResponse { records }
+    }
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
+pub struct GetAllKeyIndexedRecordResponse {
+    pub records: Option<Vec<String>>,
+}
+
+impl GetAllKeyIndexedRecordResponse {
+    pub fn new(records: Option<Vec<String>>) -> Self {
+        GetAllKeyIndexedRecordResponse { records }
     }
 }
 
@@ -124,11 +136,11 @@ pub struct DeleteIndexedRecordRequest {
 
 #[derive(Serialize, Clone, Debug, PartialEq, utoipa::ToSchema)]
 pub struct DeleteIndexedRecordResponse {
-    pub count: u64,
+    pub count: u32,
 }
 
 impl DeleteIndexedRecordResponse {
-    pub fn new(count: u64) -> Self {
+    pub fn new(count: u32) -> Self {
         DeleteIndexedRecordResponse { count }
     }
 }

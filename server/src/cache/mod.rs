@@ -31,9 +31,42 @@ pub mod redis;
 #[async_trait]
 pub trait ICache<T>: Send + Sync {
     async fn get(&self, key: String) -> Result<Option<T>, Error> where T: 'static + Send + Sync;
-    async fn set(&self, key: String, value: T, expire: Option<i32>) -> Result<bool, Error>
+
+    async fn set(&self, key: String, value: T, seconds: Option<i32>) -> Result<bool, Error>
         where T: 'static + Send + Sync;
-    async fn delete(&self, key: String) -> Result<bool, Error>;
+
+    async fn set_nx(&self, key: String, value: Option<String>) -> Result<bool, Error>;
+
+    async fn keys(&self, pattern: String) -> Result<Vec<String>, Error>
+        where T: 'static + Send + Sync;
+
+    async fn hget(
+        &self,
+        key: String,
+        fields: Option<Vec<String>>
+    ) -> Result<Option<Vec<String>>, Error>;
+
+    async fn hget_all(&self, name: String) -> Result<Option<Vec<String>>, Error>;
+
+    async fn hkeys(&self, key: String) -> Result<Vec<String>, Error> where T: 'static + Send + Sync;
+
+    async fn hset(
+        &self,
+        key: String,
+        field_values: Option<Vec<(String, String)>>
+    ) -> Result<bool, Error>;
+
+    async fn hset_nx(&self, key: String, field: String, value: String) -> Result<bool, Error>;
+
+    async fn hdel(&self, key: String, field: String) -> Result<bool, Error>;
+
+    async fn expire(&self, key: String, milliseconds: i64) -> Result<bool, Error>;
+
+    async fn get_bit(&self, key: String, offset: u64) -> Result<bool, Error>;
+
+    async fn set_bit(&self, key: String, offset: u64, value: bool) -> Result<bool, Error>;
+
+    async fn del(&self, key: String) -> Result<bool, Error>;
 }
 
 pub struct CacheContainer<T> where T: 'static + Send + Sync {
@@ -57,7 +90,7 @@ impl<T> CacheContainer<T> where T: 'static + Send + Sync {
         &*self.redis_cache
     }
 
-    pub fn cache(&self, config: &WebServeProperties) -> &dyn ICache<T> {
+    pub fn get(&self, config: &WebServeProperties) -> &dyn ICache<T> {
         match config.cache.provider {
             CacheProvider::Memory => self.memory_cache(),
             CacheProvider::Redis => self.redis_cache(),

@@ -79,20 +79,20 @@ impl<'a> IApiV1Handler for ApiV1Handler<'a> {
         page: PageRequest
     ) -> Result<(PageResponse, Vec<User>), Error> {
         let repo = self.state.user_repo.lock().await;
-        repo.repo(&self.state.config).select(param.to_user(), page).await
+        repo.get(&self.state.config).select(param.to_user(), page).await
     }
 
     async fn save(&self, param: SaveUserApiV1Request) -> Result<i64, Error> {
         let repo = self.state.user_repo.lock().await;
         if param.id.is_some() {
-            repo.repo(&self.state.config).update(param.to_user()).await
+            repo.get(&self.state.config).update(param.to_user()).await
         } else {
-            repo.repo(&self.state.config).insert(param.to_user()).await
+            repo.get(&self.state.config).insert(param.to_user()).await
         }
     }
 
     async fn delete(&self, param: DeleteUserApiV1Request) -> Result<u64, Error> {
         let repo = self.state.user_repo.lock().await;
-        repo.repo(&self.state.config).delete_by_id(param.id).await
+        repo.get(&self.state.config).delete_by_id(param.id).await
     }
 }

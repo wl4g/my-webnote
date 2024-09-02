@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[async_trait(?Send)] // 必须标记为 Send, 否则由于Wasm中未使用Send导致线程不安全, 进而 rustc err
-pub trait IIndexedRecordHandler: Send {
+pub trait IBrowserIndexedDBHandler: Send {
     async fn get(&self, param: GetIndexedRecordRequest) -> Result<Option<IndexedRecord>, Error>;
 
     async fn get_all(
@@ -26,25 +26,25 @@ pub trait IIndexedRecordHandler: Send {
         param: GetAllIndexedRecordRequest
     ) -> Result<Option<Vec<String>>, Error>;
 
-    async fn add(&self, param: SaveIndexedRecordRequest) -> Result<(), Error>;
+    async fn add(&self, param: SaveIndexedRecordRequest) -> Result<String, Error>;
 
-    async fn put(&self, param: SaveIndexedRecordRequest) -> Result<(), Error>;
+    async fn put(&self, param: SaveIndexedRecordRequest) -> Result<String, Error>;
 
-    async fn delete(&self, param: DeleteIndexedRecordRequest) -> Result<(), Error>;
+    async fn delete(&self, param: DeleteIndexedRecordRequest) -> Result<u32, Error>;
 }
 
-pub struct IndexedRecordHandlerImpl<'a> {
+pub struct BrowserIndexedDBHandlerImpl<'a> {
     state: &'a AppState,
 }
 
-impl<'a> IndexedRecordHandlerImpl<'a> {
+impl<'a> BrowserIndexedDBHandlerImpl<'a> {
     pub fn new(state: &'a AppState) -> Self {
         Self { state }
     }
 }
 
 #[async_trait(?Send)]
-impl<'a> IIndexedRecordHandler for IndexedRecordHandlerImpl<'a> {
+impl<'a> IBrowserIndexedDBHandler for BrowserIndexedDBHandlerImpl<'a> {
     async fn get(&self, param: GetIndexedRecordRequest) -> Result<Option<IndexedRecord>, Error> {
         let query = serde_wasm_bindgen::to_value(&param.key).unwrap();
 
@@ -110,46 +110,48 @@ impl<'a> IIndexedRecordHandler for IndexedRecordHandlerImpl<'a> {
         }
     }
 
-    async fn add(&self, param: SaveIndexedRecordRequest) -> Result<(), Error> {
+    async fn add(&self, param: SaveIndexedRecordRequest) -> Result<String, Error> {
         let value = serde_wasm_bindgen::to_value(&param.value).unwrap();
-        let key = param.key.map(|k| serde_wasm_bindgen::to_value(&k).unwrap());
-        let key = match &key {
+        let key = &param.key;
+        let ref_key = &key.clone().map(|k| serde_wasm_bindgen::to_value(&k).unwrap());
+        let in_ref_key = match &ref_key {
             Some(value) => Some(value),
             None => None,
         };
         let handler = self.state.browser_indexeded_repo.lock().await;
-        let res = handler.add(&param.store_name, &value, key).await;
+        let res = handler.add(&param.store_name, &value, in_ref_key).await;
 
         match res {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(key.clone().unwrap_or_default()),
             Err(err) => Err(Error::msg(err.to_string())),
         }
     }
 
-    async fn put(&self, param: SaveIndexedRecordRequest) -> Result<(), Error> {
+    async fn put(&self, param: SaveIndexedRecordRequest) -> Result<String, Error> {
         let value = serde_wasm_bindgen::to_value(&param.value).unwrap();
-        let key = param.key.map(|k| serde_wasm_bindgen::to_value(&k).unwrap());
-        let key = match &key {
+        let key = &param.key;
+        let ref_key = &key.clone().map(|k| serde_wasm_bindgen::to_value(&k).unwrap());
+        let in_ref_key = match &ref_key {
             Some(value) => Some(value),
             None => None,
         };
         let handler = self.state.browser_indexeded_repo.lock().await;
-        let res = handler.put(&param.store_name, &value, key).await;
+        let res = handler.put(&param.store_name, &value, in_ref_key).await;
 
         match res {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(param.key.unwrap_or_default()),
             Err(err) => Err(Error::msg(err.to_string())),
         }
     }
 
-    async fn delete(&self, param: DeleteIndexedRecordRequest) -> Result<(), Error> {
+    async fn delete(&self, param: DeleteIndexedRecordRequest) -> Result<u32, Error> {
         let key = serde_wasm_bindgen::to_value(&param.key).unwrap();
 
         let handler = self.state.browser_indexeded_repo.lock().await;
         let res = handler.delete(&param.store_name, key).await;
 
         match res {
-            Ok(_) => Ok(()),
+            Ok(count) => Ok(count),
             Err(err) => Err(Error::msg(err.to_string())),
         }
     }
